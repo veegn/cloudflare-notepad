@@ -1,0 +1,11 @@
+name = "cloud-notepad"
+main = "src/index.js"
+compatibility_date = "2022-05-13"
+
+kv_namespaces = [
+  { binding = "NOTES", id = "b485b873ed1a41d686bb26799e2eb527" }
+]
+
+[assets]
+directory = "static"
+binding = "ASSETS"
