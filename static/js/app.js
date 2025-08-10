@@ -99,6 +99,9 @@ window.addEventListener('DOMContentLoaded', function () {
     const $copyBtn = document.querySelector('.share-modal .opt-button')
     const $shareInput = document.querySelector('.share-modal input')
 
+    const $editButton = document.querySelector('.opt-edit')
+    const $rawButton = document.querySelector('.opt-raw')
+
     renderPlain($previewPlain, $textarea.value)
     renderMarkdown($previewMd, $textarea.value)
 
@@ -210,6 +213,16 @@ window.addEventListener('DOMContentLoaded', function () {
                 $copyBtn.innerHTML = originText
                 $copyBtn.style.background = originColor
             }, 1500)
+        }
+    }
+    if ($editButton) {
+        $editButton.onclick = function () {
+            window.location.href = window.location.pathname + '/edit'
+        }
+    }
+    if ($rawButton) {
+        $rawButton.onclick = function () {
+            window.location.href = window.location.pathname + '/raw'
         }
     }
 

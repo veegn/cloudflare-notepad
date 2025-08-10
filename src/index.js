@@ -2,7 +2,7 @@ import dayjs from 'dayjs'
 import {Router} from 'itty-router'
 import Cookies from 'cookie'
 import jwt from '@tsndr/cloudflare-worker-jwt'
-import {checkAuth, genRandomStr, getI18n, queryNote, returnJSON, returnPage, saltPw} from './helper'
+import {checkAuth, genRandomStr, getI18n, queryNote, returnJSON, returnPage, returnRaw, saltPw} from './helper'
 import {SECRET} from './constant'
 
 // init
@@ -225,6 +225,19 @@ router.post('/:path/edit', async request => {
     }
 
     return returnJSON(10001, 'KV insert fail!')
+})
+router.get('/:path/raw', async (request) => {
+
+    const {path} = request.params
+    const url = new URL(request.url)
+    const password = url.searchParams.get('password')
+
+    const {value, metadata} = await queryNote(path)
+
+    if (!metadata.pw || await saltPw(password) === metadata.pw) {
+        return returnRaw(value)
+    }
+    return new Response('Forbidden', { status: 403 })
 })
 
 router.all('*', (request) => {

@@ -135,7 +135,7 @@ textarea:focus {
     background: transparent;
     resize: none;
     overflow-y: auto;
-/*  white-space: pre-wrap;*/
+    overflow-wrap: break-word;
 
     font: normal 15px Arial, Helvetica, sans-serif;
     line-height: 20px;

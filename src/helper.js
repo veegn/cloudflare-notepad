@@ -40,6 +40,14 @@ export function returnJSON(code, data, headers = {}) {
     })
 }
 
+export function returnRaw(data) {
+    return new Response(data, {
+        headers: {
+            'content-type': 'text/plain;charset=UTF-8',
+        },
+    });
+}
+
 export async function MD5(str) {
     const msgUint8 = new TextEncoder().encode(str)
     const hashBuffer = await crypto.subtle.digest('MD5', msgUint8) 
