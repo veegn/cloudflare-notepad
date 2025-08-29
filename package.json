@@ -4,7 +4,7 @@
   "author": "veegn",
   "license": "MIT",
   "devDependencies": {
-    "wrangler": "^4.28.0"
+    "wrangler": "^4.33.1"
   },
   "private": true,
   "scripts": {
@@ -12,9 +12,9 @@
     "publish": "wrangler publish"
   },
   "dependencies": {
-    "@tsndr/cloudflare-worker-jwt": "^1.1.7",
+    "@tsndr/cloudflare-worker-jwt": "^3.2.0",
     "cookie": "^0.5.0",
-    "dayjs": "^1.11.2",
+    "dayjs": "^1.11.15",
     "itty-router": "^2.6.1",
     "js-cookie": "^3.0.1"
   }

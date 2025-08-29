@@ -61,16 +61,9 @@ export async function saltPw(password) {
 }
 
 export async function checkAuth(cookie, path) {
-    if (cookie.auth) {
-        const valid = await jwt.verify(cookie.auth, SECRET)
-        if (valid) {
-            const payload = jwt.decode(cookie.auth)
-            if (payload.path === path) {
-                return true
-            }
-        }
-    }
-    return false
+    const valid = cookie.auth && await jwt.verify(cookie.auth, SECRET);
+    const body = valid && jwt.decode(cookie.auth);
+    return body?.payload.path === path || false;
 }
 
 export async function queryNote(key) {
