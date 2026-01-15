@@ -1,103 +1,115 @@
 /**
+ * Configuration and I18n
+ */
+const CONFIG = window.CONFIG || {
+    lang: 'en',
+    isEdit: false,
+    updateAt: null,
+    pw: false,
+    mode: 'plain',
+    i18n: {
+        'en': { lastModified: 'Last Modified', editButtonText: 'Edit', share: 'Share' },
+        'zh': { lastModified: '上次保存', editButtonText: '编辑', share: '分享' }
+    }
+}
+
+const getI18n = (key) => CONFIG.i18n[CONFIG.lang][key] || key
+
+/**
+ * Utility: DOM Selector Helper
+ */
+const $ = (s, p = document) => p.querySelector(s)
+const $$ = (s, p = document) => p.querySelectorAll(s)
+
+/**
+ * UI Components (Client-side)
+ */
+const GITHUB_ICON = () => `
+<svg viewBox="64 64 896 896" focusable="false" data-icon="github" width="1em" height="1em" fill="currentColor" aria-hidden="true">
+  <path d="M511.6 76.3C264.3 76.2 64 276.4 64 523.5 64 718.9 189.3 885 363.8 946c23.5 5.9 19.9-10.8 19.9-22.2v-77.5c-135.7 15.9-141.2-73.9-150.3-88.9C215 726 171.5 718 184.5 703c30.9-15.9 62.4 4 98.9 57.9 26.4 39.1 77.9 32.5 104 26 5.7-23.5 17.9-44.5 34.7-60.8-140.6-25.2-199.2-111-199.2-213 0-49.5 16.3-95 48.3-131.7-20.4-60.5 1.9-112.3 4.9-120 58.1-5.2 118.5 41.6 123.2 45.3 33-8.9 70.7-13.6 112.9-13.6 42.4 0 80.2 4.9 113.5 13.9 11.3-8.6 67.3-48.8 121.3-43.9 2.9 7.7 24.7 58.3 5.5 118 32.4 36.8 48.9 82.7 48.9 132.3 0 102.2-59 188.1-200 212.9a127.5 127.5 0 0138.1 91v112.5c.8 9 0 17.9 15 17.9 177.1-59.7 304.6-227 304.6-424.1 0-247.2-200.4-447.3-447.5-447.3z"></path>
+</svg>
+`
+
+const GITHUB_LINK = () => `
+<a class="github-link" title="Github" target="_blank" href="https://github.com/veegn/serverless-cloud-notepad" rel="noreferrer">
+  ${GITHUB_ICON()}
+</a>
+`
+
+const THEME_TOGGLE_BTN = () => `
+<button class="opt-button theme-toggle" title="Toggle theme">
+  <span class="theme-toggle-icon">
+    <span class="theme-toggle-sun">
+      <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <circle cx="12" cy="12" r="5"></circle>
+        <line x1="12" y1="1" x2="12" y2="3"></line>
+        <line x1="12" y1="21" x2="12" y2="23"></line>
+        <line x1="4.22" y1="4.22" x2="5.64" y2="5.64"></line>
+        <line x1="18.36" y1="18.36" x2="19.78" y2="19.78"></line>
+        <line x1="1" y1="12" x2="3" y2="12"></line>
+        <line x1="21" y1="12" x2="23" y2="12"></line>
+        <line x1="4.22" y1="19.78" x2="5.64" y2="18.36"></line>
+        <line x1="18.36" y1="5.64" x2="19.78" y2="4.22"></line>
+      </svg>
+    </span>
+    <span class="theme-toggle-moon">
+      <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"></path>
+      </svg>
+    </span>
+  </span>
+</button>
+`
+
+const EDIT_BUTTONS = () => `
+  <button class="opt-button opt-pw">${CONFIG.pw ? getI18n('changePW') : getI18n('setPW')}</button>
+  <button class="opt-button opt-share">${getI18n('share')}</button>
+  <div id="mode-tabs" class="mode-tabs"></div>
+  ${THEME_TOGGLE_BTN()}
+`
+
+const VIEW_BUTTONS = () => `
+  <button class="opt-button opt-edit">${getI18n('editButtonText')}</button>
+  <button class="opt-button opt-raw">Raw</button>
+  ${THEME_TOGGLE_BTN()}
+`
+
+/**
  * Theme management
  */
 const Theme = {
-  // Get the current theme from localStorage or system preference
-  getCurrentTheme: () => {
-    const savedTheme = localStorage.getItem('theme')
-    if (savedTheme) {
-      return savedTheme
-    }
-    
-    // Check system preference
-    if (window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches) {
-      return 'dark'
-    }
-    
-    return 'light'
-  },
-  
-  // Apply the specified theme with animation
-  applyTheme: (theme) => {
-    // Add a class to indicate theme transition
-    document.body.classList.add('theme-transition')
-    
-    // Apply the theme
-    document.documentElement.setAttribute('data-theme', theme)
-    localStorage.setItem('theme', theme)
-    
-    // Update theme toggle button state
-    const themeToggle = document.querySelector('.theme-toggle')
-    if (themeToggle) {
-      themeToggle.classList.add('theme-toggle-active')
-    }
-    
-    // Remove transition class and active state after animation completes
-    setTimeout(() => {
-      document.body.classList.remove('theme-transition')
-      if (themeToggle) {
-        themeToggle.classList.remove('theme-toggle-active')
-      }
-    }, 300)
-  },
-  
-  // Toggle between light and dark themes with animation
-  toggleTheme: () => {
-    const currentTheme = Theme.getCurrentTheme()
-    const newTheme = currentTheme === 'dark' ? 'light' : 'dark'
-    Theme.applyTheme(newTheme)
-  },
-  
-  // Initialize theme on page load
-  init: () => {
-    const currentTheme = Theme.getCurrentTheme()
-    document.documentElement.setAttribute('data-theme', currentTheme)
-  }
-}
-
-/**
- * Internationalization support
- */
-const DEFAULT_LANG = 'en'
-const SUPPORTED_LANG = {
-    'en': {
-        err: 'Error',
-        pepw: 'Please enter password.',
-        pwcnbe: 'Password is empty!',
-        enpw: 'Enter a new password(Keeping it empty will remove the current password)',
-        pwss: 'Password set successfully.',
-        pwrs: 'Password removed successfully.',
-        cpys: 'Copied!',
-        lastModified: 'Last Modified'
+    getCurrentTheme: () => {
+        const savedTheme = localStorage.getItem('theme')
+        if (savedTheme) return savedTheme
+        if (window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches) return 'dark'
+        return 'light'
     },
-    'zh': {
-        err: '出错了',
-        pepw: '请输入密码',
-        pwcnbe: '密码不能为空！',
-        enpw: '输入新密码（留空可清除当前密码）',
-        pwss: '密码设置成功！',
-        pwrs: '密码清除成功！',
-        cpys: '分享链接已复制',
-        lastModified: '上次保存'
+    applyTheme: (theme) => {
+        document.body.classList.add('theme-transition')
+        document.documentElement.setAttribute('data-theme', theme)
+        localStorage.setItem('theme', theme)
+        const themeToggle = $('.theme-toggle')
+        if (themeToggle) themeToggle.classList.add('theme-toggle-active')
+        setTimeout(() => {
+            document.body.classList.remove('theme-transition')
+            if (themeToggle) themeToggle.classList.remove('theme-toggle-active')
+        }, 300)
+    },
+    toggleTheme: () => {
+        const currentTheme = Theme.getCurrentTheme()
+        Theme.applyTheme(currentTheme === 'dark' ? 'light' : 'dark')
+    },
+    init: () => {
+        document.documentElement.setAttribute('data-theme', Theme.getCurrentTheme())
     }
 }
 
-const getI18n = key => {
-    const userLang = (navigator.language || navigator.userLanguage || DEFAULT_LANG).split('-')[0]
-    const targetLang = Object.keys(SUPPORTED_LANG).find(l => l === userLang) || DEFAULT_LANG
-    return SUPPORTED_LANG[targetLang][key]
-}
-
-const errHandle = (err) => {
-    alert(`${getI18n('err')}: ${err}`)
-}
+const errHandle = (err) => alert(`${getI18n('err') || 'Error'}: ${err}`)
 
 const throttle = (func, delay) => {
     let tid = null
-
     return (...arg) => {
         if (tid) return;
-
         tid = setTimeout(() => {
             func(...arg)
             tid = null
@@ -107,195 +119,212 @@ const throttle = (func, delay) => {
 
 const passwdPrompt = () => {
     const passwd = window.prompt(getI18n('pepw'))
-    if (passwd == null) return;
+    if (!passwd || !passwd.trim()) return
 
-    if (!passwd.trim()) {
-        alert(getI18n('pwcnbe'))
-    }
     const path = location.pathname
     window.fetch(`${path}/auth`, {
         method: 'POST',
-        headers: {
-            'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-            passwd,
-        }),
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ passwd }),
     })
         .then(res => res.json())
         .then(res => {
-            if (res.err !== 0) {
-                return errHandle(res.msg)
-            }
-            if (res.data.refresh) {
-                window.location.reload()
-            }
+            if (res.err !== 0) return errHandle(res.msg)
+            if (res.data.refresh) window.location.reload()
         })
         .catch(err => errHandle(err))
 }
 
-const renderPlain = (node, text) => {
+const renderPlain = (node, text) => { if (node) node.innerHTML = DOMPurify.sanitize(text) }
+const renderMarkdown = (node, text) => { if (node) node.innerHTML = DOMPurify.sanitize(marked.parse(text)) }
+const renderJson = (node, text) => {
     if (node) {
-        node.innerHTML = DOMPurify.sanitize(text)
+        try {
+            const obj = JSON.parse(text)
+            node.innerHTML = '<pre>' + DOMPurify.sanitize(JSON.stringify(obj, null, 2)) + '</pre>'
+        } catch (e) {
+            node.innerHTML = '<pre style="color:red">' + DOMPurify.sanitize(e.toString()) + '</pre>'
+        }
     }
 }
-
-const renderMarkdown = (node, text) => {
+const renderYaml = (node, text) => {
     if (node) {
-        const parseText = marked.parse(text)
-        node.innerHTML = DOMPurify.sanitize(parseText)
+        try {
+            const obj = jsyaml.load(text)
+            node.innerHTML = '<pre>' + DOMPurify.sanitize(JSON.stringify(obj, null, 2)) + '</pre>'
+        } catch (e) {
+            node.innerHTML = '<pre style="color:red">' + DOMPurify.sanitize(e.toString()) + '</pre>'
+        }
     }
 }
 
 window.addEventListener('DOMContentLoaded', function () {
-    // Initialize theme
-    Theme.init()
-    
-    const $textarea = document.querySelector('#contents')
-    const $loading = document.querySelector('#loading')
-    const $pwBtn = document.querySelector('.opt-pw')
-    const $modeBtn = document.querySelector('.opt-mode > input')
-    const $shareBtn = document.querySelector('.opt-share')
-    const $previewPlain = document.querySelector('#preview-plain')
-    const $previewMd = document.querySelector('#preview-md')
-    const $shareModal = document.querySelector('.share-modal')
-    const $closeBtn = document.querySelector('.share-modal .close-btn')
-    const $copyBtn = document.querySelector('.share-modal .opt-button')
-    const $shareInput = document.querySelector('.share-modal input')
-    const $themeToggle = document.querySelector('.theme-toggle')
+    /**
+     * DOM elements centralized in UI object
+     */
+    const UI = {
+        footerActions: $('#footer-actions'),
+        githubContainer: $('#github-link-container'),
+        modeTabs: $('#mode-tabs'),
+        lastMod: $('#last-modified-container'),
+        textarea: $('#contents'),
+        loading: $('#loading'),
+        layer: $('.layer'),
+        previews: {
+            plain: $('#preview-plain'),
+            md: $('#preview-md'),
+            json: $('#preview-json'),
+            yaml: $('#preview-yaml')
+        }
+    }
 
-    const $editButton = document.querySelector('.opt-edit')
-    const $rawButton = document.querySelector('.opt-raw')
+    // Hydrate Components
+    if (UI.footerActions) UI.footerActions.innerHTML = CONFIG.isEdit ? EDIT_BUTTONS() : VIEW_BUTTONS()
+    if (UI.githubContainer) UI.githubContainer.innerHTML = GITHUB_LINK()
 
-    renderPlain($previewPlain, $textarea.value)
-    renderMarkdown($previewMd, $textarea.value)
+    // Mode Tabs Logic
+    const initModeTabs = () => {
+        const $tabs = $('#mode-tabs')
+        if (!$tabs || !CONFIG.isEdit) return
 
-    if ($textarea) {
-        $textarea.oninput = throttle(function () {
-            renderMarkdown($previewMd, $textarea.value)
+        const modes = [
+            { id: 'plain', label: 'Txt' },
+            { id: 'md', label: 'Markdown' },
+            { id: 'json', label: 'JSON' },
+            { id: 'yaml', label: 'YAML' }
+        ]
 
-            $loading.style.opacity = '0.4';
-            const data = {
-                t: $textarea.value,
+        $tabs.innerHTML = `
+            <div class="tab-indicator"></div>
+            ${modes.map(m => `<div class="mode-tab ${CONFIG.mode === m.id ? 'active' : ''}" data-mode="${m.id}">${m.label}</div>`).join('')}
+        `
+
+        const $indicator = $('.tab-indicator', $tabs)
+        const updateTabSlider = () => {
+            const $activeTab = $('.mode-tab.active', $tabs)
+            if ($activeTab && $indicator) {
+                $indicator.style.width = `${$activeTab.offsetWidth}px`
+                $indicator.style.left = `${$activeTab.offsetLeft}px`
             }
+        }
 
+        setTimeout(updateTabSlider, 100)
+        window.addEventListener('resize', updateTabSlider)
+
+        $$('.mode-tab', $tabs).forEach($tab => {
+            $tab.onclick = function () {
+                const mode = this.dataset.mode
+                if (mode === CONFIG.mode) return
+
+                $$('.mode-tab', $tabs).forEach(t => t.classList.remove('active'))
+                this.classList.add('active')
+                updateTabSlider()
+
+                document.body.classList.add('no-theme-transition')
+                window.fetch(`${window.location.pathname}/setting`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ mode }),
+                })
+                    .then(res => res.json())
+                    .then(res => {
+                        if (res.err !== 0) return errHandle(res.msg)
+                        window.location.reload()
+                    })
+                    .catch(err => errHandle(err))
+            }
+        })
+    }
+
+    const updateLastModified = () => {
+        if (UI.lastMod && CONFIG.updateAt) {
+            UI.lastMod.innerHTML = `<span class="last-modified">${getI18n('lastModified')} ${dayjs.unix(CONFIG.updateAt).fromNow()}</span>`
+        }
+    }
+
+    /**
+     * Initialization execution
+     */
+    initModeTabs()
+    Theme.init()
+    if (window.dayjs && window.dayjs_plugin_relativeTime) dayjs.extend(dayjs_plugin_relativeTime)
+
+    updateLastModified()
+    setInterval(updateLastModified, 30000)
+
+    // Edit Mode Support
+    const isSplitSupported = ['md', 'json', 'yaml'].includes(CONFIG.mode)
+    if (UI.textarea) {
+        if (CONFIG.isEdit && isSplitSupported) UI.layer.classList.add('split-view')
+
+        renderPlain(UI.previews.plain, UI.textarea.value)
+        renderMarkdown(UI.previews.md, UI.textarea.value)
+        renderJson(UI.previews.json, UI.textarea.value)
+        renderYaml(UI.previews.yaml, UI.textarea.value)
+
+        // Sync Scroll
+        let isScrolling = false
+        UI.textarea.addEventListener('scroll', () => {
+            if (isScrolling || !isSplitSupported) return
+            isScrolling = true
+            const activePreview = $(`#preview-${CONFIG.mode}`)
+            if (activePreview) {
+                const scrollPct = UI.textarea.scrollTop / (UI.textarea.scrollHeight - UI.textarea.clientHeight)
+                activePreview.scrollTop = scrollPct * (activePreview.scrollHeight - activePreview.clientHeight)
+            }
+            setTimeout(() => { isScrolling = false }, 50)
+        })
+
+        // Content Update
+        UI.textarea.oninput = throttle(function () {
+            renderMarkdown(UI.previews.md, UI.textarea.value)
+            renderJson(UI.previews.json, UI.textarea.value)
+            renderYaml(UI.previews.yaml, UI.textarea.value)
+
+            UI.loading.style.opacity = '1'
             window.fetch('', {
                 method: 'POST',
-                headers: {
-                    'Content-Type': 'application/x-www-form-urlencoded',
-                },
-                body: new URLSearchParams(data),
+                headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+                body: new URLSearchParams({ t: UI.textarea.value }),
             })
                 .then(res => res.json())
-                .then(res => {
-                    if (res.err !== 0) {
-                        errHandle(res.msg)
-                    }
-                })
+                .then(res => res.err !== 0 && errHandle(res.msg))
                 .catch(err => errHandle(err))
-                .finally(() => {
-                    $loading.style.opacity = '0';
-                })
+                .finally(() => UI.loading.style.opacity = '0')
         }, 1000)
     }
 
-    if ($pwBtn) {
-        $pwBtn.onclick = function () {
+    /**
+     * Delegate Action Listeners
+     */
+    document.body.onclick = (e) => {
+        const t = e.target
+        if (t.closest('.opt-pw')) {
             const passwd = window.prompt(getI18n('enpw'))
-            if (passwd == null) return;
-
-            const path = window.location.pathname
-            window.fetch(`${path}/pw`, {
+            if (passwd == null) return
+            window.fetch(`${window.location.pathname}/pw`, {
                 method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                },
-                body: JSON.stringify({
-                    passwd: passwd.trim(),
-                }),
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ passwd: passwd.trim() }),
             })
                 .then(res => res.json())
                 .then(res => {
-                    if (res.err !== 0) {
-                        return errHandle(res.msg)
-                    }
+                    if (res.err !== 0) return errHandle(res.msg)
                     alert(passwd ? getI18n('pwss') : getI18n('pwrs'))
                 })
-                .catch(err => errHandle(err))
         }
-    }
-
-    if ($modeBtn) {
-        $modeBtn.onclick = function (e) {
-            // Prevent theme transition animation when switching Markdown mode
-            document.body.classList.add('no-theme-transition')
-            
-            const isMd = e.target.checked
-            const path = window.location.pathname
-            window.fetch(`${path}/setting`, {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                },
-                body: JSON.stringify({
-                    mode: isMd ? 'md' : 'plain',
-                }),
-            })
-                .then(res => res.json())
-                .then(res => {
-                    if (res.err !== 0) {
-                        // Re-enable theme transitions on error
-                        document.body.classList.remove('no-theme-transition')
-                        return errHandle(res.msg)
-                    }
-
-                    window.location.reload()
-                })
-                .catch(err => {
-                    // Re-enable theme transitions on error
-                    document.body.classList.remove('no-theme-transition')
-                    errHandle(err)
-                })
+        else if (t.closest('.opt-share')) {
+            const shareUrl = `${window.location.origin}${window.location.pathname.replace("/edit", "")}`
+            const cb = (typeof clipboardCopy === 'function') ? clipboardCopy : (s) => navigator.clipboard.writeText(s)
+            Promise.resolve(cb(shareUrl)).then(() => showToast(getI18n('cpys')))
         }
-    }
-
-    if ($shareBtn) {
-        $shareBtn.onclick = function (e) {
-            const path = window.location.pathname;
-            const origin = window.location.origin;
-            const shareUrl = `${origin}${path.replace("/edit", "")}`;
-            
-            // 复制到剪切板
-            clipboardCopy(shareUrl);
-            
-            // 显示toast提示
-            showToast(getI18n('cpys'));
-        }
-    }
-    
-    if ($editButton) {
-        $editButton.onclick = function () {
-            window.location.href = window.location.pathname + '/edit'
-        }
-    }
-    
-    if ($rawButton) {
-        $rawButton.onclick = function () {
-            window.location.href = window.location.pathname + '/raw'
-        }
-    }
-    
-    // Theme toggle handler
-    if ($themeToggle) {
-        $themeToggle.onclick = function () {
-            Theme.toggleTheme()
-        }
+        else if (t.closest('.opt-edit')) window.location.href = window.location.pathname + '/edit'
+        else if (t.closest('.opt-raw')) window.location.href = window.location.pathname + '/raw'
+        else if (t.closest('.theme-toggle')) Theme.toggleTheme()
     }
 })
 
-// Toast提示函数
 function showToast(message) {
-    // 创建toast元素
     const toast = document.createElement('div');
     toast.textContent = message;
     toast.style.cssText = `
@@ -312,20 +341,10 @@ function showToast(message) {
         opacity: 0;
         transition: opacity 0.3s ease;
     `;
-    
-    // 添加到页面
     document.body.appendChild(toast);
-    
-    // 显示toast
-    setTimeout(() => {
-        toast.style.opacity = '1';
-    }, 10);
-    
-    // 3秒后移除toast
+    setTimeout(() => { toast.style.opacity = '1'; }, 10);
     setTimeout(() => {
         toast.style.opacity = '0';
-        setTimeout(() => {
-            document.body.removeChild(toast);
-        }, 300);
+        setTimeout(() => { document.body.removeChild(toast); }, 300);
     }, 3000);
 }

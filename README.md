@@ -1,9 +1,9 @@
 # ☁ Serverless Cloud Notepad
 
 [![cloudflare workers](https://badgen.net/badge/a/Cloudflare%20Workers/orange?icon=https%3A%2F%2Fworkers.cloudflare.com%2Fresources%2Flogo%2Flogo.svg&label=)](https://workers.cloudflare.com/)
-![example workflow](https://github.com/s0urcelab/serverless-cloud-notepad/actions/workflows/deploy.yml/badge.svg)
+![example workflow](https://github.com/veegn/serverless-cloud-notepad/actions/workflows/deploy.yml/badge.svg)
 [![jsdelivr](https://img.shields.io/badge/jsdelivr-cdn-brightgreen)](https://www.jsdelivr.com/)
-[![MIT License](https://img.shields.io/badge/license-MIT-blue.svg)](https://github.com/dotzero/pad/blob/master/LICENSE)
+[![MIT License](https://img.shields.io/badge/license-MIT-blue.svg)](https://github.com/veegn/serverless-cloud-notepad/blob/master/LICENSE)
 
 English | [简体中文](./README-zh_CN.md)
 
@@ -13,54 +13,43 @@ Powered by Cloudflare Workers、KV & Github Actions, Easy to deploy privately.
 
 ## ✨ Features
 
-- ✏ No login/register required, start writing right away.
-- 💾 Auto saving.
-- ❌ No backend/server or database required.
-- ⚡ High available & High performance in worldwide.
-- 📦 One-click deployment for your own site.
-- 🌍 i18n support for pathname.
+- ✏ **Modern UI/UX**: Professional "Slate & Blue" design with glassmorphism and smooth animations.
+- 🌓 **Theme Support**: Seamless switching between Light and Dark modes with rotating icon effects.
+- 📖 **Real-time Preview**: Split-screen (Side-by-Side) live preview with synchronized scrolling for Markdown/JSON/YAML.
+- 🔒 **Privacy First**: Password protection for notes with secure JWT-based authentication.
+- 💾 **Auto Saving**: Content is saved automatically as you type to Cloudflare KV.
+- ⚡ **High Performance**: Powered by Cloudflare Workers for global low-latency access.
+- 📦 **Zero Backend**: No traditional server or database required, extremely easy to self-host.
 
 ## 🔨 Usage
 
-- Enter `/` root path will generate a new note with random path.
+- Enter `/` root path will generate a new note with a random path.
+- Enter `/:path/edit` to edit or set password for a note.
+- Enter `/:path` to view a shared note (or login if protected).
 
-- Enter `/any-custom-name-you-like` view/edit custom note.
+Try it out! [https://juu.qzz.io](https://juu.qzz.io)
 
-Try it out! [https://note.src.moe/example](https://note.src.moe/example)
-
-> [!NOTE]
-> According to Cloudflare's [free policy](https://developers.cloudflare.com/kv/platform/limits/), KV has a daily limit of 1,000 write/delete operations. It is highly recommended to deploy your own.
+> [!TIP]
+> This project is designed for Cloudflare Workers. Deployment takes less than 2 minutes!
 
 ## 💻 Compatibility
 
-- Modern browsers (both PC & Mobile)
+- Modern browsers (PC, Tablet & Mobile responsive)
 
 ## 📦 Deployment
 
-- Create your Cloudflare API token in [here](https://dash.cloudflare.com/profile/api-tokens), choose `Cloudflare Workers Template` to complete create.
-- Fork this repository and add 3 Secret in `Settings -> Secrets and variables -> Actions`:
+- Create your Cloudflare API token [here](https://dash.cloudflare.com/profile/api-tokens), choosing the `Edit Cloudflare Workers` template.
+- Fork this repository and add 3 Secrets in `Settings -> Secrets and variables -> Actions`:
 ```bash
 CLOUDFLARE_API_TOKEN # your Cloudflare API token
-
-SCN_SALT # whatever you like(for security reason)
-
-SCN_SECRET # whatever you like(for security reason)
+SCN_SALT             # a random string for password hashing
+SCN_SECRET           # a secret key for JWT signing
 ```
-- Go to Actions tab, run `Deploy cloud-notepad` workflow.
-- After a while, you will see the deployment-url in Annotations.
-- CNAME deployment-url to your domain if you like.(optional)
+- Go to the Actions tab and run the `Deploy cloud-notepad` workflow.
 
 ## 👀 Roadmap
 
-- [x] ~~password protection.~~
-- [x] ~~support URL/Image (Markdown mode).~~
-- [x] ~~read only mode (share link).~~
-- [x] ~~show last modify date.~~
+- [ ] Support for multiple note themes (Monokai, Solarized, etc.)
+- [ ] Export notes as PDF or Image.
+- [ ] Collaborative editing support.
 
-## ☕ Donate
-
-maybe, buy me a coffee?
-
-<a href="https://www.buymeacoffee.com/s0urce" target="_blank"><img src="https://www.buymeacoffee.com/assets/img/custom_images/yellow_img.png" alt="Buy Me A Coffee" style="height: auto !important;width: auto !important;" ></a>
-
-[https://src.moe/donate](https://src.moe/donate)

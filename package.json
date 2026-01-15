@@ -14,8 +14,6 @@
   "dependencies": {
     "@tsndr/cloudflare-worker-jwt": "^3.2.0",
     "cookie": "^0.5.0",
-    "dayjs": "^1.11.15",
-    "itty-router": "^2.6.1",
-    "js-cookie": "^3.0.1"
+    "itty-router": "^2.6.1"
   }
 }

@@ -1,9 +1,8 @@
-import dayjs from 'dayjs'
-import {Router} from 'itty-router'
+import { Router } from 'itty-router'
 import Cookies from 'cookie'
 import jwt from '@tsndr/cloudflare-worker-jwt'
-import {checkAuth, genRandomStr, getI18n, queryNote, returnJSON, returnPage, returnRaw, saltPw} from './helper'
-import {SECRET} from './constant'
+import { checkAuth, genRandomStr, getI18n, queryNote, returnJSON, returnPage, returnRaw, saltPw } from './helper'
+import { SECRET } from './constant'
 
 // init
 const router = Router()
@@ -26,7 +25,7 @@ const indexPath = '.index';
 
 router.get('/', async (request) => {
     const lang = getI18n(request)
-    const {value, metadata} = await queryNote(indexPath)
+    const { value, metadata } = await queryNote(indexPath)
     // redirect to new page
     return returnPage('Share', {
         lang,
@@ -103,7 +102,7 @@ router.post('/:path/edit/auth', async request => {
                 }, {
                     'Set-Cookie': Cookies.serialize('auth', token, {
                         path: `/${path}`,
-                        expires: dayjs().add(7, 'day').toDate(),
+                        expires: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000),
                         httpOnly: true,
                     })
                 })
@@ -136,7 +135,7 @@ router.post('/:path/edit/pw', async request => {
                 return returnJSON(0, null, {
                     'Set-Cookie': Cookies.serialize('auth', '', {
                         path: `/${path}`,
-                        expires: dayjs().subtract(100, 'day').toDate(),
+                        expires: new Date(Date.now() - 100 * 24 * 60 * 60 * 1000),
                         httpOnly: true,
                     })
                 })
@@ -167,17 +166,6 @@ router.post('/:path/edit/setting', async request => {
                         ...share !== undefined && { share },
                     },
                 })
-
-/*                const md5 = await MD5(path)
-                if (share) {
-                    await SHARE.put(md5, path)
-                    return returnJSON(0, md5)
-                }
-                if (share === false) {
-                    await SHARE.delete(md5)
-                }*/
-
-
                 return returnJSON(0)
             } catch (error) {
                 console.error(error)
@@ -206,15 +194,15 @@ router.post('/:path/edit', async request => {
 
     try {
 
-        if (content?.trim()){
+        if (content?.trim()) {
             // 有值修改
             await NOTES.put(path, content, {
                 metadata: {
                     ...metadata,
-                    updateAt: dayjs().unix(),
+                    updateAt: Math.floor(Date.now() / 1000),
                 },
             })
-        }else{
+        } else {
             // 无值删除
             await NOTES.delete(path)
         }
@@ -228,11 +216,11 @@ router.post('/:path/edit', async request => {
 })
 router.get('/:path/raw', async (request) => {
 
-    const {path} = request.params
+    const { path } = request.params
     const url = new URL(request.url)
     const password = url.searchParams.get('password')
 
-    const {value, metadata} = await queryNote(path)
+    const { value, metadata } = await queryNote(path)
 
     if (!metadata.pw || await saltPw(password) === metadata.pw) {
         return returnRaw(value)
@@ -242,7 +230,7 @@ router.get('/:path/raw', async (request) => {
 
 router.all('*', (request) => {
     const lang = getI18n(request)
-    returnPage('Page404', { lang, title: '404' })
+    return returnPage('Page404', { lang, title: '404' })
 })
 
 addEventListener('fetch', event => {

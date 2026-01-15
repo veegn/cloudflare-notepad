@@ -1,9 +1,9 @@
 # ☁ Serverless Cloud Notepad 云笔记（无服务）
 
 [![cloudflare workers](https://badgen.net/badge/a/Cloudflare%20Workers/orange?icon=https%3A%2F%2Fworkers.cloudflare.com%2Fresources%2Flogo%2Flogo.svg&label=)](https://workers.cloudflare.com/)
-![example workflow](https://github.com/s0urcelab/serverless-cloud-notepad/actions/workflows/deploy.yml/badge.svg)
+![example workflow](https://github.com/veegn/serverless-cloud-notepad/actions/workflows/deploy.yml/badge.svg)
 [![jsdelivr](https://img.shields.io/badge/jsdelivr-cdn-brightgreen)](https://www.jsdelivr.com/)
-[![MIT License](https://img.shields.io/badge/license-MIT-blue.svg)](https://github.com/dotzero/pad/blob/master/LICENSE)
+[![MIT License](https://img.shields.io/badge/license-MIT-blue.svg)](https://github.com/veegn/serverless-cloud-notepad/blob/master/LICENSE)
 
 [English](./README.md) | 简体中文
 
@@ -13,52 +13,43 @@
 
 ## ✨ 功能
 
-- ✏ 无需登录/注册, 即刻开始书写
-- 💾 自动保存
-- ❌ 无需服务端或数据库
-- ⚡ 高可用性、高性能（只要CF不倒闭🤣）
-- 📦 一键部署你自己的私有化版本（如果你有自己的域名）
-- 🌍 支持中文pathname
+- ✏ **现代 UI/UX**：基于 "Slate & Blue" 的专业设计，支持玻璃拟态（Glassmorphism）与丝滑动效。
+- 🌓 **深色模式**：完美支持亮色/深色主题切换，并配有极具交互感的图标旋转动效。
+- 📖 **实时分屏预览**：提供 Markdown/JSON/YAML 的实时分屏预览，并支持左右同步滚动。
+- 🔒 **隐私保护**：支持为笔记设置密码，基于安全可靠的 JWT 鉴权机制。
+- 💾 **自动保存**：内容随着书写自动保存到 Cloudflare KV，永不丢失。
+- ⚡ **全球低延迟**：得益于 Cloudflare Workers，全球各地均能极速访问。
+- 📦 **零后端维护**：无需传统数据库或服务器，极易私有化部署。
 
 ## 🔨 使用
 
-- 直接访问 `/` 会新建一篇随机名字的笔记
+- 访问根路径 `/` 会自动随机生成一个新的笔记地址。
+- 访问 `/:path/edit` 进入编辑模式或设置/修改密码。
+- 访问 `/:path` 直接查看分享的笔记（加密笔记需先输入密码）。
 
-- 访问 `/随便什么` 查看/编辑指定名称的笔记
+现在就试试！ [https://juu.qzz.io](https://juu.qzz.io)
 
-现在就试试！ [https://note.src.moe/example](https://note.src.moe/example)
-
-> [!NOTE]
-> 根据 Cloudflare [免费政策](https://developers.cloudflare.com/kv/platform/limits/)，KV每天拥有 1,000 次写入/删除额度，建议自己搭建
+> [!TIP]
+> 本项目专为 Cloudflare Workers 设计，一键部署通常耗时不到 2 分钟。
 
 ## 💻 兼容性
 
-- 任何现代浏览器 (移动端可用)
+- 所有现代浏览器 (PC、平板与移动端自适应)
 
 ## 📦 私有化部署
 
-- 去 [这里](https://dash.cloudflare.com/profile/api-tokens) 申请你的 Cloudflare API令牌，选择 `编辑 Cloudflare Workers` 模板创建即可（~~一起白嫖到CF倒闭~~）
-- Fork 本项目，然后到设置 `Settings -> Secrets and variables -> Actions` 里添加如下3个Secret:
+- 前往 [这里](https://dash.cloudflare.com/profile/api-tokens) 申请 Cloudflare API 令牌，选择 `编辑 Cloudflare Workers` 模板。
+- Fork 本项目，在 `Settings -> Secrets and variables -> Actions` 中添加以下 3 个 Secret:
 ```bash
-CLOUDFLARE_API_TOKEN # 之前申请到的 Cloudflare API令牌
-
-SCN_SALT # 随便填（安全用途）
-
-SCN_SECRET # 随便填（安全用途）
+CLOUDFLARE_API_TOKEN # 你的 Cloudflare API 令牌
+SCN_SALT             # 任意随机字符串（用于密码哈希）
+SCN_SECRET           # 任意随机字符串（用于 JWT 签名）
 ```
-- 切换到 Actions 栏, 选中左边的 `Deploy cloud-notepad` 工作流，点一下执行
-- 稍等一会，执行完成后下方 Annotations 里会显示部署成功的地址
-> [!WARNING]
-> 由于中国大陆地区屏蔽了.workers.dev域名，请自备域名，CNAME指向上面的地址即可无痛使用
+- 切换到 Actions 栏，运行 `Deploy cloud-notepad` 工作流。
 
-## 👀 未来规划（完结撒花🎉）
+## 👀 未来规划
 
-- [x] ~~密码保护功能~~
-- [x] ~~支持URL链接和图片（Markdown模式）~~
-- [x] ~~只读模式（分享功能）~~
-- [x] ~~显示上次修改时间~~
+- [ ] 支持更多代码编辑器主题（如 Monokai, Solarized 等）
+- [ ] 导出笔记为 PDF 或图片
+- [ ] 多人实时协作编辑支持
 
-## ☕ 捐赠
-
-请我喝奶茶？
-[https://src.moe/donate](https://src.moe/donate)
