@@ -47,9 +47,14 @@ SCN_SECRET           # a secret key for JWT signing
 ```
 - Go to the Actions tab and run the `Deploy cloud-notepad` workflow.
 
-## 👀 Roadmap
+## 🤝 Credits
 
-- [ ] Support for multiple note themes (Monokai, Solarized, etc.)
-- [ ] Export notes as PDF or Image.
-- [ ] Collaborative editing support.
+- **Original Project**: Inspired by [s0urcelab/serverless-cloud-notepad](https://github.com/s0urcelab/serverless-cloud-notepad)
+- **Framework & Libraries**:
+  - [Cloudflare Workers](https://workers.cloudflare.com/) - The serverless platform.
+  - [itty-router](https://github.com/kwhitley/itty-router) - The tiny router for workers.
+  - [marked](https://github.com/markedjs/marked) - Markdown parser.
+  - [DOMPurify](https://github.com/cure53/dompurify) - HTML sanitizer.
+  - [dayjs](https://github.com/iamkun/dayjs) - Time formatting.
+  - [js-yaml](https://github.com/nodeca/js-yaml) - YAML parser.
 

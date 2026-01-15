@@ -47,9 +47,14 @@ SCN_SECRET           # 任意随机字符串（用于 JWT 签名）
 ```
 - 切换到 Actions 栏，运行 `Deploy cloud-notepad` 工作流。
 
-## 👀 未来规划
+## 🤝 感谢
 
-- [ ] 支持更多代码编辑器主题（如 Monokai, Solarized 等）
-- [ ] 导出笔记为 PDF 或图片
-- [ ] 多人实时协作编辑支持
+- **原项目**：灵感源自于 [s0urcelab/serverless-cloud-notepad](https://github.com/s0urcelab/serverless-cloud-notepad)
+- **框架与库**：
+  - [Cloudflare Workers](https://workers.cloudflare.com/) - 无服务平台。
+  - [itty-router](https://github.com/kwhitley/itty-router) - 极简 Router 框架。
+  - [marked](https://github.com/markedjs/marked) - Markdown 解析器。
+  - [DOMPurify](https://github.com/cure53/dompurify) - HTML 消毒器（安全过滤）。
+  - [dayjs](https://github.com/iamkun/dayjs) - 时间格式化处理。
+  - [js-yaml](https://github.com/nodeca/js-yaml) - YAML 解析器。
 
