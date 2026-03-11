@@ -7,31 +7,64 @@
 
 [English](./README.md) | 简体中文
 
-一个轻量的无服务云笔记项目，适合记录文本，并在多设备之间或与朋友共享。
+一个轻量的无服务云笔记项目，支持快速记录、格式化和安全分享。
 
 项目基于 Cloudflare Workers、Workers KV 和 GitHub Actions，易于私有化部署。
 
-## 功能
+`static/js/app.js` 会在本地启动、测试和部署前自动构建，前端源码位于 `frontend/`。
 
-- 现代化界面，支持浅色和深色主题。
-- 支持 Markdown、JSON、YAML 实时预览。
-- 输入时自动保存到 Cloudflare KV。
-- 支持为笔记设置密码，并同时保护查看和编辑。
-- 支持基于认证的 Raw 原文读取。
-- 无需传统后端和数据库运维。
+## 功能亮点
 
-## 使用方式
+- 首页（`/`）提供欢迎视图与首页笔记预览。
+- 支持通过 `/.create` 一键创建随机路径笔记。
+- 编辑与查看页面均基于 Cloudflare KV 自动保存。
+- 支持四种内容模式：纯文本、Markdown、JSON、YAML。
+- Markdown 支持分栏实时预览，并可在编辑 / 分栏 / 预览布局间切换。
+- 内置格式化能力（按钮 + 快捷键）用于结构化内容。
+- 支持浅色 / 深色主题切换，并记住用户偏好。
+- 支持笔记密码保护（查看与编辑）。
+- 支持私有笔记（`share: false`）与鉴权后的 Raw 原文读取。
+- 支持为首页笔记（`.index`）启用独立管理员编辑密码。
 
-- 访问 `/` 可打开存储在 `.index` 中的首页笔记。
-- 访问 `/.create` 会生成一个随机路径，并直接进入编辑页。
-- 访问 `/:path/edit` 可编辑笔记或设置密码。
-- 访问 `/:path` 可查看笔记；受保护笔记需要先完成认证。
+## 路由说明
 
-在线示例：[https://juu.qzz.io](https://juu.qzz.io)
+| 路由 | 说明 |
+| --- | --- |
+| `/` | 首页笔记（`.index`）仪表盘视图 |
+| `/.index/edit` | 编辑首页笔记（可配置管理员密码保护） |
+| `/.create` | 生成 5 位随机路径并跳转到编辑页 |
+| `/:path` | 查看指定笔记 |
+| `/:path/edit` | 编辑指定笔记 |
+| `/:path/raw` | 获取笔记原文（受保护/私有笔记需先鉴权） |
+| `/:path/edit/auth` | 密码鉴权接口 |
+| `/:path/edit/pw` | 设置或移除笔记密码 |
+| `/:path/edit/setting` | 更新笔记设置（当前支持 `mode`） |
 
-## 兼容性
+## 环境变量
 
-- 支持现代桌面、平板和移动端浏览器。
+在 Worker 或 GitHub Actions 中建议配置：
+
+```bash
+SCN_SALT           # 用于兼容旧密码逻辑的盐
+SCN_SECRET         # JWT 签名密钥
+SCN_INDEX_PASSWD   # 可选：保护 /.index/edit 的管理员密码
+```
+
+## 本地开发
+
+```bash
+npm install
+npm start
+```
+
+常用脚本：
+
+- `npm run build:frontend:dev`：构建开发版前端包。
+- `npm run build:frontend:prod`：构建生产版前端包。
+- `npm run lint`：检查前后端 TypeScript 代码规范。
+- `npm run typecheck`：执行 Worker 与前端的类型检查。
+- `npm run test:e2e`：运行 Playwright 端到端测试。
+- `npm run check`：串行执行 lint + typecheck + e2e。
 
 ## 部署
 
@@ -47,7 +80,7 @@ SCN_SECRET
 3. 视情况更新 `wrangler.toml` 中的 KV 绑定配置。
 4. 在 Actions 页面运行 `Deploy cloud-notepad` 工作流。
 
-本地部署也可以直接执行：
+本地部署也可以执行：
 
 ```bash
 npm install
@@ -57,4 +90,4 @@ npm run deploy
 ## 致谢
 
 - 灵感来自 [s0urcelab/serverless-cloud-notepad](https://github.com/s0urcelab/serverless-cloud-notepad)
-- 使用了 [Cloudflare Workers](https://workers.cloudflare.com/)、[itty-router](https://github.com/kwhitley/itty-router)、[marked](https://github.com/markedjs/marked)、[DOMPurify](https://github.com/cure53/dompurify)、[dayjs](https://github.com/iamkun/dayjs) 和 [js-yaml](https://github.com/nodeca/js-yaml)
+- 使用了 [Cloudflare Workers](https://workers.cloudflare.com/)、[itty-router](https://github.com/kwhitley/itty-router)、[CodeMirror](https://codemirror.net/)、[marked](https://github.com/markedjs/marked)、[DOMPurify](https://github.com/cure53/dompurify)、[dayjs](https://github.com/iamkun/dayjs) 和 [js-yaml](https://github.com/nodeca/js-yaml)

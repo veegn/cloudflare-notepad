@@ -7,33 +7,64 @@
 
 English | [简体中文](./README-zh_CN.md)
 
-A lightweight serverless notepad for recording text and sharing it across devices or with friends.
+A lightweight serverless notepad for quick writing, formatting, and secure sharing.
 
 Built with Cloudflare Workers, Workers KV, and GitHub Actions. Easy to self-host.
 
 The frontend bundle under `static/js/app.js` is generated during local start, tests, and deploy. Source files live in `frontend/`.
 
-## Features
+## Highlights
 
-- Modern UI with light and dark theme support.
-- Real-time preview for Markdown, JSON, and YAML.
-- Auto-save to Cloudflare KV while typing.
-- Password-protected notes for both viewing and editing.
-- Raw text endpoint for authenticated reads.
-- Zero traditional backend or database management.
+- Home dashboard (`/`) with a welcome view and home-note preview.
+- One-click random note creation via `/.create`.
+- Editing and viewing routes with automatic save to Cloudflare KV.
+- Multi-mode writing: plain text, Markdown, JSON, and YAML.
+- Markdown split-view editor with live preview and layout switching (Edit / Split / Preview).
+- Format tools for structured content (button + keyboard shortcut).
+- Light/dark theme toggle with browser preference + local persistence.
+- Password protection for note reading and editing.
+- Optional private-note mode (`share: false`) and authenticated raw endpoint.
+- Optional admin password to protect editing for the home note (`.index`).
 
-## Usage
+## Route overview
 
-- Visit `/` to open the homepage note stored at `.index`.
-- Visit `/.create` to generate a random note path and jump into edit mode.
-- Visit `/:path/edit` to edit a note or set its password.
-- Visit `/:path` to view a note. Protected notes require authentication before viewing.
+| Route | Description |
+| --- | --- |
+| `/` | Home note (`.index`) dashboard view |
+| `/.index/edit` | Edit home note (can be protected by admin password) |
+| `/.create` | Generate random 5-char path and redirect to edit page |
+| `/:path` | View a note |
+| `/:path/edit` | Edit a note |
+| `/:path/raw` | Get note raw text (requires auth for protected/private note) |
+| `/:path/edit/auth` | Password authentication endpoint |
+| `/:path/edit/pw` | Set or remove note password |
+| `/:path/edit/setting` | Update note settings (currently supports `mode`) |
 
-Try it: [https://juu.qzz.io](https://juu.qzz.io)
+## Environment variables
 
-## Compatibility
+Set these in your Worker/GitHub Actions environment:
 
-- Modern browsers on desktop, tablet, and mobile.
+```bash
+SCN_SALT           # salt used for legacy password compatibility
+SCN_SECRET         # JWT signing secret
+SCN_INDEX_PASSWD   # optional: protect /.index/edit with admin password
+```
+
+## Local development
+
+```bash
+npm install
+npm start
+```
+
+Useful scripts:
+
+- `npm run build:frontend:dev`: development frontend bundle.
+- `npm run build:frontend:prod`: production frontend bundle.
+- `npm run lint`: lint backend + frontend TypeScript.
+- `npm run typecheck`: TypeScript checks for worker and frontend configs.
+- `npm run test:e2e`: Playwright E2E tests.
+- `npm run check`: lint + typecheck + e2e.
 
 ## Deployment
 
@@ -56,9 +87,7 @@ npm install
 npm run deploy
 ```
 
-If you clone the repo for development, run `npm start`, `npm run test:e2e`, or `npm run build:frontend:prod` before expecting the generated frontend bundle to exist locally.
-
 ## Credits
 
 - Inspired by [s0urcelab/serverless-cloud-notepad](https://github.com/s0urcelab/serverless-cloud-notepad)
-- Built with [Cloudflare Workers](https://workers.cloudflare.com/), [itty-router](https://github.com/kwhitley/itty-router), [marked](https://github.com/markedjs/marked), [DOMPurify](https://github.com/cure53/dompurify), [dayjs](https://github.com/iamkun/dayjs), and [js-yaml](https://github.com/nodeca/js-yaml)
+- Built with [Cloudflare Workers](https://workers.cloudflare.com/), [itty-router](https://github.com/kwhitley/itty-router), [CodeMirror](https://codemirror.net/), [marked](https://github.com/markedjs/marked), [DOMPurify](https://github.com/cure53/dompurify), [dayjs](https://github.com/iamkun/dayjs), and [js-yaml](https://github.com/nodeca/js-yaml)
