@@ -1,4 +1,4 @@
-# ☁ Serverless Cloud Notepad
+# Serverless Cloud Notepad
 
 [![cloudflare workers](https://badgen.net/badge/a/Cloudflare%20Workers/orange?icon=https%3A%2F%2Fworkers.cloudflare.com%2Fresources%2Flogo%2Flogo.svg&label=)](https://workers.cloudflare.com/)
 ![example workflow](https://github.com/veegn/serverless-cloud-notepad/actions/workflows/deploy.yml/badge.svg)
@@ -7,54 +7,58 @@
 
 English | [简体中文](./README-zh_CN.md)
 
-Build for recording text or sharing between friends.
+A lightweight serverless notepad for recording text and sharing it across devices or with friends.
 
-Powered by Cloudflare Workers、KV & Github Actions, Easy to deploy privately.
+Built with Cloudflare Workers, Workers KV, and GitHub Actions. Easy to self-host.
 
-## ✨ Features
+The frontend bundle under `static/js/app.js` is generated during local start, tests, and deploy. Source files live in `frontend/`.
 
-- ✏ **Modern UI/UX**: Professional "Slate & Blue" design with glassmorphism and smooth animations.
-- 🌓 **Theme Support**: Seamless switching between Light and Dark modes with rotating icon effects.
-- 📖 **Real-time Preview**: Split-screen (Side-by-Side) live preview with synchronized scrolling for Markdown/JSON/YAML.
-- 🔒 **Privacy First**: Password protection for notes with secure JWT-based authentication.
-- 💾 **Auto Saving**: Content is saved automatically as you type to Cloudflare KV.
-- ⚡ **High Performance**: Powered by Cloudflare Workers for global low-latency access.
-- 📦 **Zero Backend**: No traditional server or database required, extremely easy to self-host.
+## Features
 
-## 🔨 Usage
+- Modern UI with light and dark theme support.
+- Real-time preview for Markdown, JSON, and YAML.
+- Auto-save to Cloudflare KV while typing.
+- Password-protected notes for both viewing and editing.
+- Raw text endpoint for authenticated reads.
+- Zero traditional backend or database management.
 
-- Enter `/` root path will generate a new note with a random path.
-- Enter `/:path/edit` to edit or set password for a note.
-- Enter `/:path` to view a shared note (or login if protected).
+## Usage
 
-Try it out! [https://juu.qzz.io](https://juu.qzz.io)
+- Visit `/` to open the homepage note stored at `.index`.
+- Visit `/.create` to generate a random note path and jump into edit mode.
+- Visit `/:path/edit` to edit a note or set its password.
+- Visit `/:path` to view a note. Protected notes require authentication before viewing.
 
-> [!TIP]
-> This project is designed for Cloudflare Workers. Deployment takes less than 2 minutes!
+Try it: [https://juu.qzz.io](https://juu.qzz.io)
 
-## 💻 Compatibility
+## Compatibility
 
-- Modern browsers (PC, Tablet & Mobile responsive)
+- Modern browsers on desktop, tablet, and mobile.
 
-## 📦 Deployment
+## Deployment
 
-- Create your Cloudflare API token [here](https://dash.cloudflare.com/profile/api-tokens), choosing the `Edit Cloudflare Workers` template.
-- Fork this repository and add 3 Secrets in `Settings -> Secrets and variables -> Actions`:
+1. Create a Cloudflare API token [here](https://dash.cloudflare.com/profile/api-tokens) using the `Edit Cloudflare Workers` template.
+2. Fork this repository and add these GitHub Actions secrets:
+
 ```bash
-CLOUDFLARE_API_TOKEN # your Cloudflare API token
-SCN_SALT             # a random string for password hashing
-SCN_SECRET           # a secret key for JWT signing
+CLOUDFLARE_API_TOKEN
+SCN_SALT
+SCN_SECRET
 ```
-- Go to the Actions tab and run the `Deploy cloud-notepad` workflow.
 
-## 🤝 Credits
+3. Update `wrangler.toml` with your KV namespace binding if needed.
+4. Run the `Deploy cloud-notepad` workflow from the Actions tab.
 
-- **Original Project**: Inspired by [s0urcelab/serverless-cloud-notepad](https://github.com/s0urcelab/serverless-cloud-notepad)
-- **Framework & Libraries**:
-  - [Cloudflare Workers](https://workers.cloudflare.com/) - The serverless platform.
-  - [itty-router](https://github.com/kwhitley/itty-router) - The tiny router for workers.
-  - [marked](https://github.com/markedjs/marked) - Markdown parser.
-  - [DOMPurify](https://github.com/cure53/dompurify) - HTML sanitizer.
-  - [dayjs](https://github.com/iamkun/dayjs) - Time formatting.
-  - [js-yaml](https://github.com/nodeca/js-yaml) - YAML parser.
+You can also deploy locally with:
 
+```bash
+npm install
+npm run deploy
+```
+
+If you clone the repo for development, run `npm start`, `npm run test:e2e`, or `npm run build:frontend:prod` before expecting the generated frontend bundle to exist locally.
+
+## Credits
+
+- Inspired by [s0urcelab/serverless-cloud-notepad](https://github.com/s0urcelab/serverless-cloud-notepad)
+- Built with [Cloudflare Workers](https://workers.cloudflare.com/), [itty-router](https://github.com/kwhitley/itty-router), [marked](https://github.com/markedjs/marked), [DOMPurify](https://github.com/cure53/dompurify), [dayjs](https://github.com/iamkun/dayjs), and [js-yaml](https://github.com/nodeca/js-yaml)
