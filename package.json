@@ -4,16 +4,49 @@
   "author": "veegn",
   "license": "MIT",
   "devDependencies": {
+    "@cloudflare/workers-types": "^4.20260310.0",
+    "@eslint/js": "^9.22.0",
+    "@playwright/test": "^1.58.2",
+    "@types/cookie": "^0.6.0",
+    "@types/js-yaml": "^4.0.9",
+    "esbuild": "^0.25.1",
+    "eslint": "^9.22.0",
+    "globals": "^16.0.0",
+    "typescript": "^5.8.2",
+    "typescript-eslint": "^8.26.1",
     "wrangler": "^4.33.1"
   },
   "private": true,
   "scripts": {
+    "prestart": "npm run build:frontend:dev",
     "start": "wrangler dev",
-    "publish": "wrangler publish"
+    "predeploy": "npm run build:frontend:prod",
+    "deploy": "wrangler deploy",
+    "pretest:e2e": "npm run build:frontend:dev",
+    "test:e2e": "playwright test",
+    "build:frontend": "npm run build:frontend:prod",
+    "build:frontend:dev": "node scripts/build-frontend.mjs dev",
+    "build:frontend:prod": "node scripts/build-frontend.mjs prod",
+    "typecheck": "tsc --noEmit -p tsconfig.json && tsc --noEmit -p tsconfig.frontend.json",
+    "lint": "eslint src/**/*.ts frontend/**/*.ts",
+    "check": "npm run lint && npm run typecheck && npm run test:e2e"
   },
   "dependencies": {
+    "@codemirror/autocomplete": "^6.20.1",
+    "@codemirror/commands": "^6.10.2",
+    "@codemirror/lang-json": "^6.0.2",
+    "@codemirror/lang-markdown": "^6.5.0",
+    "@codemirror/lang-yaml": "^6.1.2",
+    "@codemirror/language": "^6.12.2",
+    "@codemirror/search": "^6.6.0",
+    "@codemirror/state": "^6.5.4",
+    "@codemirror/view": "^6.39.17",
     "@tsndr/cloudflare-worker-jwt": "^3.2.0",
     "cookie": "^0.5.0",
-    "itty-router": "^2.6.1"
+    "dayjs": "^1.11.19",
+    "dompurify": "^3.3.3",
+    "itty-router": "^2.6.1",
+    "js-yaml": "^4.1.1",
+    "marked": "^17.0.4"
   }
 }
