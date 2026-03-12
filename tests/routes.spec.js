@@ -100,3 +100,20 @@ test('public raw route returns note content', async ({ request }) => {
     expect(response.status()).toBe(200)
     await expect(response.text()).resolves.toContain('raw content body')
 })
+
+test('home page localizes copy, removes quick start, and renders home note markdown', async ({ page, request }) => {
+    const localizedHome = await request.get('/', {
+        headers: {
+            'Accept-Language': 'zh-CN,zh;q=0.9',
+        },
+    })
+    const localizedHtml = await localizedHome.text()
+
+    expect(localizedHtml).toContain('一个轻量的工作台，用于快速记录与安全分享。')
+
+    await page.goto('/')
+    await expect(page.getByText('Quick Start')).toHaveCount(0)
+    await expect(page.locator('#preview-home h2, #preview-home h3').first()).toBeVisible()
+    await expect(page.locator('#preview-home li').first()).toBeVisible()
+    await expect(page.getByRole('link', { name: 'Edit Home' })).toBeVisible()
+})
