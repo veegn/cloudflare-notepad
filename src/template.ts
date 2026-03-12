@@ -49,29 +49,20 @@ const TABBAR = ({ title, isEdit, isHome }: Pick<TemplateData, 'title' | 'isEdit'
 </div>
 `
 
-const WELCOME = ({ content }: Pick<TemplateData, 'content'>): string => `
+const WELCOME = ({ lang, content }: Pick<TemplateData, 'lang' | 'content'>): string => `
 <div class="welcome-view">
   <div class="welcome-hero">
-    <div class="welcome-kicker">Cloud Notepad</div>
-    <h1 class="welcome-title">A lightweight workspace for quick notes and secure sharing.</h1>
-    <p class="welcome-copy">Keep the interface simple, create notes quickly, and use one focused editor when you need to write, preview, or share.</p>
+    <div class="welcome-kicker">${escapeHtml(SUPPORTED_LANG[lang].homeKicker)}</div>
+    <h1 class="welcome-title">${escapeHtml(SUPPORTED_LANG[lang].homeTitle)}</h1>
+    <p class="welcome-copy">${escapeHtml(SUPPORTED_LANG[lang].homeCopy)}</p>
     <div class="welcome-actions">
-      <a class="welcome-button primary" href="/.create">New Note</a>
-      <a class="welcome-button" href="/.index/edit">Edit Home</a>
+      <a class="welcome-button primary" href="/.create">${escapeHtml(SUPPORTED_LANG[lang].homeNewNote)}</a>
+      <a class="welcome-button" href="/.index/edit">${escapeHtml(SUPPORTED_LANG[lang].homeEditHome)}</a>
     </div>
   </div>
   <div class="welcome-grid">
-    <section class="welcome-card">
-      <div class="welcome-card-title">Quick Start</div>
-      <ul class="welcome-list">
-        <li>Create a note from a random path.</li>
-        <li>Edit in one merged writing surface.</li>
-        <li>Protect the note when private reading matters.</li>
-      </ul>
-    </section>
-    <section class="welcome-card">
-      <div class="welcome-card-title">Home Note Preview</div>
-      <div id="preview-home" class="welcome-note-preview">${escapeHtml(content || 'No content yet. Use "Edit Home" to add your own dashboard notes.')}</div>
+    <section class="welcome-card mode-md">
+      <div id="preview-home" class="welcome-note-preview composer-preview">${escapeHtml(content || SUPPORTED_LANG[lang].homeEmptyNote)}</div>
     </section>
   </div>
 </div>
@@ -136,7 +127,7 @@ const EDITOR_BODY = ({
 }: TemplateData): string => `
 <div class="editor-body">
   ${tips ? `<div class="editor-banner">${escapeHtml(tips)}</div>` : ''}
-  ${isHome ? WELCOME({ content }) : COMPOSER({ lang, content, isEdit, mode: ext.mode || 'plain' })}
+  ${isHome ? WELCOME({ lang, content }) : COMPOSER({ lang, content, isEdit, mode: ext.mode || 'plain' })}
 </div>
 `
 

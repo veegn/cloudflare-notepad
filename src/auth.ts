@@ -23,6 +23,11 @@ export function needsViewAuth(metadata: NoteMetadata): boolean {
     return Boolean(metadata?.pw || metadata?.share === false)
 }
 
+function getRequestPassword(request: Request): string | undefined {
+    const { searchParams } = new URL(request.url)
+    return searchParams.get('password') || searchParams.get('passwd') || searchParams.get('pw') || undefined
+}
+
 export function requiresEditAuth(path: string, metadata: NoteMetadata): boolean {
     if (path === indexPath && INDEX_EDIT_PASSWORD) {
         return true
@@ -34,6 +39,12 @@ export async function isAuthorized(request: Request, path: string, metadata: Not
     if (!needsViewAuth(metadata)) {
         return true
     }
+
+    const requestPassword = getRequestPassword(request)
+    if (metadata.pw && requestPassword && await verifyPassword(requestPassword, metadata.pw)) {
+        return true
+    }
+
     const cookie = Cookies.parse(request.headers.get('Cookie') || '')
     return checkAuth(cookie, path)
 }

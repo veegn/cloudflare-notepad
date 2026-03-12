@@ -357,7 +357,7 @@ textarea {
     padding-bottom: 32px;
     font-family: 'IBM Plex Sans', 'Segoe UI', sans-serif;
     font-size: 16px;
-    line-height: 1.54;
+    line-height: 1;
     color: color-mix(in srgb, var(--vscode-text) 96%, transparent);
     text-wrap: pretty;
 }
@@ -380,7 +380,7 @@ textarea {
 .mode-md .composer-preview h4,
 .mode-md .composer-preview h5,
 .mode-md .composer-preview h6 {
-    margin: 0.72em 0 0.12em;
+    margin: 0.58em 0 0.08em;
     color: var(--vscode-text);
     font-weight: 700;
     line-height: 1.12;
@@ -417,7 +417,7 @@ textarea {
 .mode-md .composer-preview pre,
 .mode-md .composer-preview table,
 .mode-md .composer-preview hr {
-    margin: 0.32em 0;
+    margin: 0.2em 0;
 }
 
 .mode-md .composer-preview p {
@@ -430,7 +430,7 @@ textarea {
 .mode-md .composer-preview h4 + p,
 .mode-md .composer-preview h5 + p,
 .mode-md .composer-preview h6 + p {
-    margin-top: 0.16em;
+    margin-top: 0.08em;
 }
 
 .mode-md .composer-preview p + h1,
@@ -457,7 +457,7 @@ textarea {
 .mode-md .composer-preview blockquote + h4,
 .mode-md .composer-preview blockquote + h5,
 .mode-md .composer-preview blockquote + h6 {
-    margin-top: 0.56em;
+    margin-top: 0.44em;
 }
 
 .mode-md .composer-preview h1 + h2,
@@ -471,7 +471,7 @@ textarea {
 .mode-md .composer-preview h2 + h2,
 .mode-md .composer-preview h3 + h3,
 .mode-md .composer-preview h4 + h4 {
-    margin-top: 0.32em;
+    margin-top: 0.24em;
 }
 
 .mode-md .composer-preview ul,
@@ -480,17 +480,17 @@ textarea {
 }
 
 .mode-md .composer-preview li {
-    margin: 0.08em 0;
+    margin: 0.04em 0;
 }
 
 .mode-md .composer-preview li > ul,
 .mode-md .composer-preview li > ol {
-    margin: 0.16em 0 0;
+    margin: 0.1em 0 0;
 }
 
 .mode-md .composer-preview blockquote {
     margin-inline: 0;
-    padding: 0.32em 0.8em 0.32em 0.9em;
+    padding: 0.24em 0.72em 0.24em 0.82em;
     border-left: 3px solid color-mix(in srgb, var(--vscode-accent) 88%, white 12%);
     border-radius: 0 8px 8px 0;
     color: var(--vscode-text-muted);
@@ -512,7 +512,7 @@ textarea {
 
 .mode-md .composer-preview pre {
     overflow: auto;
-    padding: 0.68em 0.82em;
+    padding: 0.56em 0.76em;
     border: 1px solid color-mix(in srgb, var(--vscode-border) 80%, transparent);
     border-radius: 10px;
     background: rgba(0, 0, 0, 0.16);
@@ -760,31 +760,7 @@ textarea {
 }
 
 .welcome-grid {
-    display: grid;
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-    gap: 18px;
-}
-
-.welcome-card {
-    min-width: 0;
-    padding: 20px;
-    border: 1px solid var(--vscode-border);
-    border-radius: 14px;
-    background: linear-gradient(180deg, rgba(255, 255, 255, 0.04), rgba(255, 255, 255, 0.02));
-    box-shadow: var(--shadow-panel);
-}
-
-.welcome-card-title {
-    margin-bottom: 14px;
-    font-size: 16px;
-    font-weight: 600;
-}
-
-.welcome-list {
-    margin: 0;
-    padding-left: 18px;
-    color: var(--vscode-text-muted);
-    line-height: 1.8;
+    display: block;
 }
 
 .welcome-note-preview {
@@ -793,10 +769,23 @@ textarea {
     border: 1px solid var(--vscode-border);
     border-radius: 10px;
     background: rgba(0, 0, 0, 0.12);
-    font-family: 'IBM Plex Mono', Consolas, monospace;
-    font-size: 13px;
-    line-height: 1.7;
-    white-space: pre-wrap;
+    font-size: 15px;
+    line-height: 1.4;
+    color: color-mix(in srgb, var(--vscode-text) 96%, transparent);
+}
+
+.welcome-card.mode-md .welcome-note-preview {
+    max-width: none;
+    margin: 0;
+    padding-bottom: 16px;
+}
+
+.welcome-card.mode-md {
+    padding: 20px;
+    border: 1px solid var(--vscode-border);
+    border-radius: 14px;
+    background: linear-gradient(180deg, rgba(255, 255, 255, 0.04), rgba(255, 255, 255, 0.02));
+    box-shadow: var(--shadow-panel);
 }
 
 [data-theme="light"] .welcome-note-preview {

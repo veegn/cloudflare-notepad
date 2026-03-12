@@ -1,6 +1,6 @@
 import { CONFIG, $, $$, getI18n } from './config'
 import { getEditPath, getViewPath, initEditor } from './editor'
-import { escapeHtml, wrapKeywords } from './renderers'
+import { renderEditorPreview } from './renderers'
 import { EDIT_BUTTONS, errHandle, GITHUB_LINK, showToast, Theme, VIEW_BUTTONS } from './ui'
 import type { Mode, UIRefs } from './types'
 import dayjs from 'dayjs'
@@ -137,7 +137,7 @@ export function initApp(): void {
     setInterval(updateLastModified, 30000)
 
     if (CONFIG.isHome && UI.homePreview) {
-        UI.homePreview.innerHTML = wrapKeywords(escapeHtml(UI.homePreview.textContent || ''))
+        renderEditorPreview('md', CONFIG.content || '', UI.homePreview)
     }
 
     initEditor(UI)
