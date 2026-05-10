@@ -1286,17 +1286,25 @@ textarea {
 
     .statusbar {
         flex-direction: row;
-        flex-wrap: wrap;
+        flex-wrap: nowrap;
+        overflow-x: auto;
         align-items: center;
         justify-content: space-between;
-        padding: 6px 10px;
-        height: auto;
-        gap: 8px;
+        padding: 0 10px;
+        height: 36px;
+        gap: 12px;
+        scrollbar-width: none;
+    }
+
+    .statusbar::-webkit-scrollbar {
+        display: none;
     }
 
     .statusbar-left,
-    .statusbar-right {
-        flex-wrap: wrap;
+    .statusbar-right,
+    .status-actions {
+        flex-wrap: nowrap;
+        flex-shrink: 0;
         gap: 8px;
     }
 
