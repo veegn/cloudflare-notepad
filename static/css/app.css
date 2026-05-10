@@ -50,13 +50,17 @@ html,
 body {
     height: 100%;
     margin: 0;
+    position: fixed;
+    width: 100%;
+    overflow: hidden;
+    touch-action: none;
 }
 
 body {
-    overflow: hidden;
-    background: var(--vscode-bg);
+    background-color: var(--vscode-bg);
     color: var(--vscode-text);
-    font-family: 'IBM Plex Sans', 'Segoe UI', sans-serif;
+    font-family: 'IBM Plex Sans', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+    font-size: 14px;
     -webkit-font-smoothing: antialiased;
     -moz-osx-font-smoothing: grayscale;
 }
@@ -67,10 +71,13 @@ textarea {
 }
 
 .app-shell {
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
     display: grid;
     grid-template-rows: auto minmax(0, 1fr) auto;
-    height: 100vh;
-    height: 100dvh;
     background:
         radial-gradient(circle at top center, rgba(55, 148, 255, 0.08), transparent 320px),
         var(--vscode-bg);
@@ -1234,7 +1241,7 @@ textarea {
     }
 
     .workbench {
-        padding: 0 0 calc(36px + env(safe-area-inset-bottom)) 0;
+        padding: 0;
     }
 
     .editor-pane {
@@ -1286,12 +1293,6 @@ textarea {
     }
 
     .statusbar {
-        position: fixed;
-        bottom: 0;
-        left: 0;
-        width: 100%;
-        z-index: 100;
-        box-sizing: border-box;
         height: calc(36px + env(safe-area-inset-bottom));
         padding: 0 10px env(safe-area-inset-bottom) 10px;
         flex-direction: row;
