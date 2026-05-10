@@ -1330,6 +1330,13 @@ textarea {
         justify-content: space-between;
     }
 
+    .mode-picker-menu {
+        position: fixed;
+        bottom: calc(36px + env(safe-area-inset-bottom) + 8px);
+        right: 10px;
+        z-index: 200;
+    }
+
     .mode-tab {
         flex: 1;
         min-width: 0;
