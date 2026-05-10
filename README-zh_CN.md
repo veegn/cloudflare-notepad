@@ -68,17 +68,21 @@ npm start
 
 ## 部署
 
+### 1. 准备 Cloudflare
 1. 前往 [Cloudflare API Token 页面](https://dash.cloudflare.com/profile/api-tokens)，使用 `Edit Cloudflare Workers` 模板创建令牌。
-2. Fork 本仓库后，在 GitHub Actions Secrets 中配置：
+2. 在 Cloudflare Worker 控制台，进入你的项目（或先部署一次生成项目），在 `Settings -> Variables` 中添加以下 **Environment Variables**（建议点击 "Encrypt" 设为 Secret）：
+   - `SCN_SALT`: 用于加密逻辑的盐（随机字符串）
+   - `SCN_SECRET`: JWT 签名密钥（较长的随机字符串）
+   - `SCN_INDEX_PASSWD`: (可选) 保护首页编辑的管理员密码
 
-```bash
-CLOUDFLARE_API_TOKEN
-SCN_SALT
-SCN_SECRET
-```
+### 2. 配置 GitHub Actions
+1. Fork 本仓库。
+2. 在 GitHub 仓库的 `Settings -> Secrets and variables -> Actions` 中配置：
+   - `CLOUDFLARE_API_TOKEN`: 刚才创建的 Cloudflare API 令牌。
 
-3. 视情况更新 `wrangler.toml` 中的 KV 绑定配置。
-4. 在 Actions 页面运行 `Deploy cloud-notepad` 工作流。
+### 3. 执行部署
+1. 在 Actions 页面运行 `Deploy cloud-notepad` 工作流。
+2. 以后每次推送代码到 `master` 分支也会自动触发部署。
 
 本地部署也可以执行：
 
