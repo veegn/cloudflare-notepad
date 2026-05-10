@@ -69,7 +69,7 @@ textarea {
 .app-shell {
     display: grid;
     grid-template-rows: auto minmax(0, 1fr) auto;
-    height: 100vh;
+    height: 100%;
     background:
         radial-gradient(circle at top center, rgba(55, 148, 255, 0.08), transparent 320px),
         var(--vscode-bg);
@@ -1289,11 +1289,12 @@ textarea {
         flex-wrap: nowrap;
         overflow-x: auto;
         align-items: center;
-        justify-content: space-between;
+        justify-content: flex-start;
         padding: 0 10px;
         height: 36px;
         gap: 12px;
         scrollbar-width: none;
+        -webkit-overflow-scrolling: touch;
     }
 
     .statusbar::-webkit-scrollbar {
@@ -1306,6 +1307,10 @@ textarea {
         flex-wrap: nowrap;
         flex-shrink: 0;
         gap: 8px;
+    }
+
+    .statusbar-right {
+        margin-left: auto;
     }
 
     #last-modified-container {
