@@ -77,14 +77,14 @@ async function pbkdf2(password: string, saltHex: string, iterations = PBKDF2_ITE
     const baseKey = await crypto.subtle.importKey(
         'raw',
         new TextEncoder().encode(password),
-        'PBKDF2',
+        { name: 'PBKDF2' },
         false,
         ['deriveBits']
     )
     const derived = await crypto.subtle.deriveBits(
         {
             name: 'PBKDF2',
-            hash: PBKDF2_HASH,
+            hash: { name: PBKDF2_HASH },
             salt: hexToBytes(saltHex),
             iterations,
         },
