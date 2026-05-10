@@ -33,5 +33,7 @@ static/js/app.js.map
 *.swo
 .DS_Store
 
-# Misc
+# AI and Assistant files
+.claude/
+/CLAUDE.md
 /QWEN.md
