@@ -17,14 +17,6 @@ jobs:
             echo "Error: CLOUDFLARE_API_TOKEN secret is missing!"
             exit 1
           fi
-          if [ -z "${{ secrets.SCN_SALT }}" ]; then
-            echo "Error: SCN_SALT secret is missing!"
-            exit 1
-          fi
-          if [ -z "${{ secrets.SCN_SECRET }}" ]; then
-            echo "Error: SCN_SECRET secret is missing!"
-            exit 1
-          fi
 
       - uses: actions/checkout@v4
 
@@ -46,12 +38,6 @@ jobs:
         with:
           apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
           command: deploy
-          secrets: |
-            SCN_SALT
-            SCN_SECRET
-        env:
-          SCN_SALT: ${{ secrets.SCN_SALT }}
-          SCN_SECRET: ${{ secrets.SCN_SECRET }}
 
       - name: Output deployment URL
         env:
