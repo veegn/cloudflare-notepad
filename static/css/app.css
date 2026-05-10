@@ -79,7 +79,6 @@ textarea {
     bottom: 0;
     display: grid;
     grid-template-rows: auto minmax(0, 1fr) auto;
-    touch-action: none;
     background:
         radial-gradient(circle at top center, rgba(55, 148, 255, 0.08), transparent 320px),
         var(--vscode-bg);
@@ -851,9 +850,7 @@ textarea {
 }
 
 .mode-picker-menu {
-    position: absolute;
-    right: 0;
-    bottom: calc(100% + 8px);
+    position: fixed;
     display: flex;
     flex-direction: column;
     gap: 4px;
@@ -864,7 +861,15 @@ textarea {
     background: rgba(30, 30, 30, 0.96);
     box-shadow: 0 14px 30px rgba(0, 0, 0, 0.34);
     backdrop-filter: blur(12px);
-    z-index: 20;
+    z-index: 2000;
+}
+
+@media (min-width: 681px) {
+    .mode-picker-menu {
+        position: fixed;
+        right: 10px;
+        bottom: 44px;
+    }
 }
 
 [data-theme="light"] .mode-picker-menu {
@@ -1106,6 +1111,96 @@ textarea {
 
 .hide {
     display: none !important;
+}
+
+/* Password dialog */
+.pw-overlay {
+    position: fixed;
+    inset: 0;
+    z-index: 9999;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: rgba(0, 0, 0, 0.5);
+    -webkit-backdrop-filter: blur(4px);
+    backdrop-filter: blur(4px);
+}
+
+.pw-dialog {
+    width: calc(100vw - 48px);
+    max-width: 360px;
+    padding: 24px;
+    border-radius: 14px;
+    background: var(--vscode-editor);
+    box-shadow: 0 20px 60px rgba(0, 0, 0, 0.4);
+}
+
+.pw-title {
+    margin-bottom: 16px;
+    color: var(--vscode-text);
+    font-size: 14px;
+    font-weight: 600;
+    line-height: 1.5;
+}
+
+.pw-input {
+    width: 100%;
+    height: 44px;
+    padding: 0 14px;
+    border: 1px solid var(--vscode-border);
+    border-radius: 8px;
+    background: var(--vscode-bg);
+    color: var(--vscode-text);
+    font-size: 16px;
+    outline: none;
+    box-sizing: border-box;
+}
+
+.pw-input:focus {
+    border-color: var(--vscode-accent, #007acc);
+    box-shadow: 0 0 0 3px rgba(0, 122, 204, 0.15);
+}
+
+.pw-actions {
+    display: flex;
+    gap: 10px;
+    margin-top: 20px;
+}
+
+.pw-cancel,
+.pw-ok {
+    flex: 1;
+    height: 44px;
+    border: 0;
+    border-radius: 8px;
+    font-size: 14px;
+    font-weight: 600;
+    cursor: pointer;
+    touch-action: manipulation;
+}
+
+.pw-cancel {
+    background: rgba(255, 255, 255, 0.08);
+    color: var(--vscode-text);
+}
+
+.pw-cancel:hover {
+    background: rgba(255, 255, 255, 0.14);
+}
+
+.pw-ok {
+    background: var(--vscode-accent, #007acc);
+    color: #ffffff;
+}
+
+.pw-ok:hover {
+    filter: brightness(1.15);
+}
+
+@media (max-width: 680px) {
+    .pw-dialog {
+        margin-bottom: env(safe-area-inset-bottom);
+    }
 }
 
 .statusbar {

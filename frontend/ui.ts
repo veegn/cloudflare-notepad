@@ -7,7 +7,7 @@ const GITHUB_ICON = (): string => `
 `
 
 export const GITHUB_LINK = (): string => `
-<a class="github-link" title="Github" target="_blank" href="https://github.com/veegn/serverless-cloud-notepad" rel="noreferrer">
+<a class="github-link" title="Github" target="_blank" href="https://github.com/veegn/cloudflare-notepad" rel="noreferrer">
   ${GITHUB_ICON()}
 </a>
 `
@@ -69,4 +69,69 @@ export function showToast(message: string): void {
     setTimeout(() => {
         toast.remove()
     }, 1800)
+}
+
+export function showPasswordPrompt(message = ''): Promise<string | null> {
+    const titleText = message || (CONFIG.pw ? getI18n('changePW') + ' - ' + getI18n('passwordSetPrompt') : getI18n('setPW'))
+
+    return new Promise(resolve => {
+        const overlay = document.createElement('div')
+        overlay.className = 'pw-overlay'
+
+        const dialog = document.createElement('div')
+        dialog.className = 'pw-dialog'
+
+        const titleEl = document.createElement('div')
+        titleEl.className = 'pw-title'
+        titleEl.textContent = titleText
+
+        const input = document.createElement('input')
+        input.type = 'text'
+        input.className = 'pw-input'
+        input.value = ''
+        input.autocomplete = 'current-password'
+
+        const actions = document.createElement('div')
+        actions.className = 'pw-actions'
+
+        const cancelBtn = document.createElement('button')
+        cancelBtn.className = 'pw-cancel'
+        cancelBtn.textContent = getI18n('cancel')
+        cancelBtn.type = 'button'
+
+        const okBtn = document.createElement('button')
+        okBtn.className = 'pw-ok'
+        okBtn.textContent = getI18n('confirm')
+        okBtn.type = 'button'
+
+        const cleanup = (value: string | null): void => {
+            overlay.remove()
+            resolve(value)
+        }
+
+        cancelBtn.onclick = () => cleanup(null)
+        okBtn.onclick = () => cleanup(input.value)
+
+        overlay.addEventListener('click', (e) => {
+            if (e.target === overlay) {
+                cleanup(null)
+            }
+        })
+
+        input.addEventListener('keydown', (e) => {
+            if (e.key === 'Enter') {
+                e.preventDefault()
+                cleanup(input.value)
+            } else if (e.key === 'Escape') {
+                cleanup(null)
+            }
+        })
+
+        actions.append(cancelBtn, okBtn)
+        dialog.append(titleEl, input, actions)
+        overlay.appendChild(dialog)
+        document.body.appendChild(overlay)
+
+        requestAnimationFrame(() => input.focus())
+    })
 }
