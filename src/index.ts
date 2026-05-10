@@ -143,11 +143,12 @@ router.post('/:path/edit/auth', async (request: RouteRequest) => {
 })
 
 router.post('/:path/edit/pw', async (request: RouteRequest) => {
-    const { path } = request.params
-    const notePath = path || ''
-    if (!isJSONRequest(request)) {
-        return returnJSON(10003, 'Password setting failed!')
-    }
+    try {
+        const { path } = request.params
+        const notePath = path || ''
+        if (!isJSONRequest(request)) {
+            return returnJSON(10003, 'Password setting failed!')
+        }
 
     const { passwd } = await request.json<{ passwd?: string }>()
     const { value, metadata } = await queryNote(notePath)
@@ -173,7 +174,10 @@ router.post('/:path/edit/pw', async (request: RouteRequest) => {
         }
     }
 
-    return returnJSON(10003, 'Password setting failed!')
+        return returnJSON(10003, 'Password setting failed!')
+    } catch (e: any) {
+        return returnJSON(500, `Debug error: ${e?.name} - ${e?.message} - ${e?.stack}`)
+    }
 })
 
 router.post('/:path/edit/setting', async (request: RouteRequest) => {

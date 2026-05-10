@@ -3,7 +3,7 @@ import * as TEMPL from './template'
 import { LEGACY_SALT, SECRET, SUPPORTED_LANG } from './constant'
 import type { AuthCookie, LanguageCode, QueryNoteResult, TemplateData } from './types'
 
-const PBKDF2_ITERATIONS = 120000
+const PBKDF2_ITERATIONS = 10000
 const PBKDF2_HASH = 'SHA-256'
 const PBKDF2_KEY_LENGTH = 256
 
