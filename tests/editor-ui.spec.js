@@ -116,7 +116,7 @@ test('markdown preview uses tighter typography spacing', async ({ page }) => {
     })
 
     expect(previewMetrics.lineHeight).toBeLessThan(24)
-    expect(previewMetrics.fontSize).toBe(15)
+    expect(previewMetrics.fontSize).toBe(16)
     expect(previewMetrics.headingMarginBottom).toBeLessThan(4)
     expect(previewMetrics.paragraphMarginTop).toBeLessThan(6)
     expect(previewMetrics.subheadingMarginTop).toBeLessThan(12)

@@ -19,7 +19,12 @@ export function passwdPrompt(): void {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ passwd }),
     })
-        .then(res => res.json() as Promise<{ err: number; msg: string; data?: { refresh?: boolean } }>)
+        .then(async res => {
+            if (!res.ok && !res.headers.get('content-type')?.includes('application/json')) {
+                throw new Error(`Server Error: ${res.status} - ${await res.text()}`)
+            }
+            return res.json() as Promise<{ err: number; msg: string; data?: { refresh?: boolean } }>
+        })
         .then(res => {
             if (res.err !== 0) {
                 return errHandle(res.msg)
@@ -104,7 +109,12 @@ export function initApp(): void {
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({ mode }),
                 })
-                    .then(res => res.json() as Promise<{ err: number; msg: string }>)
+                    .then(async res => {
+                        if (!res.ok && !res.headers.get('content-type')?.includes('application/json')) {
+                            throw new Error(`Server Error: ${res.status} - ${await res.text()}`)
+                        }
+                        return res.json() as Promise<{ err: number; msg: string }>
+                    })
                     .then(res => {
                         if (res.err !== 0) {
                             return errHandle(res.msg)
@@ -159,7 +169,12 @@ export function initApp(): void {
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ passwd: passwd.trim() }),
             })
-                .then(res => res.json() as Promise<{ err: number; msg: string }>)
+                .then(async res => {
+                    if (!res.ok && !res.headers.get('content-type')?.includes('application/json')) {
+                        throw new Error(`Server Error: ${res.status} - ${await res.text()}`)
+                    }
+                    return res.json() as Promise<{ err: number; msg: string }>
+                })
                 .then(res => {
                     if (res.err !== 0) {
                         return errHandle(res.msg)
