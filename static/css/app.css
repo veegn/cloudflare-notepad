@@ -1234,7 +1234,7 @@ textarea {
     }
 
     .workbench {
-        padding: 0;
+        padding: 0 0 calc(36px + env(safe-area-inset-bottom)) 0;
     }
 
     .editor-pane {
@@ -1286,13 +1286,19 @@ textarea {
     }
 
     .statusbar {
+        position: fixed;
+        bottom: 0;
+        left: 0;
+        width: 100%;
+        z-index: 100;
+        box-sizing: border-box;
+        height: calc(36px + env(safe-area-inset-bottom));
+        padding: 0 10px env(safe-area-inset-bottom) 10px;
         flex-direction: row;
         flex-wrap: nowrap;
         overflow-x: auto;
         align-items: center;
         justify-content: flex-start;
-        padding: 0 10px;
-        height: 36px;
         gap: 12px;
         scrollbar-width: none;
         -webkit-overflow-scrolling: touch;
