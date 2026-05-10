@@ -68,7 +68,7 @@ textarea {
 
 .app-shell {
     display: grid;
-    grid-template-rows: 36px minmax(0, 1fr) auto;
+    grid-template-rows: auto minmax(0, 1fr) auto;
     height: 100vh;
     background:
         radial-gradient(circle at top center, rgba(55, 148, 255, 0.08), transparent 320px),
@@ -184,6 +184,7 @@ textarea {
     align-items: center;
     gap: 10px;
     max-width: 340px;
+    min-width: 0;
     padding: 0 14px;
     border-top: 1px solid var(--vscode-accent);
     background: var(--vscode-tab-active);
@@ -1221,39 +1222,34 @@ textarea {
         padding: 12px 12px 0;
     }
 
-    .editor-tabbar {
-        flex-direction: column;
-        gap: 8px;
-        height: auto;
-        padding: 8px 0;
-    }
-
     .editor-tab-actions {
         padding: 0 10px;
-    }
-
-    .md-layout-toggle {
-        align-self: flex-start;
     }
 }
 
 @media (max-width: 680px) {
     .titlebar {
-        grid-template-columns: 1fr;
-        justify-items: start;
-        height: auto;
-        padding: 8px 12px;
+        display: none;
     }
 
-    .titlebar-center,
-    .titlebar-right {
+    .workbench {
+        padding: 0;
+    }
+
+    .editor-pane {
+        border: 0;
+        border-radius: 0;
+        box-shadow: none;
+    }
+
+    .md-layout-button[data-layout="split"] {
         display: none;
     }
 
     .welcome-view,
     .composer-preview-scroll {
-        padding-left: 18px;
-        padding-right: 18px;
+        padding-left: 16px;
+        padding-right: 16px;
     }
 
     .mode-md .composer-preview {
@@ -1272,8 +1268,8 @@ textarea {
     }
 
     .cm-editor-host .cm-line {
-        padding-left: 18px;
-        padding-right: 18px;
+        padding-left: 16px;
+        padding-right: 16px;
     }
 
     .cm-editor-host .cm-gutterElement {
@@ -1289,19 +1285,23 @@ textarea {
     }
 
     .statusbar {
-        flex-direction: column;
-        align-items: stretch;
-        justify-content: center;
+        flex-direction: row;
+        flex-wrap: wrap;
+        align-items: center;
+        justify-content: space-between;
         padding: 6px 10px;
+        height: auto;
+        gap: 8px;
     }
 
     .statusbar-left,
     .statusbar-right {
-        justify-content: space-between;
+        flex-wrap: wrap;
+        gap: 8px;
     }
 
-    .status-actions {
-        flex-wrap: wrap;
+    #last-modified-container {
+        display: none;
     }
 
     .mode-tabs {
