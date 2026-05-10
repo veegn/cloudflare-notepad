@@ -12,41 +12,14 @@ export const GITHUB_LINK = (): string => `
 </a>
 `
 
-const THEME_TOGGLE_BTN = (): string => `
-<button class="opt-button theme-toggle" title="Toggle theme">
-  <span class="theme-toggle-icon">
-    <span class="theme-toggle-sun">
-      <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-        <circle cx="12" cy="12" r="5"></circle>
-        <line x1="12" y1="1" x2="12" y2="3"></line>
-        <line x1="12" y1="21" x2="12" y2="23"></line>
-        <line x1="4.22" y1="4.22" x2="5.64" y2="5.64"></line>
-        <line x1="18.36" y1="18.36" x2="19.78" y2="19.78"></line>
-        <line x1="1" y1="12" x2="3" y2="12"></line>
-        <line x1="21" y1="12" x2="23" y2="12"></line>
-        <line x1="4.22" y1="19.78" x2="5.64" y2="18.36"></line>
-        <line x1="18.36" y1="5.64" x2="19.78" y2="4.22"></line>
-      </svg>
-    </span>
-    <span class="theme-toggle-moon">
-      <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-        <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"></path>
-      </svg>
-    </span>
-  </span>
-</button>
-`
-
 export const EDIT_BUTTONS = (): string => `
-  <button class="opt-button opt-pw">${CONFIG.pw ? getI18n('changePW') : getI18n('setPW')}</button>
-  <button class="opt-button opt-share">${getI18n('share')}</button>
-  ${THEME_TOGGLE_BTN()}
+  <button type="button" class="opt-button opt-pw">${CONFIG.pw ? getI18n('changePW') : getI18n('setPW')}</button>
+  <button type="button" class="opt-button opt-share">${getI18n('share')}</button>
 `
 
 export const VIEW_BUTTONS = (): string => `
-  <button class="opt-button opt-edit">${getI18n('editButtonText')}</button>
-  <button class="opt-button opt-raw">${getI18n('rawButtonText')}</button>
-  ${THEME_TOGGLE_BTN()}
+  <button type="button" class="opt-button opt-edit">${getI18n('editButtonText')}</button>
+  <button type="button" class="opt-button opt-raw">${getI18n('rawButtonText')}</button>
 `
 
 export const Theme = {
@@ -82,7 +55,7 @@ export function showToast(message: string): void {
     toast.textContent = message
     toast.style.cssText = `
         position: fixed;
-        bottom: 60px;
+        bottom: calc(60px + env(safe-area-inset-bottom));
         right: 20px;
         padding: 10px 14px;
         border-radius: 8px;

@@ -53,7 +53,7 @@ body {
     position: fixed;
     width: 100%;
     overflow: hidden;
-    touch-action: none;
+    overscroll-behavior: none;
 }
 
 body {
@@ -68,6 +68,7 @@ body {
 button,
 textarea {
     font: inherit;
+    touch-action: manipulation;
 }
 
 .app-shell {
@@ -78,6 +79,7 @@ textarea {
     bottom: 0;
     display: grid;
     grid-template-rows: auto minmax(0, 1fr) auto;
+    touch-action: none;
     background:
         radial-gradient(circle at top center, rgba(55, 148, 255, 0.08), transparent 320px),
         var(--vscode-bg);
@@ -304,6 +306,7 @@ textarea {
 
 .cm-editor-host .cm-scroller {
     scrollbar-gutter: stable;
+    touch-action: auto;
 }
 
 .cm-editor-host .cm-content,
@@ -343,6 +346,8 @@ textarea {
     inset: 0;
     width: 100%;
     overflow: auto;
+    touch-action: pan-y;
+    -webkit-overflow-scrolling: touch;
 }
 
 .composer-preview-scroll {
@@ -878,6 +883,7 @@ textarea {
     color: var(--vscode-text);
     font-size: 12px;
     cursor: pointer;
+    touch-action: manipulation;
     transition: background 0.15s ease;
 }
 
@@ -971,6 +977,7 @@ textarea {
     border: 1px solid var(--vscode-border);
     border-radius: 8px;
     background: rgba(0, 0, 0, 0.16);
+    touch-action: auto;
 }
 
 [data-theme="light"] .composer-preview pre {
@@ -1122,6 +1129,13 @@ textarea {
     align-items: center;
     gap: 8px;
     min-width: 0;
+}
+
+.statusbar-sep {
+    width: 1px;
+    height: 18px;
+    background: rgba(255, 255, 255, 0.18);
+    flex-shrink: 0;
 }
 
 .opt-button {
@@ -1292,9 +1306,29 @@ textarea {
         grid-template-columns: minmax(0, 1fr);
     }
 
+    .opt-button {
+        height: 44px;
+    }
+
+    .theme-toggle {
+        width: 44px;
+        height: 44px;
+    }
+
+    .mode-picker-option {
+        min-height: 44px;
+    }
+
     .statusbar {
-        height: calc(36px + env(safe-area-inset-bottom));
+        position: fixed;
+        bottom: 0;
+        left: 0;
+        right: 0;
+        z-index: 1000;
+        height: calc(44px + env(safe-area-inset-bottom));
         padding: 0 10px env(safe-area-inset-bottom) 10px;
+        background: var(--vscode-statusbar);
+        display: flex;
         flex-direction: row;
         flex-wrap: nowrap;
         overflow-x: auto;
@@ -1303,6 +1337,13 @@ textarea {
         gap: 12px;
         scrollbar-width: none;
         -webkit-overflow-scrolling: touch;
+        touch-action: auto;
+        -webkit-mask-image: linear-gradient(to right, black calc(100% - 24px), transparent 100%);
+        mask-image: linear-gradient(to right, black calc(100% - 24px), transparent 100%);
+    }
+
+    .workbench {
+        padding-bottom: calc(44px + env(safe-area-inset-bottom));
     }
 
     .statusbar::-webkit-scrollbar {
@@ -1318,7 +1359,7 @@ textarea {
     }
 
     .statusbar-right {
-        margin-left: auto;
+        padding-right: 8px;
     }
 
     #last-modified-container {
@@ -1332,9 +1373,22 @@ textarea {
 
     .mode-picker-menu {
         position: fixed;
-        bottom: calc(36px + env(safe-area-inset-bottom) + 8px);
+        bottom: calc(44px + env(safe-area-inset-bottom) + 8px);
         right: 10px;
-        z-index: 200;
+        left: 10px;
+        width: auto;
+        display: flex;
+        flex-direction: column;
+        gap: 4px;
+        z-index: 2000;
+    }
+
+    .mode-picker-option {
+        min-height: 44px;
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        padding: 0 16px;
     }
 
     .mode-tab {

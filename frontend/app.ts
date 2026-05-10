@@ -152,13 +152,25 @@ export function initApp(): void {
 
     initEditor(UI)
 
-    document.body.onclick = event => {
-        const target = event.target
+    document.body.addEventListener('click', event => {
+        let target = event.target as Node | null
+        if (!target) {
+            return
+        }
+        if (target.nodeType === Node.TEXT_NODE) {
+            target = target.parentElement
+        }
         if (!(target instanceof Element)) {
             return
         }
 
-        if (target.closest('.opt-pw')) {
+        const pwBtn = target.closest('.opt-pw')
+        const shareBtn = target.closest('.opt-share')
+        const editBtn = target.closest('.opt-edit')
+        const rawBtn = target.closest('.opt-raw')
+        const themeBtn = target.closest('.theme-toggle')
+
+        if (pwBtn) {
             const passwd = window.prompt(getI18n('passwordSetPrompt'))
             if (passwd == null) {
                 return
@@ -183,19 +195,19 @@ export function initApp(): void {
                     window.location.reload()
                 })
                 .catch(errHandle)
-        } else if (target.closest('.opt-share')) {
+        } else if (shareBtn) {
             const shareUrl = `${window.location.origin}${getViewPath().replace('/.index', '/')}`
             Promise.resolve(navigator.clipboard.writeText(shareUrl))
                 .then(() => showToast(getI18n('shareCopied')))
                 .catch(errHandle)
-        } else if (target.closest('.opt-edit')) {
+        } else if (editBtn) {
             window.location.href = getEditPath()
-        } else if (target.closest('.opt-raw')) {
+        } else if (rawBtn) {
             window.location.href = `${getViewPath()}/raw`
-        } else if (target.closest('.theme-toggle')) {
+        } else if (themeBtn) {
             Theme.toggleTheme()
         }
-    }
+    })
 }
 
 window.passwdPrompt = passwdPrompt
