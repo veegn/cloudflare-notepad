@@ -68,17 +68,21 @@ Useful scripts:
 
 ## Deployment
 
+### 1. Prepare Cloudflare
 1. Create a Cloudflare API token [here](https://dash.cloudflare.com/profile/api-tokens) using the `Edit Cloudflare Workers` template.
-2. Fork this repository and add these GitHub Actions secrets:
+2. In your Cloudflare Worker dashboard, go to `Settings -> Variables` and add the following **Environment Variables** (recommend using "Encrypt" for secrets):
+   - `SCN_SALT`: A random string used for password hashing compatibility.
+   - `SCN_SECRET`: A long random string for JWT signing.
+   - `SCN_INDEX_PASSWD`: (Optional) Admin password to protect home note editing.
 
-```bash
-CLOUDFLARE_API_TOKEN
-SCN_SALT
-SCN_SECRET
-```
+### 2. Configure GitHub Actions
+1. Fork this repository.
+2. In your repository `Settings -> Secrets and variables -> Actions`, add:
+   - `CLOUDFLARE_API_TOKEN`: The token you just created.
 
-3. Update `wrangler.toml` with your KV namespace binding if needed.
-4. Run the `Deploy cloud-notepad` workflow from the Actions tab.
+### 3. Run Deployment
+1. Go to the **Actions** tab and run the `Deploy cloud-notepad` workflow.
+2. Future pushes to the `master` branch will trigger deployment automatically.
 
 You can also deploy locally with:
 
