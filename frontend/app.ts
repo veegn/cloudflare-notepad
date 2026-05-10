@@ -1,16 +1,16 @@
 import { CONFIG, $, $$, getI18n } from './config'
 import { getEditPath, getViewPath, initEditor } from './editor'
 import { renderEditorPreview } from './renderers'
-import { EDIT_BUTTONS, errHandle, GITHUB_LINK, showToast, Theme, VIEW_BUTTONS } from './ui'
+import { EDIT_BUTTONS, errHandle, GITHUB_LINK, showPasswordPrompt, showToast, Theme, VIEW_BUTTONS } from './ui'
 import type { Mode, UIRefs } from './types'
 import dayjs from 'dayjs'
 import relativeTime from 'dayjs/plugin/relativeTime'
 
 let initialized = false
 
-export function passwdPrompt(): void {
-    const passwd = window.prompt(getI18n('enterPasswordPrompt'))
-    if (!passwd || !passwd.trim()) {
+export async function passwdPrompt(): Promise<void> {
+    const passwd = await showPasswordPrompt(getI18n('enterPasswordPrompt'))
+    if (!passwd) {
         return
     }
 
@@ -70,6 +70,11 @@ export function initApp(): void {
     const initModePicker = (): void => {
         if (!UI.modeMenu || !UI.modeTrigger || !CONFIG.isEdit || CONFIG.isHome) {
             return
+        }
+
+        // Move menu to body to avoid overflow clipping from statusbar parent chain
+        if (UI.modeMenu.parentElement !== document.body) {
+            document.body.appendChild(UI.modeMenu)
         }
 
         const modes: Array<{ id: Mode; label: string }> = [
@@ -152,7 +157,7 @@ export function initApp(): void {
 
     initEditor(UI)
 
-    document.body.addEventListener('click', event => {
+    document.body.addEventListener('click', async event => {
         let target = event.target as Node | null
         if (!target) {
             return
@@ -171,7 +176,7 @@ export function initApp(): void {
         const themeBtn = target.closest('.theme-toggle')
 
         if (pwBtn) {
-            const passwd = window.prompt(getI18n('passwordSetPrompt'))
+            const passwd = await showPasswordPrompt()
             if (passwd == null) {
                 return
             }
