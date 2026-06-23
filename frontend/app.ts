@@ -1,7 +1,7 @@
 import { CONFIG, $, $$, getI18n } from './config'
 import { getEditPath, getViewPath, initEditor } from './editor'
 import { renderEditorPreview } from './renderers'
-import { EDIT_BUTTONS, errHandle, GITHUB_LINK, showPasswordPrompt, showToast, Theme, VIEW_BUTTONS } from './ui'
+import { EDIT_BUTTONS, errHandle, GITHUB_LINK, showPasswordPrompt, showToast, showAlert, Theme, VIEW_BUTTONS } from './ui'
 import type { Mode, UIRefs } from './types'
 import dayjs from 'dayjs'
 import relativeTime from 'dayjs/plugin/relativeTime'
@@ -167,8 +167,8 @@ export function initApp(): void {
     updateLastModified()
     setInterval(updateLastModified, 30000)
 
-    if (CONFIG.isHome && UI.homePreview) {
-        renderEditorPreview('md', CONFIG.content || '', UI.homePreview)
+    if (CONFIG.isHome && UI.homePreview && CONFIG.content) {
+        renderEditorPreview('md', CONFIG.content, UI.homePreview)
     }
 
     initEditor(UI)
@@ -209,11 +209,11 @@ export function initApp(): void {
                     }
                     return res.json() as Promise<{ code: number; message?: string }>
                 })
-                .then(res => {
+                .then(async res => {
                     if (res.code !== 0) {
                         return errHandle(res.message || 'Failed to update password')
                     }
-                    alert(passwd.trim() ? getI18n('passwordSaved') : getI18n('passwordRemoved'))
+                    await showAlert(passwd.trim() ? getI18n('passwordSaved') : getI18n('passwordRemoved'))
                     window.location.reload()
                 })
                 .catch(errHandle)
