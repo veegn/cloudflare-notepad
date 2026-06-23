@@ -1,11 +1,32 @@
 name = "cloud-notepad"
-main = "src/index.ts"
+main = "build/worker/shim.mjs"
 compatibility_date = "2025-01-01"
 
-kv_namespaces = [
-  { binding = "NOTES", id = "b485b873ed1a41d686bb26799e2eb527" }
-]
+[[kv_namespaces]]
+binding = "NOTES"
+id = "b485b873ed1a41d686bb26799e2eb527"
+
+[build]
+command = "worker-build --release"
 
 [assets]
 directory = "static"
 binding = "ASSETS"
+
+[vars]
+SCN_SALT = "local_salt_dev"
+
+[observability]
+enabled = false
+head_sampling_rate = 1
+
+[observability.logs]
+enabled = true
+head_sampling_rate = 1
+persist = true
+invocation_logs = true
+
+[observability.traces]
+enabled = true
+persist = true
+head_sampling_rate = 1

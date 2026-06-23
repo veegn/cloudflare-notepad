@@ -4,10 +4,8 @@
   "author": "veegn",
   "license": "MIT",
   "devDependencies": {
-    "@cloudflare/workers-types": "^4.20260310.0",
     "@eslint/js": "^9.22.0",
     "@playwright/test": "^1.58.2",
-    "@types/cookie": "^0.6.0",
     "@types/js-yaml": "^4.0.9",
     "esbuild": "^0.25.1",
     "eslint": "^9.22.0",
@@ -27,9 +25,9 @@
     "build:frontend": "npm run build:frontend:prod",
     "build:frontend:dev": "node scripts/build-frontend.mjs dev",
     "build:frontend:prod": "node scripts/build-frontend.mjs prod",
-    "typecheck": "tsc --noEmit -p tsconfig.json && tsc --noEmit -p tsconfig.frontend.json",
-    "lint": "eslint src/**/*.ts frontend/**/*.ts",
-    "check": "npm run lint && npm run typecheck && npm run test:e2e"
+    "typecheck": "tsc --noEmit",
+    "lint": "eslint frontend/**/*.ts",
+    "check": "npm run lint && npm run typecheck && cargo fmt --check && cargo clippy --all-targets -- -D warnings && cargo test && npm run test:e2e"
   },
   "dependencies": {
     "@codemirror/autocomplete": "^6.20.1",
@@ -41,11 +39,8 @@
     "@codemirror/search": "^6.6.0",
     "@codemirror/state": "^6.5.4",
     "@codemirror/view": "^6.39.17",
-    "@tsndr/cloudflare-worker-jwt": "^3.2.0",
-    "cookie": "^0.5.0",
     "dayjs": "^1.11.19",
     "dompurify": "^3.3.3",
-    "itty-router": "^2.6.1",
     "js-yaml": "^4.1.1",
     "marked": "^17.0.4"
   }

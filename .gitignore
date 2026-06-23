@@ -11,6 +11,8 @@ node_modules/
 
 # Build and output
 dist/
+target/
+build/
 .temp/
 .cache/
 test-results/

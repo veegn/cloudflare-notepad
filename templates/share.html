@@ -1,0 +1,23 @@
+{% extends "base.html" %}
+
+{% block editor_content %}
+{% if metadata.mode == "md" %}
+{# Markdown read mode: preview only #}
+<div class="composer-frame is-reading mode-md" data-mode="md">
+  <div class="composer-main">
+    <div class="composer-preview-scroll" id="preview-scroll">
+      <div id="preview" class="composer-preview" aria-hidden="false"></div>
+    </div>
+  </div>
+</div>
+{% else %}
+{# Plain / JSON / YAML read mode: code preview #}
+<div class="composer-frame is-reading mode-{{ metadata.mode | default(value='plain') }}" data-mode="{{ metadata.mode | default(value='plain') }}">
+  <div class="composer-main">
+    <div class="composer-preview-scroll" id="preview-scroll">
+      <div id="preview" class="composer-preview" aria-hidden="false"></div>
+    </div>
+  </div>
+</div>
+{% endif %}
+{% endblock editor_content %}
