@@ -84,8 +84,11 @@
   </div>
 
   {# ── Scripts ── #}
+  <script id="config-data" type="application/json">
+    {{ config_json | safe }}
+  </script>
   <script>
-    window.CONFIG = {{ config_json | safe }};
+    window.CONFIG = JSON.parse(document.getElementById('config-data').textContent);
   </script>
   <script type="module">
     import { initApp, passwdPrompt } from '/js/app.js'
