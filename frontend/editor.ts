@@ -61,12 +61,11 @@ export const debounce = <T extends unknown[]>(func: (...args: T) => void, delay:
 }
 
 export function getViewPath(): string {
-    return window.location.pathname === '/' ? '/.index' : window.location.pathname.replace('/edit', '')
+    return CONFIG.notePath === '_index' ? '/' : `/note/${CONFIG.notePath}`
 }
 
 export function getEditPath(): string {
-    const viewPath = getViewPath()
-    return viewPath === '/.index' ? '/.index/edit' : `${viewPath}/edit`
+    return `/edit/${CONFIG.notePath}`
 }
 
 function getModeExtensions(mode: Mode): Extension[] {
@@ -248,15 +247,15 @@ function persistValue(UI: UIRefs, value: string): Promise<void> {
         UI.loading.style.opacity = '1'
     }
 
-    return window.fetch('', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-        body: new URLSearchParams({ t: value }),
+    return window.fetch(`/api/notes/${CONFIG.notePath}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ content: value }),
     })
-        .then(res => res.json() as Promise<{ err: number; msg: string }>)
+        .then(res => res.json() as Promise<{ code: number; message: string }>)
         .then(res => {
-            if (res.err !== 0) {
-                errHandle(res.msg)
+            if (res.code !== 0) {
+                errHandle(res.message)
             }
         })
         .catch(errHandle)

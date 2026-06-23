@@ -3,7 +3,7 @@ const { fillCodeEditor, readCodeEditor, switchMode, uniqueNotePath } = require('
 
 test('plain editor mounts CodeMirror and highlights keywords while typing', async ({ page }) => {
     const notePath = uniqueNotePath()
-    await page.goto(`${notePath}/edit`)
+    await page.goto(`/edit/${notePath}`)
 
     const editor = page.locator('.cm-editor')
     const gutter = page.locator('.cm-lineNumbers')
@@ -18,7 +18,7 @@ test('plain editor mounts CodeMirror and highlights keywords while typing', asyn
 
 test('format picker switches to json mode and mounts CodeMirror', async ({ page }) => {
     const notePath = uniqueNotePath()
-    await page.goto(`${notePath}/edit`)
+    await page.goto(`/edit/${notePath}`)
 
     await switchMode(page, 'json')
 
@@ -35,7 +35,7 @@ test('format picker switches to json mode and mounts CodeMirror', async ({ page 
 
 test('markdown editor renders in split view with live preview', async ({ page }) => {
     const notePath = uniqueNotePath()
-    await page.goto(`${notePath}/edit`)
+    await page.goto(`/edit/${notePath}`)
 
     await switchMode(page, 'md')
 
@@ -56,7 +56,7 @@ test('markdown editor renders in split view with live preview', async ({ page })
 
 test('markdown editor keeps editor and preview columns aligned in split view', async ({ page }) => {
     const notePath = uniqueNotePath()
-    await page.goto(`${notePath}/edit`)
+    await page.goto(`/edit/${notePath}`)
 
     await switchMode(page, 'md')
 
@@ -82,7 +82,7 @@ test('markdown editor keeps editor and preview columns aligned in split view', a
 
 test('markdown editor keeps raw text readable while the preview stays in a separate pane', async ({ page }) => {
     const notePath = uniqueNotePath()
-    await page.goto(`${notePath}/edit`)
+    await page.goto(`/edit/${notePath}`)
 
     await switchMode(page, 'md')
     await fillCodeEditor(page, '# Heading\n\nParagraph')
@@ -96,7 +96,7 @@ test('markdown editor keeps raw text readable while the preview stays in a separ
 
 test('markdown preview uses tighter typography spacing', async ({ page }) => {
     const notePath = uniqueNotePath()
-    await page.goto(`${notePath}/edit`)
+    await page.goto(`/edit/${notePath}`)
 
     await switchMode(page, 'md')
     await fillCodeEditor(page, '# Heading\n\nParagraph text\n\n## Subheading\n\nMore text')
@@ -124,7 +124,7 @@ test('markdown preview uses tighter typography spacing', async ({ page }) => {
 
 test('markdown editor keeps markdown markers in the editor pane', async ({ page }) => {
     const notePath = uniqueNotePath()
-    await page.goto(`${notePath}/edit`)
+    await page.goto(`/edit/${notePath}`)
 
     await switchMode(page, 'md')
     await fillCodeEditor(page, '# Heading\n\nParagraph')
@@ -136,7 +136,7 @@ test('markdown editor keeps markdown markers in the editor pane', async ({ page 
 
 test('markdown editor can switch between edit, split, and preview layouts', async ({ page }) => {
     const notePath = uniqueNotePath()
-    await page.goto(`${notePath}/edit`)
+    await page.goto(`/edit/${notePath}`)
 
     await switchMode(page, 'md')
 
@@ -153,7 +153,7 @@ test('markdown editor can switch between edit, split, and preview layouts', asyn
 
 test('format now prettifies json content in place', async ({ page }) => {
     const notePath = uniqueNotePath()
-    await page.goto(`${notePath}/edit`)
+    await page.goto(`/edit/${notePath}`)
 
     await switchMode(page, 'json')
 
@@ -165,7 +165,7 @@ test('format now prettifies json content in place', async ({ page }) => {
 
 test('format shortcut prettifies json content in place', async ({ page }) => {
     const notePath = uniqueNotePath()
-    await page.goto(`${notePath}/edit`)
+    await page.goto(`/edit/${notePath}`)
 
     await switchMode(page, 'json')
 
@@ -177,7 +177,7 @@ test('format shortcut prettifies json content in place', async ({ page }) => {
 
 test('format now shows an error and keeps invalid json content intact', async ({ page }) => {
     const notePath = uniqueNotePath()
-    await page.goto(`${notePath}/edit`)
+    await page.goto(`/edit/${notePath}`)
 
     await switchMode(page, 'json')
 
@@ -186,4 +186,53 @@ test('format now shows an error and keeps invalid json content intact', async ({
 
     await expect(page.getByText(/Formatting failed\./)).toBeVisible()
     await expect.poll(() => readCodeEditor(page)).toBe('{"name": }')
+})
+
+test('format now prettifies yaml content in place', async ({ page }) => {
+    const notePath = uniqueNotePath()
+    await page.goto(`/edit/${notePath}`)
+
+    await switchMode(page, 'yaml')
+
+    await fillCodeEditor(page, 'name: cloud\nenabled: true\nitems: [1,2]')
+    await page.locator('#format-trigger').click()
+
+    await expect.poll(() => readCodeEditor(page)).toBe('name: cloud\nenabled: true\nitems:\n  - 1\n  - 2\n')
+})
+
+test('format shortcut prettifies yaml content in place', async ({ page }) => {
+    const notePath = uniqueNotePath()
+    await page.goto(`/edit/${notePath}`)
+
+    await switchMode(page, 'yaml')
+
+    await fillCodeEditor(page, 'title: cloud\nactive: false')
+    await page.keyboard.press('Control+Shift+F')
+
+    await expect.poll(() => readCodeEditor(page)).toBe('title: cloud\nactive: false\n')
+})
+
+test('format now shows an error and keeps invalid yaml content intact', async ({ page }) => {
+    const notePath = uniqueNotePath()
+    await page.goto(`/edit/${notePath}`)
+
+    await switchMode(page, 'yaml')
+
+    await fillCodeEditor(page, 'name: [invalid')
+    await page.locator('#format-trigger').click()
+
+    await expect(page.getByText(/Formatting failed\./)).toBeVisible()
+    await expect.poll(() => readCodeEditor(page)).toBe('name: [invalid')
+})
+
+test('exit button redirects user from edit view to readonly view', async ({ page }) => {
+    const notePath = uniqueNotePath()
+    await page.goto(`/edit/${notePath}`)
+
+    // Click the exit button
+    await page.locator('.opt-exit').click()
+
+    // Wait for redirection to the readonly note view
+    await page.waitForURL(`**/note/${notePath}`)
+    await expect(page.locator('.opt-edit')).toBeVisible()
 })

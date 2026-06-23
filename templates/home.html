@@ -1,0 +1,20 @@
+{% extends "base.html" %}
+
+{% block editor_content %}
+<div class="welcome-view">
+  <div class="welcome-hero">
+    <div class="welcome-kicker">{{ i18n[lang].homeKicker | default(value="Cloud Notepad") }}</div>
+    <h1 class="welcome-title">{{ i18n[lang].homeTitle | default(value="A lightweight workspace for quick notes and secure sharing.") }}</h1>
+    <p class="welcome-copy">{{ i18n[lang].homeCopy | default(value="") }}</p>
+    <div class="welcome-actions">
+      <a class="welcome-button primary" href="/new">{{ i18n[lang].homeNewNote | default(value="New Note") }}</a>
+      <a class="welcome-button" href="/edit/_index">{{ i18n[lang].homeEditHome | default(value="Edit Home") }}</a>
+    </div>
+  </div>
+  <div class="welcome-grid">
+    <section class="welcome-card mode-md">
+      <div id="preview-home" class="welcome-note-preview composer-preview">{{ content | default(value="") }}</div>
+    </section>
+  </div>
+</div>
+{% endblock editor_content %}
