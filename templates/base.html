@@ -1,0 +1,102 @@
+<!DOCTYPE html>
+<html lang="{{ lang }}">
+
+<head>
+  <meta charset="utf-8" />
+  <meta http-equiv="X-UA-Compatible" content="IE=edge">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, interactive-widget=resizes-content" />
+  <title>{{ title }} - Cloud Notepad</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link
+    href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap"
+    rel="stylesheet">
+  <link href="/favicon.ico" rel="shortcut icon" type="image/ico" />
+  <link href="/css/app.css" rel="stylesheet" media="screen" />
+</head>
+
+<body data-show-pw-prompt="{{ show_pw_prompt }}">
+  <div class="app-shell">
+    {# ── Workbench ── #}
+    <main class="workbench">
+      <section class="editor-pane">
+        {# Tab bar #}
+        <div class="editor-tabbar">
+          <div class="editor-tab active">
+            <span class="editor-tab-icon">{% if is_home %}*{% elif is_edit %}</ />{% else %}#{% endif %}</span>
+            <span class="editor-tab-label">{{ title | default(value="untitled") }}</span>
+          </div>
+          <div class="editor-tab-actions"></div>
+        </div>
+
+        {# Editor body #}
+        <div class="editor-body">
+          {% if tips %}<div class="editor-banner">{{ tips }}</div>{% endif %}
+          {% block editor_content %}{% endblock editor_content %}
+        </div>
+      </section>
+    </main>
+
+    {# ── Statusbar ── #}
+    <footer class="statusbar">
+      <div class="statusbar-left">
+        <button class="opt-button theme-toggle" title="Toggle theme">
+          <span class="theme-toggle-icon">
+            <span class="theme-toggle-sun">
+              <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none"
+                stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <circle cx="12" cy="12" r="5"></circle>
+                <line x1="12" y1="1" x2="12" y2="3"></line>
+                <line x1="12" y1="21" x2="12" y2="23"></line>
+                <line x1="4.22" y1="4.22" x2="5.64" y2="5.64"></line>
+                <line x1="18.36" y1="18.36" x2="19.78" y2="19.78"></line>
+                <line x1="1" y1="12" x2="3" y2="12"></line>
+                <line x1="21" y1="12" x2="23" y2="12"></line>
+                <line x1="4.22" y1="19.78" x2="5.64" y2="18.36"></line>
+                <line x1="18.36" y1="5.64" x2="19.78" y2="4.22"></line>
+              </svg>
+            </span>
+            <span class="theme-toggle-moon">
+              <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none"
+                stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"></path>
+              </svg>
+            </span>
+          </span>
+        </button>
+        <span class="statusbar-sep" aria-hidden="true"></span>
+        <div id="footer-actions" class="status-actions {% if not is_edit %}view-actions{% endif %}"></div>
+      </div>
+      <div class="statusbar-right">
+        {% if is_edit and not is_home %}
+        <button class="opt-button opt-format" id="format-trigger" type="button">Format Now</button>
+        <div class="mode-picker" id="mode-picker">
+          <button class="opt-button mode-picker-trigger" id="mode-trigger" type="button">Format</button>
+          <div class="mode-picker-menu hide" id="mode-menu"></div>
+        </div>
+        <span class="statusbar-sep" aria-hidden="true"></span>
+        {% endif %}
+        <div id="loading" class="status-indicator" style="opacity: 0;"></div>
+        <div id="last-modified-container"></div>
+        <div id="github-link-container"></div>
+      </div>
+    </footer>
+  </div>
+
+  {# ── Scripts ── #}
+  <script id="config-data" type="application/json">
+    {{ config_json | safe }}
+  </script>
+  <script>
+    window.CONFIG = JSON.parse(document.getElementById('config-data').textContent);
+  </script>
+  <script type="module">
+    import { initApp, passwdPrompt } from '/js/app.js'
+    initApp()
+    if (document.body.dataset.showPwPrompt === 'true') {
+      passwdPrompt()
+    }
+  </script>
+</body>
+
+</html>

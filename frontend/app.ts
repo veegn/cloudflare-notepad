@@ -14,24 +14,22 @@ export async function passwdPrompt(): Promise<void> {
         return
     }
 
-    window.fetch(`${getEditPath()}/auth`, {
+    window.fetch(`/api/auth`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ passwd }),
+        body: JSON.stringify({ path: CONFIG.notePath, password: passwd }),
     })
         .then(async res => {
             if (!res.ok && !res.headers.get('content-type')?.includes('application/json')) {
                 throw new Error(`Server Error: ${res.status} - ${await res.text()}`)
             }
-            return res.json() as Promise<{ err: number; msg: string; data?: { refresh?: boolean } }>
+            return res.json() as Promise<{ code: number; message?: string }>
         })
         .then(res => {
-            if (res.err !== 0) {
-                return errHandle(res.msg)
+            if (res.code !== 0) {
+                return errHandle(res.message || 'Auth failed')
             }
-            if (res.data?.refresh) {
-                window.location.reload()
-            }
+            window.location.reload()
         })
         .catch(errHandle)
 }
@@ -41,6 +39,24 @@ export function initApp(): void {
         return
     }
     initialized = true
+
+    const path = window.location.pathname
+    const isSystemPath =
+        path === '/' ||
+        path === '/new' ||
+        path === '/favicon.ico' ||
+        path.startsWith('/note/') ||
+        path.startsWith('/edit/') ||
+        path.startsWith('/api/') ||
+        path.startsWith('/css/') ||
+        path.startsWith('/js/')
+
+    if (!isSystemPath) {
+        if (confirm(getI18n('invalidPagePrompt'))) {
+            window.location.href = `/note${path}`
+            return
+        }
+    }
 
     const UI: UIRefs = {
         footerActions: $('#footer-actions'),
@@ -109,8 +125,8 @@ export function initApp(): void {
                     return
                 }
 
-                window.fetch(`${window.location.pathname}/setting`, {
-                    method: 'POST',
+                window.fetch(`/api/notes/${CONFIG.notePath}`, {
+                    method: 'PATCH',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({ mode }),
                 })
@@ -118,11 +134,11 @@ export function initApp(): void {
                         if (!res.ok && !res.headers.get('content-type')?.includes('application/json')) {
                             throw new Error(`Server Error: ${res.status} - ${await res.text()}`)
                         }
-                        return res.json() as Promise<{ err: number; msg: string }>
+                        return res.json() as Promise<{ code: number; message?: string }>
                     })
                     .then(res => {
-                        if (res.err !== 0) {
-                            return errHandle(res.msg)
+                        if (res.code !== 0) {
+                            return errHandle(res.message || 'Failed to update mode')
                         }
                         window.location.reload()
                     })
@@ -173,6 +189,7 @@ export function initApp(): void {
         const shareBtn = target.closest('.opt-share')
         const editBtn = target.closest('.opt-edit')
         const rawBtn = target.closest('.opt-raw')
+        const exitBtn = target.closest('.opt-exit')
         const themeBtn = target.closest('.theme-toggle')
 
         if (pwBtn) {
@@ -181,34 +198,36 @@ export function initApp(): void {
                 return
             }
 
-            window.fetch(`${window.location.pathname}/pw`, {
-                method: 'POST',
+            window.fetch(`/api/notes/${CONFIG.notePath}`, {
+                method: 'PATCH',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ passwd: passwd.trim() }),
+                body: JSON.stringify({ password: passwd.trim() }),
             })
                 .then(async res => {
                     if (!res.ok && !res.headers.get('content-type')?.includes('application/json')) {
                         throw new Error(`Server Error: ${res.status} - ${await res.text()}`)
                     }
-                    return res.json() as Promise<{ err: number; msg: string }>
+                    return res.json() as Promise<{ code: number; message?: string }>
                 })
                 .then(res => {
-                    if (res.err !== 0) {
-                        return errHandle(res.msg)
+                    if (res.code !== 0) {
+                        return errHandle(res.message || 'Failed to update password')
                     }
                     alert(passwd.trim() ? getI18n('passwordSaved') : getI18n('passwordRemoved'))
                     window.location.reload()
                 })
                 .catch(errHandle)
         } else if (shareBtn) {
-            const shareUrl = `${window.location.origin}${getViewPath().replace('/.index', '/')}`
+            const shareUrl = `${window.location.origin}${getViewPath()}`
             Promise.resolve(navigator.clipboard.writeText(shareUrl))
                 .then(() => showToast(getI18n('shareCopied')))
                 .catch(errHandle)
         } else if (editBtn) {
             window.location.href = getEditPath()
         } else if (rawBtn) {
-            window.location.href = `${getViewPath()}/raw`
+            window.location.href = `/api/notes/${CONFIG.notePath}?raw=1`
+        } else if (exitBtn) {
+            window.location.href = getViewPath()
         } else if (themeBtn) {
             Theme.toggleTheme()
         }

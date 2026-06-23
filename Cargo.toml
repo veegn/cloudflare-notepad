@@ -1,0 +1,47 @@
+[package]
+name = "notepad-server"
+version = "0.1.0"
+edition = "2021"
+description = "Cloudflare Workers backend for Cloud Notepad"
+license = "MIT"
+repository = "https://github.com/veegn/cloudflare-notepad"
+
+[package.metadata.wasm-pack.profile.release]
+wasm-opt = false
+
+[lib]
+crate-type = ["cdylib"]
+
+[dependencies]
+# Cloudflare Workers runtime
+worker = "0.4"
+worker-macros = { version = "0.4", features = ["http"] }
+
+# Serialization
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+
+# Template engine (pure Rust, WASM-compatible)
+tera = "1"
+
+# Crypto — all pure Rust, no `ring` (ring doesn't compile to wasm32)
+hmac = "0.12"
+sha2 = "0.10"
+pbkdf2 = "0.12"
+md-5 = "0.10"
+hex = "0.4"
+base64 = "0.22"
+
+# Random number generation in WASM
+getrandom = { version = "0.2", features = ["js"] }
+
+# JS interop (for Date.now() in WASM)
+js-sys = "0.3"
+
+# Utilities
+urlencoding = "2"
+console_error_panic_hook = "0.1"
+
+[profile.release]
+opt-level = "s"
+lto = true

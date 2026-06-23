@@ -1,33 +1,14 @@
 import type { AppConfig } from './types'
 
 export const CONFIG: AppConfig = window.CONFIG || {
+    notePath: '',
     lang: 'en',
     isEdit: false,
     isHome: false,
     updateAt: null,
     pw: false,
     mode: 'plain',
-    i18n: {
-        en: {
-            lastModified: 'Last modified',
-            editButtonText: 'Edit',
-            share: 'Share',
-            rawButtonText: 'Raw',
-            err: 'Error',
-            enterPasswordPrompt: 'Enter the note password',
-            passwordSetPrompt: 'Set a password for this note. Leave empty to remove it.',
-            passwordSaved: 'Password updated.',
-            passwordRemoved: 'Password removed.',
-            shareCopied: 'Share link copied.',
-            formatNow: 'Format Now',
-            formatMode: 'Format',
-            formatApplied: 'Formatting applied.',
-            formatFailed: 'Formatting failed.',
-            mdViewEdit: 'Edit',
-            mdViewSplit: 'Split',
-            mdViewPreview: 'Preview',
-        },
-    },
+    i18n: {},
 }
 
 export const KEYWORD_PATTERN = /\b(TODO|FIXME|NOTE|IMPORTANT|BUG|HACK|WARNING|DONE)\b/g

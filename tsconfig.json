@@ -6,10 +6,9 @@
     "strict": true,
     "noEmit": true,
     "skipLibCheck": true,
-    "lib": ["ES2022", "WebWorker"],
-    "types": ["@cloudflare/workers-types"],
+    "lib": ["ES2022", "DOM"],
     "allowJs": false,
     "isolatedModules": true
   },
-  "include": ["src/**/*.ts"]
+  "include": ["frontend/**/*.ts", "frontend/**/*.d.ts"]
 }

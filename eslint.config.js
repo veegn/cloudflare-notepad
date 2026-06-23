@@ -13,26 +13,12 @@ module.exports = tseslint.config(
     },
     js.configs.recommended,
     ...tseslint.configs.recommended,
-    {
-        files: ['src/**/*.ts'],
-        languageOptions: {
-            parserOptions: {
-                project: './tsconfig.json',
-                tsconfigRootDir: __dirname,
-            },
-            globals: {
-                ...globals.serviceworker,
-            },
-        },
-        rules: {
-            'no-console': 'off',
-        },
-    },
+
     {
         files: ['frontend/**/*.ts'],
         languageOptions: {
             parserOptions: {
-                project: './tsconfig.frontend.json',
+                project: './tsconfig.json',
                 tsconfigRootDir: __dirname,
             },
             globals: {

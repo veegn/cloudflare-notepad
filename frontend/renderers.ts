@@ -111,10 +111,16 @@ function applyTokenReplacements(source: string, replacements: Replacement[]): st
         })
     })
 
-    return output.replace(/%%SCNTOKEN([A-Z]+)%%/g, match => {
-        const index = markers.indexOf(match)
-        return index >= 0 ? tokens[index] : match
-    })
+    let previousOutput = ''
+    while (output !== previousOutput) {
+        previousOutput = output
+        output = output.replace(/%%SCNTOKEN([A-Z]+)%%/g, match => {
+            const index = markers.indexOf(match)
+            return index >= 0 ? tokens[index] : match
+        })
+    }
+
+    return output
 }
 
 function renderPlainCode(text: string): string {
@@ -164,19 +170,26 @@ function renderYamlCode(text: string): string {
     const escaped = escapeCodeHtml(text)
     const highlighted = applyTokenReplacements(escaped, [
         {
-            pattern: /(#.*)$/gm,
-            render: match => `<span class="token-comment">${match}</span>`,
+            pattern: /(?<=^|\s)(#.*)$|("[^"]*"|'[^']*')(\s*:)?/gm,
+            render: (match, comment, str, colon = '') => {
+                if (comment) {
+                    return `<span class="token-comment">${comment}</span>`
+                } else {
+                    const className = colon ? 'token-key' : 'token-string'
+                    const colonMatch = colon.match(/^(\s*)(:)/)
+                    const colonHtml = colonMatch
+                        ? `${colonMatch[1]}<span class="token-punctuation">${colonMatch[2]}</span>`
+                        : ''
+                    return `<span class="${className}">${str}</span>${colonHtml}`
+                }
+            },
         },
         {
-            pattern: /^(\s*[^:\n]+)(:)/gm,
+            pattern: /(?<=^|[\s{,])([a-zA-Z0-9_-]+)\s*(:)/g,
             render: (_match, key, colon) => `<span class="token-key">${key}</span><span class="token-punctuation">${colon}</span>`,
         },
         {
-            pattern: /("[^"]*"|'[^']*')/g,
-            render: match => `<span class="token-string">${match}</span>`,
-        },
-        {
-            pattern: /^(\s*-\s)/gm,
+            pattern: /^([ \t]*-\s)/gm,
             render: match => `<span class="token-punctuation">${match}</span>`,
         },
         {

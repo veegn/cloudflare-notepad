@@ -1,0 +1,4 @@
+# Development-only values. Use unique, private values in .dev.vars.
+SCN_SALT=local-development-salt
+SCN_SECRET=replace-with-a-random-local-secret
+SCN_INDEX_PASSWD=

@@ -16,7 +16,7 @@ The frontend bundle under `static/js/app.js` is generated during local start, te
 ## Highlights
 
 - Home dashboard (`/`) with a welcome view and home-note preview.
-- One-click random note creation via `/.create`.
+- One-click random note creation via `/new`.
 - Editing and viewing routes with automatic save to Cloudflare KV.
 - Multi-mode writing: plain text, Markdown, JSON, and YAML.
 - Markdown split-view editor with live preview and layout switching (Edit / Split / Preview).
@@ -24,21 +24,19 @@ The frontend bundle under `static/js/app.js` is generated during local start, te
 - Light/dark theme toggle with browser preference + local persistence.
 - Password protection for note reading and editing.
 - Optional private-note mode (`share: false`) and authenticated raw endpoint.
-- Optional admin password to protect editing for the home note (`.index`).
+- Optional admin password to protect editing for the home note (`_index`).
 
 ## Route overview
 
 | Route | Description |
 | --- | --- |
 | `/` | Home note (`.index`) dashboard view |
-| `/.index/edit` | Edit home note (can be protected by admin password) |
-| `/.create` | Generate random 5-char path and redirect to edit page |
-| `/:path` | View a note |
-| `/:path/edit` | Edit a note |
-| `/:path/raw` | Get note raw text (requires auth for protected/private note) |
-| `/:path/edit/auth` | Password authentication endpoint |
-| `/:path/edit/pw` | Set or remove note password |
-| `/:path/edit/setting` | Update note settings (currently supports `mode`) |
+| `/` | Home note (`_index`) dashboard |
+| `/new` | Create a note and redirect to its editor |
+| `/note/:path` | View a note |
+| `/edit/:path` | Edit a note |
+| `/api/notes/:path?raw=1` | Get raw note text (requires auth for protected/private notes) |
+| `/api/auth` | Authenticate a note password and set an HttpOnly cookie |
 
 ## Environment variables
 
@@ -46,7 +44,7 @@ Set these in your Worker/GitHub Actions environment:
 
 ```bash
 SCN_SALT           # salt used for legacy password compatibility
-SCN_SECRET         # JWT signing secret
+SCN_SECRET         # required JWT signing secret (Cloudflare Worker Secret)
 SCN_INDEX_PASSWD   # optional: protect /.index/edit with admin password
 ```
 
@@ -54,6 +52,7 @@ SCN_INDEX_PASSWD   # optional: protect /.index/edit with admin password
 
 ```bash
 npm install
+copy .dev.vars.example .dev.vars
 npm start
 ```
 
@@ -61,10 +60,10 @@ Useful scripts:
 
 - `npm run build:frontend:dev`: development frontend bundle.
 - `npm run build:frontend:prod`: production frontend bundle.
-- `npm run lint`: lint backend + frontend TypeScript.
-- `npm run typecheck`: TypeScript checks for worker and frontend configs.
+- `npm run lint`: lint frontend TypeScript.
+- `npm run typecheck`: TypeScript checks.
 - `npm run test:e2e`: Playwright E2E tests.
-- `npm run check`: lint + typecheck + e2e.
+- `npm run check`: frontend checks, Rust format/lint/unit tests, and E2E tests.
 
 ## Deployment
 
@@ -72,7 +71,7 @@ Useful scripts:
 1. Create a Cloudflare API token [here](https://dash.cloudflare.com/profile/api-tokens) using the `Edit Cloudflare Workers` template.
 2. In your Cloudflare Worker dashboard, go to `Settings -> Variables` and add the following **Environment Variables** (recommend using "Encrypt" for secrets):
    - `SCN_SALT`: A random string used for password hashing compatibility.
-   - `SCN_SECRET`: A long random string for JWT signing.
+   - `SCN_SECRET`: A long random string for JWT signing. Configure it as a Cloudflare Worker Secret, not a plaintext variable.
    - `SCN_INDEX_PASSWD`: (Optional) Admin password to protect home note editing.
 
 ### 2. Configure GitHub Actions
