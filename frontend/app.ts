@@ -1,7 +1,7 @@
 import { CONFIG, $, $$, getI18n } from './config'
 import { getEditPath, getViewPath, initEditor } from './editor'
 import { renderEditorPreview } from './renderers'
-import { EDIT_BUTTONS, errHandle, GITHUB_LINK, showPasswordPrompt, showToast, showAlert, Theme, VIEW_BUTTONS } from './ui'
+import { EDIT_BUTTONS, errHandle, GITHUB_LINK, showPasswordPrompt, showToast, showAlert, showConfirm, Theme, VIEW_BUTTONS } from './ui'
 import type { Mode, UIRefs } from './types'
 import dayjs from 'dayjs'
 import relativeTime from 'dayjs/plugin/relativeTime'
@@ -34,7 +34,7 @@ export async function passwdPrompt(): Promise<void> {
         .catch(errHandle)
 }
 
-export function initApp(): void {
+export async function initApp(): Promise<void> {
     if (initialized) {
         return
     }
@@ -52,7 +52,7 @@ export function initApp(): void {
         path.startsWith('/js/')
 
     if (!isSystemPath) {
-        if (confirm(getI18n('invalidPagePrompt'))) {
+        if (await showConfirm(getI18n('invalidPagePrompt'))) {
             window.location.href = `/note${path}`
             return
         }

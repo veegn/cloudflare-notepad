@@ -199,19 +199,21 @@ test('readonly yaml view highlights comments and strings correctly without corru
 })
 
 test('visiting invalid page and dismissing confirm dialog stays on 404', async ({ page }) => {
-    // Dismiss confirm dialog
-    page.once('dialog', dialog => dialog.dismiss())
-
     await page.goto('/my-invalid-test-path')
+    
+    // Dismiss confirm dialog
+    await page.locator('.modal-btn-secondary').click()
+
     await expect(page.locator('.editor-banner')).toContainText('404')
     expect(page.url()).toContain('/my-invalid-test-path')
 })
 
 test('visiting invalid page and accepting confirm dialog redirects to note view', async ({ page }) => {
-    // Accept confirm dialog
-    page.once('dialog', dialog => dialog.accept())
-
     await page.goto('/my-invalid-test-path')
+    
+    // Accept confirm dialog
+    await page.locator('.modal-btn-primary').click()
+
     await page.waitForURL('**/note/my-invalid-test-path')
     expect(page.url()).toContain('/note/my-invalid-test-path')
 })
