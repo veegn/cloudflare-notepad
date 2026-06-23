@@ -114,6 +114,59 @@ export function showToast(message: string): void {
     }, 2500)
 }
 
+export function showConfirm(message: string): Promise<boolean> {
+    return new Promise(resolve => {
+        const overlay = document.createElement('div')
+        overlay.className = 'modal-overlay'
+
+        const dialog = document.createElement('div')
+        dialog.className = 'modal-dialog'
+
+        const descEl = document.createElement('div')
+        descEl.className = 'modal-desc'
+        descEl.textContent = message
+
+        const actions = document.createElement('div')
+        actions.className = 'modal-actions'
+
+        const cancelBtn = document.createElement('button')
+        cancelBtn.className = 'modal-btn modal-btn-secondary'
+        cancelBtn.textContent = getI18n('cancel') || 'Cancel'
+        cancelBtn.type = 'button'
+
+        const okBtn = document.createElement('button')
+        okBtn.className = 'modal-btn modal-btn-primary'
+        okBtn.textContent = getI18n('confirm') || 'OK'
+        okBtn.type = 'button'
+
+        let isClosing = false
+        const cleanup = (result: boolean): void => {
+            if (isClosing) return
+            isClosing = true
+            overlay.classList.add('is-exiting')
+            dialog.classList.add('is-exiting')
+            overlay.addEventListener('animationend', () => {
+                overlay.remove()
+                resolve(result)
+            })
+        }
+
+        cancelBtn.onclick = () => cleanup(false)
+        okBtn.onclick = () => cleanup(true)
+
+        overlay.addEventListener('click', (e) => {
+            if (e.target === overlay) cleanup(false)
+        })
+
+        actions.append(cancelBtn, okBtn)
+        dialog.append(descEl, actions)
+        overlay.appendChild(dialog)
+        document.body.appendChild(overlay)
+        
+        requestAnimationFrame(() => okBtn.focus())
+    })
+}
+
 export function showPasswordPrompt(message = ''): Promise<string | null> {
     const titleText = message || (CONFIG.pw ? getI18n('changePW') + ' - ' + getI18n('passwordSetPrompt') : getI18n('setPW'))
 

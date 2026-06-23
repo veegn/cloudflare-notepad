@@ -56,7 +56,7 @@ jobs:
         uses: cloudflare/wrangler-action@v3
         with:
           apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
-          command: deploy --name cloudflare-notes
+          command: deploy --name cloudflare-notes --keep-vars
 
       - name: Output deployment URL
         env:
