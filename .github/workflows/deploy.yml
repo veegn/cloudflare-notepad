@@ -1,4 +1,4 @@
-name: Deploy cloud-notepad
+name: Deploy cloudflare-notepad
 
 on:
   push:
@@ -56,7 +56,7 @@ jobs:
         uses: cloudflare/wrangler-action@v3
         with:
           apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
-          command: deploy
+          command: deploy --name cloudflare-notes
 
       - name: Output deployment URL
         env:
