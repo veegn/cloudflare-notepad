@@ -59,11 +59,12 @@ test('can set a password via UI and it protects the note', async ({ page, reques
     await page.locator('.opt-pw').click()
 
     // Handle custom DOM dialog
-    await page.locator('.pw-input').fill('my-new-pass')
-    await page.locator('.pw-ok').click()
+    await page.locator('.modal-input').fill('my-new-pass')
+    await page.locator('.modal-btn-primary').click()
 
-    // Handle the native success alert ("Password saved")
-    page.once('dialog', dialog => dialog.accept())
+    // Handle the custom success alert ("Password saved")
+    await page.locator('.modal-desc').waitFor({ state: 'visible' })
+    await page.locator('.modal-btn-primary').click()
     
     // Wait for the page to reload
     await page.waitForURL(url => url.pathname.includes('/edit/'))
