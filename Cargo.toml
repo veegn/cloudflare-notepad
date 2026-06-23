@@ -1,5 +1,5 @@
 [package]
-name = "notepad-server"
+name = "cloudflare-notepad"
 version = "0.1.0"
 edition = "2021"
 description = "Cloudflare Workers backend for Cloud Notepad"

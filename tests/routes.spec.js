@@ -111,6 +111,9 @@ test('home page localizes copy, removes quick start, and renders home note markd
 
     expect(localizedHtml).toContain('一个轻量的工作台，用于快速记录与安全分享。')
 
+    // Seed the home note before checking the UI
+    await saveNote(request, '_index', '## Dashboard\n### Metrics\n- CPU\n- Memory')
+
     await page.goto('/')
     await expect(page.getByText('Quick Start')).toHaveCount(0)
     await expect(page.locator('#preview-home h2, #preview-home h3').first()).toBeVisible()

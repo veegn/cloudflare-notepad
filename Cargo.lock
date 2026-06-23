@@ -132,6 +132,27 @@ dependencies = [
 ]
 
 [[package]]
+name = "cloudflare-notepad"
+version = "0.1.0"
+dependencies = [
+ "base64",
+ "console_error_panic_hook",
+ "getrandom",
+ "hex",
+ "hmac",
+ "js-sys",
+ "md-5",
+ "pbkdf2",
+ "serde",
+ "serde_json",
+ "sha2",
+ "tera",
+ "urlencoding",
+ "worker",
+ "worker-macros",
+]
+
+[[package]]
 name = "console_error_panic_hook"
 version = "0.1.7"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -596,27 +617,6 @@ name = "memchr"
 version = "2.8.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "88904434abc2901f197fe8cc55f0445e7ded921dba5911dad2e2b39b48e663c4"
-
-[[package]]
-name = "notepad-server"
-version = "0.1.0"
-dependencies = [
- "base64",
- "console_error_panic_hook",
- "getrandom",
- "hex",
- "hmac",
- "js-sys",
- "md-5",
- "pbkdf2",
- "serde",
- "serde_json",
- "sha2",
- "tera",
- "urlencoding",
- "worker",
- "worker-macros",
-]
 
 [[package]]
 name = "num-traits"

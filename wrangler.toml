@@ -1,4 +1,4 @@
-name = "cloud-notepad"
+name = "cloudflare-notepad"
 main = "build/worker/shim.mjs"
 compatibility_date = "2025-01-01"
 
