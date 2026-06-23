@@ -167,8 +167,8 @@ export function initApp(): void {
     updateLastModified()
     setInterval(updateLastModified, 30000)
 
-    if (CONFIG.isHome && UI.homePreview) {
-        renderEditorPreview('md', CONFIG.content || '', UI.homePreview)
+    if (CONFIG.isHome && UI.homePreview && CONFIG.content) {
+        renderEditorPreview('md', CONFIG.content, UI.homePreview)
     }
 
     initEditor(UI)
