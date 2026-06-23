@@ -1,5 +1,5 @@
 function uniqueNotePath() {
-    return `/e2e-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`
+    return `e2e-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`
 }
 
 async function switchMode(page, mode) {
@@ -9,8 +9,8 @@ async function switchMode(page, mode) {
 }
 
 async function saveNote(request, notePath, content) {
-    return request.post(`${notePath}/edit`, {
-        form: { t: content },
+    return request.put(`/api/notes/${notePath}`, {
+        data: { content: content },
     })
 }
 

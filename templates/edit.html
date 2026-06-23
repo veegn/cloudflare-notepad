@@ -1,0 +1,26 @@
+{% extends "base.html" %}
+
+{% block editor_content %}
+{% if metadata.mode == "md" %}
+{# Markdown edit mode: split pane with editor + preview #}
+<div class="composer-frame is-editing mode-md" data-mode="md">
+  <div class="composer-split-pane">
+    <div class="composer-editor-pane">
+      <div id="cm-editor" class="cm-editor-host"
+        data-placeholder="{{ i18n[lang].emptyPH | default(value='') }}">{{ content | default(value="") }}</div>
+    </div>
+    <div class="composer-preview-pane">
+      <div class="composer-preview-scroll" id="preview-scroll">
+        <div id="preview" class="composer-preview" aria-hidden="false"></div>
+      </div>
+    </div>
+  </div>
+</div>
+{% else %}
+{# Plain / JSON / YAML edit mode: code editor only #}
+<div class="composer-frame is-editing mode-{{ metadata.mode | default(value='plain') }}" data-mode="{{ metadata.mode | default(value='plain') }}">
+  <div id="cm-editor" class="cm-editor-host"
+    data-placeholder="{{ i18n[lang].emptyPH | default(value='') }}">{{ content | default(value="") }}</div>
+</div>
+{% endif %}
+{% endblock editor_content %}

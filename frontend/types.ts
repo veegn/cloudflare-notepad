@@ -5,6 +5,7 @@ export interface I18nMap {
 }
 
 export interface AppConfig {
+    notePath: string
     lang: string
     isEdit: boolean
     isHome: boolean

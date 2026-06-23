@@ -1,6 +1,7 @@
 import type { AppConfig } from './types'
 
 export const CONFIG: AppConfig = window.CONFIG || {
+    notePath: '',
     lang: 'en',
     isEdit: false,
     isHome: false,
@@ -11,6 +12,8 @@ export const CONFIG: AppConfig = window.CONFIG || {
         en: {
             lastModified: 'Last modified',
             editButtonText: 'Edit',
+            exitButtonText: 'Exit',
+            invalidPagePrompt: 'This page does not exist. Do you want to view the note at this path?',
             share: 'Share',
             rawButtonText: 'Raw',
             err: 'Error',

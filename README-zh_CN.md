@@ -16,7 +16,7 @@
 ## 功能亮点
 
 - 首页（`/`）提供欢迎视图与首页笔记预览。
-- 支持通过 `/.create` 一键创建随机路径笔记。
+- 支持通过 `/new` 一键创建随机路径笔记。
 - 编辑与查看页面均基于 Cloudflare KV 自动保存。
 - 支持四种内容模式：纯文本、Markdown、JSON、YAML。
 - Markdown 支持分栏实时预览，并可在编辑 / 分栏 / 预览布局间切换。
@@ -24,21 +24,18 @@
 - 支持浅色 / 深色主题切换，并记住用户偏好。
 - 支持笔记密码保护（查看与编辑）。
 - 支持私有笔记（`share: false`）与鉴权后的 Raw 原文读取。
-- 支持为首页笔记（`.index`）启用独立管理员编辑密码。
+- 支持为首页笔记（`_index`）启用独立管理员编辑密码。
 
 ## 路由说明
 
 | 路由 | 说明 |
 | --- | --- |
-| `/` | 首页笔记（`.index`）仪表盘视图 |
-| `/.index/edit` | 编辑首页笔记（可配置管理员密码保护） |
-| `/.create` | 生成 5 位随机路径并跳转到编辑页 |
-| `/:path` | 查看指定笔记 |
-| `/:path/edit` | 编辑指定笔记 |
-| `/:path/raw` | 获取笔记原文（受保护/私有笔记需先鉴权） |
-| `/:path/edit/auth` | 密码鉴权接口 |
-| `/:path/edit/pw` | 设置或移除笔记密码 |
-| `/:path/edit/setting` | 更新笔记设置（当前支持 `mode`） |
+| `/` | 首页笔记（`_index`）仪表盘视图 |
+| `/new` | 创建笔记并跳转到编辑页 |
+| `/note/:path` | 查看指定笔记 |
+| `/edit/:path` | 编辑指定笔记 |
+| `/api/notes/:path?raw=1` | 获取笔记原文（受保护/私有笔记需先鉴权） |
+| `/api/auth` | 笔记密码鉴权并设置 HttpOnly Cookie |
 
 ## 环境变量
 
@@ -46,7 +43,7 @@
 
 ```bash
 SCN_SALT           # 用于兼容旧密码逻辑的盐
-SCN_SECRET         # JWT 签名密钥
+SCN_SECRET         # 必填 JWT 签名密钥（Cloudflare Worker Secret）
 SCN_INDEX_PASSWD   # 可选：保护 /.index/edit 的管理员密码
 ```
 
@@ -54,6 +51,7 @@ SCN_INDEX_PASSWD   # 可选：保护 /.index/edit 的管理员密码
 
 ```bash
 npm install
+copy .dev.vars.example .dev.vars
 npm start
 ```
 
@@ -61,10 +59,10 @@ npm start
 
 - `npm run build:frontend:dev`：构建开发版前端包。
 - `npm run build:frontend:prod`：构建生产版前端包。
-- `npm run lint`：检查前后端 TypeScript 代码规范。
-- `npm run typecheck`：执行 Worker 与前端的类型检查。
+- `npm run lint`：检查前端 TypeScript 代码规范。
+- `npm run typecheck`：执行 TypeScript 类型检查。
 - `npm run test:e2e`：运行 Playwright 端到端测试。
-- `npm run check`：串行执行 lint + typecheck + e2e。
+- `npm run check`：执行前端检查、Rust 格式/lint/单元测试和端到端测试。
 
 ## 部署
 
@@ -72,7 +70,7 @@ npm start
 1. 前往 [Cloudflare API Token 页面](https://dash.cloudflare.com/profile/api-tokens)，使用 `Edit Cloudflare Workers` 模板创建令牌。
 2. 在 Cloudflare Worker 控制台，进入你的项目（或先部署一次生成项目），在 `Settings -> Variables` 中添加以下 **Environment Variables**（建议点击 "Encrypt" 设为 Secret）：
    - `SCN_SALT`: 用于加密逻辑的盐（随机字符串）
-   - `SCN_SECRET`: JWT 签名密钥（较长的随机字符串）
+   - `SCN_SECRET`: JWT 签名密钥（较长的随机字符串）。请配置为 Cloudflare Worker Secret，而不是明文变量。
    - `SCN_INDEX_PASSWD`: (可选) 保护首页编辑的管理员密码
 
 ### 2. 配置 GitHub Actions
