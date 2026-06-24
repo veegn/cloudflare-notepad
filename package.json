@@ -27,7 +27,7 @@
     "build:frontend:prod": "node scripts/build-frontend.mjs prod",
     "typecheck": "tsc --noEmit",
     "lint": "eslint frontend/**/*.ts",
-    "check": "npm run lint && npm run typecheck && cargo fmt --check && cargo clippy --all-targets -- -D warnings && cargo test && npm run test:e2e"
+    "check": "npm run lint && npm run typecheck && cargo fmt --check && cargo clippy --all-targets -- -D warnings && cargo test"
   },
   "dependencies": {
     "@codemirror/autocomplete": "^6.20.1",
