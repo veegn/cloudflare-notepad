@@ -42,9 +42,6 @@ jobs:
       - name: Install Worker build tool
         run: cargo install worker-build --version 0.1.2 --locked
 
-      - name: Install Playwright browser
-        run: npx playwright install --with-deps chromium
-
       - name: Run quality checks
         run: npm run check
 
