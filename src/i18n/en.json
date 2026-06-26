@@ -37,5 +37,6 @@
     "homeQuickStartCreate": "Create a note from a random path.",
     "homeQuickStartEdit": "Edit in one merged writing surface.",
     "homeQuickStartProtect": "Protect the note when private reading matters.",
-    "homeEmptyNote": "No content yet. Use \"Edit Home\" to add your own dashboard notes."
+    "homeEmptyNote": "No content yet. Use \"Edit Home\" to add your own dashboard notes.",
+    "newNotePathPrompt": "Enter the path for the new note (leave empty for random path)"
 }

@@ -314,7 +314,7 @@ textarea {
     }
 
     .composer-preview {
-        max-width: 680px;
+        max-width: 1024px;
         margin: 0 auto;
         padding-bottom: 32px;
         font-family: 'IBM Plex Sans', 'Segoe UI', sans-serif;
@@ -440,7 +440,7 @@ textarea {
         .cm-editor-host, .cm-editor, .cm-scroller { height: 100%; }
         .cm-content { padding: 28px 0 72px; }
         .cm-line {
-            max-width: 680px;
+            max-width: 1024px;
             margin: 0 auto;
             padding: 0 20px;
             font-size: 16px;
@@ -553,7 +553,7 @@ textarea {
 .welcome-note-preview {
     min-height: 180px;
     padding: 16px;
-    border: 1px solid var(--vscode-border);
+    border: none;
     border-radius: 10px;
     background: rgba(0, 0, 0, 0.12);
     font-size: 15px;
@@ -1273,3 +1273,24 @@ textarea {
         width: auto;
     }
 }
+
+/* GitHub style alerts */
+.composer-preview .markdown-alert { padding: 8px 16px; margin-bottom: 16px; color: inherit; border-left: 4px solid var(--vscode-border); border-radius: var(--radius-m); background: rgba(0, 0, 0, 0.05); }
+[data-theme="light"] .composer-preview .markdown-alert { background: rgba(0, 0, 0, 0.02); }
+.composer-preview .markdown-alert > p { margin-top: 0; margin-bottom: 0; }
+.composer-preview .markdown-alert .markdown-alert-title { display: flex; align-items: center; font-weight: 500; font-size: 14px; margin-bottom: 8px; }
+.composer-preview .markdown-alert .markdown-alert-title svg { margin-right: 8px; fill: currentColor; }
+.composer-preview .markdown-alert.markdown-alert-note { border-left-color: var(--vscode-accent); }
+.composer-preview .markdown-alert.markdown-alert-note .markdown-alert-title { color: var(--vscode-accent); }
+.composer-preview .markdown-alert.markdown-alert-tip { border-left-color: #3fb950; }
+.composer-preview .markdown-alert.markdown-alert-tip .markdown-alert-title { color: #3fb950; }
+[data-theme="light"] .composer-preview .markdown-alert.markdown-alert-tip .markdown-alert-title { color: #1a7f37; }
+.composer-preview .markdown-alert.markdown-alert-important { border-left-color: #a371f7; }
+.composer-preview .markdown-alert.markdown-alert-important .markdown-alert-title { color: #a371f7; }
+[data-theme="light"] .composer-preview .markdown-alert.markdown-alert-important .markdown-alert-title { color: #8250df; }
+.composer-preview .markdown-alert.markdown-alert-warning { border-left-color: #d29922; }
+.composer-preview .markdown-alert.markdown-alert-warning .markdown-alert-title { color: #d29922; }
+[data-theme="light"] .composer-preview .markdown-alert.markdown-alert-warning .markdown-alert-title { color: #9a6700; }
+.composer-preview .markdown-alert.markdown-alert-caution { border-left-color: #f85149; }
+.composer-preview .markdown-alert.markdown-alert-caution .markdown-alert-title { color: #f85149; }
+[data-theme="light"] .composer-preview .markdown-alert.markdown-alert-caution .markdown-alert-title { color: #cf222e; }
