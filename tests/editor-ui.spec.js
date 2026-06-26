@@ -236,3 +236,17 @@ test('exit button redirects user from edit view to readonly view', async ({ page
     await page.waitForURL(`**/note/${notePath}`)
     await expect(page.locator('.opt-edit')).toBeVisible()
 })
+
+test('markdown editor renders mermaid diagrams', async ({ page }) => {
+    const notePath = uniqueNotePath()
+    await page.goto(`/edit/${notePath}`)
+
+    await switchMode(page, 'md')
+    await fillCodeEditor(page, '```mermaid\ngraph TD\nA-->B\n```')
+
+    const mermaidDiv = page.locator('.composer-preview-pane .mermaid')
+    await expect(mermaidDiv).toBeVisible()
+    // Wait for the SVG to be rendered by Mermaid
+    const svg = mermaidDiv.locator('svg')
+    await expect(svg).toBeVisible({ timeout: 15000 })
+})

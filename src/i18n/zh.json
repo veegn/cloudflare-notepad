@@ -37,5 +37,6 @@
     "homeQuickStartCreate": "通过随机路径快速创建一篇新笔记。",
     "homeQuickStartEdit": "在统一的编辑界面中完成写作与预览。",
     "homeQuickStartProtect": "需要私密阅读时，可以为笔记启用保护。",
-    "homeEmptyNote": "还没有首页内容，点击“编辑首页”添加你的仪表盘笔记。"
+    "homeEmptyNote": "还没有首页内容，点击“编辑首页”添加你的仪表盘笔记。",
+    "newNotePathPrompt": "请输入新笔记路径（留空则生成随机路径）"
 }

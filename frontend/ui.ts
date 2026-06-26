@@ -238,3 +238,70 @@ export function showPasswordPrompt(message = ''): Promise<string | null> {
         requestAnimationFrame(() => input.focus())
     })
 }
+
+export function showPrompt(message = '', defaultValue = ''): Promise<string | null> {
+    return new Promise(resolve => {
+        const overlay = document.createElement('div')
+        overlay.className = 'modal-overlay'
+
+        const dialog = document.createElement('div')
+        dialog.className = 'modal-dialog'
+
+        const titleEl = document.createElement('div')
+        titleEl.className = 'modal-title'
+        titleEl.textContent = message
+
+        const input = document.createElement('input')
+        input.type = 'text'
+        input.className = 'modal-input'
+        input.value = defaultValue
+
+        const actions = document.createElement('div')
+        actions.className = 'modal-actions'
+
+        const cancelBtn = document.createElement('button')
+        cancelBtn.className = 'modal-btn modal-btn-secondary'
+        cancelBtn.textContent = getI18n('cancel')
+        cancelBtn.type = 'button'
+
+        const okBtn = document.createElement('button')
+        okBtn.className = 'modal-btn modal-btn-primary'
+        okBtn.textContent = getI18n('confirm')
+        okBtn.type = 'button'
+
+        let isClosing = false
+        const cleanup = (value: string | null): void => {
+            if (isClosing) return
+            isClosing = true
+            overlay.classList.add('is-exiting')
+            dialog.classList.add('is-exiting')
+            overlay.addEventListener('animationend', () => {
+                overlay.remove()
+                resolve(value)
+            })
+        }
+
+        cancelBtn.onclick = () => cleanup(null)
+        okBtn.onclick = () => cleanup(input.value)
+
+        overlay.addEventListener('click', (e) => {
+            if (e.target === overlay) cleanup(null)
+        })
+
+        input.addEventListener('keydown', (e) => {
+            if (e.key === 'Enter') {
+                e.preventDefault()
+                cleanup(input.value)
+            } else if (e.key === 'Escape') {
+                cleanup(null)
+            }
+        })
+
+        actions.append(cancelBtn, okBtn)
+        dialog.append(titleEl, input, actions)
+        overlay.appendChild(dialog)
+        document.body.appendChild(overlay)
+
+        requestAnimationFrame(() => input.focus())
+    })
+}

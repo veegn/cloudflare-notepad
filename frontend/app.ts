@@ -1,7 +1,7 @@
 import { CONFIG, $, $$, getI18n } from './config'
 import { getEditPath, getViewPath, initEditor } from './editor'
 import { renderEditorPreview } from './renderers'
-import { EDIT_BUTTONS, errHandle, GITHUB_LINK, showPasswordPrompt, showToast, showAlert, showConfirm, Theme, VIEW_BUTTONS } from './ui'
+import { EDIT_BUTTONS, errHandle, GITHUB_LINK, showPasswordPrompt, showToast, showAlert, showConfirm, Theme, VIEW_BUTTONS, showPrompt } from './ui'
 import type { Mode, UIRefs } from './types'
 import dayjs from 'dayjs'
 import relativeTime from 'dayjs/plugin/relativeTime'
@@ -191,8 +191,20 @@ export async function initApp(): Promise<void> {
         const rawBtn = target.closest('.opt-raw')
         const exitBtn = target.closest('.opt-exit')
         const themeBtn = target.closest('.theme-toggle')
+        const newBtn = target.closest<HTMLAnchorElement>('a[href="/new"]')
 
-        if (pwBtn) {
+        if (newBtn) {
+            event.preventDefault()
+            const path = await showPrompt(getI18n('newNotePathPrompt'))
+            if (path === null) {
+                return
+            }
+            if (path.trim() === '') {
+                window.location.href = '/new'
+            } else {
+                window.location.href = `/edit/${encodeURIComponent(path.trim())}`
+            }
+        } else if (pwBtn) {
             const passwd = await showPasswordPrompt()
             if (passwd == null) {
                 return

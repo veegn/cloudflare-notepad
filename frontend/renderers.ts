@@ -1,7 +1,24 @@
 import { KEYWORD_PATTERN } from './config'
 import type { Mode } from './types'
 import { marked } from 'marked'
+import markedAlert from 'marked-alert'
 import DOMPurify from 'dompurify'
+
+marked.use(markedAlert())
+marked.use({
+    renderer: {
+        // marked v17 accepts token object
+        code(token) {
+            if (token.lang === 'mermaid') {
+                return `<div class="mermaid">${escapeHtml(token.text)}</div>\n`
+            }
+            return false
+        }
+    }
+})
+
+let mermaidLoaded = false
+let mermaidLoading = false
 
 export function escapeHtml(text = ''): string {
     return String(text)
@@ -254,6 +271,33 @@ function renderMarkdownPreview(node: HTMLElement, text: string): void {
     })
     node.innerHTML = DOMPurify.sanitize(marked.parse(text) as string)
     highlightKeywordsInHtml(node)
+
+    const mermaidNodes = node.querySelectorAll('.mermaid')
+    if (mermaidNodes.length > 0) {
+        const initMermaid = () => {
+            if (!window.mermaid) return
+            const theme = document.documentElement.getAttribute('data-theme') === 'dark' ? 'dark' : 'default'
+            window.mermaid.initialize({ startOnLoad: false, theme })
+            window.mermaid.run({ nodes: mermaidNodes })
+        }
+
+        if (mermaidLoaded) {
+            initMermaid()
+        } else if (!mermaidLoading) {
+            mermaidLoading = true
+            const script = document.createElement('script')
+            script.src = '/js/mermaid.min.js'
+            script.onload = () => {
+                mermaidLoaded = true
+                mermaidLoading = false
+                initMermaid()
+            }
+            script.onerror = () => {
+                mermaidLoading = false
+            }
+            document.head.appendChild(script)
+        }
+    }
 }
 
 function renderCodePreview(node: HTMLElement, text: string, mode: Mode): void {
