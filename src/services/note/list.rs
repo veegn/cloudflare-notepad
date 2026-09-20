@@ -323,17 +323,6 @@ pub async fn list_all_docs(bucket: &Bucket, opts: &ListOptions) -> Result<Vec<No
     Ok(out)
 }
 
-/// Convert fast docs into homepage records (no bodies).
-pub fn fast_docs_to_records(docs: Vec<FastDoc>) -> Vec<NoteRecord> {
-    docs.into_iter()
-        .map(|d| NoteRecord {
-            path: d.path,
-            content: String::new(),
-            metadata: d.metadata,
-        })
-        .collect()
-}
-
 /// Count pages per book using prefix keys only (no body download).
 pub async fn book_page_counts(bucket: &Bucket) -> Result<HashMap<String, u32>> {
     let mut counts: HashMap<String, u32> = HashMap::new();
