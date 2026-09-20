@@ -1663,7 +1663,8 @@ textarea {
 
 .doc-tree-row {
     display: grid;
-    grid-template-columns: 20px 22px minmax(0, 1fr) minmax(48px, max-content) minmax(0, 0.7fr) minmax(56px, max-content);
+    /* chevron | icon | badge(left) | title | meta | repair */
+    grid-template-columns: 20px 22px minmax(44px, max-content) minmax(0, 1fr) minmax(0, auto) minmax(48px, max-content);
     align-items: center;
     column-gap: 8px;
     min-height: 40px;
@@ -1730,9 +1731,8 @@ textarea {
 
 .doc-tree-badge {
     display: flex;
-    justify-content: flex-end;
+    justify-content: flex-start;
     align-items: center;
-    min-width: 48px;
 }
 
 .doc-tree-badge .badge {
