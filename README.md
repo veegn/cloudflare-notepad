@@ -104,6 +104,8 @@ npm start
 - `npm run test:e2e`：运行 Playwright 端到端测试。
 - `npm run check`：执行前端检查、Rust 格式/lint/单元测试。
 - `npm run migrate:doctype:dry`：检查本地历史笔记的文档类型兼容情况。
+- `npm run repair -- <path>`：修复 metadata 与正文不一致（标题/H1、docType、书籍 TOC）。
+- `npm run cleanup:e2e -- --force`：清理 e2e 残留对象。
 
 ## 部署
 
