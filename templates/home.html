@@ -4,17 +4,47 @@
 <div class="welcome-view">
   <div class="welcome-hero">
     <div class="welcome-kicker">{{ i18n[lang].homeKicker | default(value="Cloud Notepad") }}</div>
-    <h1 class="welcome-title">{{ i18n[lang].homeTitle | default(value="A lightweight workspace for quick notes and secure sharing.") }}</h1>
+    <h1 class="welcome-title">{{ i18n[lang].homeTitle | default(value="Browse books and articles") }}</h1>
     <p class="welcome-copy">{{ i18n[lang].homeCopy | default(value="") }}</p>
     <div class="welcome-actions">
-      <a class="welcome-button primary" href="/new">{{ i18n[lang].homeNewNote | default(value="New Note") }}</a>
+      <button type="button" class="welcome-button primary" id="btn-new-doc">{{ i18n[lang].homeNewDoc | default(value="New Document") }}</button>
       <a class="welcome-button" href="/edit/_index">{{ i18n[lang].homeEditHome | default(value="Edit Home") }}</a>
     </div>
   </div>
-  <div class="welcome-grid">
-    <section class="welcome-card mode-md">
-      <div id="preview-home" class="welcome-note-preview composer-preview">{{ content | default(value="") }}</div>
-    </section>
-  </div>
+
+  {% if content %}
+  <section class="home-index-card">
+    <div class="home-index-head">
+      <span class="badge badge-article">{{ i18n[lang].homeIndexCard | default(value="Home note") }}</span>
+      <span class="home-index-path">_index</span>
+      <a class="home-index-edit" href="/edit/_index">{{ i18n[lang].editButtonText | default(value="Edit") }}</a>
+    </div>
+    <div id="preview-home" class="welcome-note-preview composer-preview">{{ content }}</div>
+  </section>
+  {% endif %}
+
+  <section class="home-docs" id="home-docs">
+    <div class="home-toolbar">
+      <div class="home-toolbar-left">
+        <h2 class="home-section-title">{{ i18n[lang].homeDocsTitle | default(value="Documents") }}</h2>
+        <span class="home-counts" id="home-counts"></span>
+      </div>
+      <div class="home-toolbar-right">
+        <input type="search" class="home-search" id="home-search"
+               placeholder="{{ i18n[lang].homeSearchPH | default(value="Search title / path…") }}"
+               autocomplete="off" />
+        <button type="button" class="opt-button" id="home-expand-all">{{ i18n[lang].homeExpandAll | default(value="Expand") }}</button>
+        <button type="button" class="opt-button" id="home-collapse-all">{{ i18n[lang].homeCollapseAll | default(value="Collapse") }}</button>
+      </div>
+    </div>
+    <div class="home-chips" id="home-filters" role="tablist">
+      <button type="button" class="home-chip active" data-filter="all">{{ i18n[lang].homeFilterAll | default(value="All") }}</button>
+      <button type="button" class="home-chip" data-filter="article">{{ i18n[lang].homeFilterArticle | default(value="Articles") }}</button>
+      <button type="button" class="home-chip" data-filter="book">{{ i18n[lang].homeFilterBook | default(value="Books") }}</button>
+    </div>
+    <div class="doc-tree" id="doc-tree" role="tree" aria-label="Documents">
+      <div class="doc-tree-loading">{{ i18n[lang].homeLoading | default(value="Loading…") }}</div>
+    </div>
+  </section>
 </div>
 {% endblock editor_content %}

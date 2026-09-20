@@ -1,12 +1,28 @@
 import { CONFIG, $, $$, getI18n } from './config'
 import { getEditPath, getViewPath, initEditor } from './editor'
 import { renderEditorPreview } from './renderers'
-import { EDIT_BUTTONS, errHandle, GITHUB_LINK, showPasswordPrompt, showToast, showAlert, showConfirm, Theme, VIEW_BUTTONS, showPrompt } from './ui'
+import { EDIT_BUTTONS, errHandle, GITHUB_LINK, showPasswordPrompt, showToast, showAlert, showConfirm, Theme, VIEW_BUTTONS } from './ui'
+import { showCreateDocDialog } from './createDoc'
 import type { Mode, UIRefs } from './types'
+import { initHomeTree } from './homeTree'
+import { initDocSidebar } from './bookSidebar'
 import dayjs from 'dayjs'
 import relativeTime from 'dayjs/plugin/relativeTime'
 
 let initialized = false
+
+function isSystemPath(path: string): boolean {
+    return (
+        path === '/' ||
+        path === '/new' ||
+        path === '/favicon.ico' ||
+        path.startsWith('/note/') ||
+        path.startsWith('/edit/') ||
+        path.startsWith('/api/') ||
+        path.startsWith('/css/') ||
+        path.startsWith('/js/')
+    )
+}
 
 export async function passwdPrompt(): Promise<void> {
     const passwd = await showPasswordPrompt(getI18n('enterPasswordPrompt'))
@@ -40,20 +56,9 @@ export async function initApp(): Promise<void> {
     }
     initialized = true
 
-    const path = window.location.pathname
-    const isSystemPath =
-        path === '/' ||
-        path === '/new' ||
-        path === '/favicon.ico' ||
-        path.startsWith('/note/') ||
-        path.startsWith('/edit/') ||
-        path.startsWith('/api/') ||
-        path.startsWith('/css/') ||
-        path.startsWith('/js/')
-
-    if (!isSystemPath) {
+    if (!isSystemPath(window.location.pathname)) {
         if (await showConfirm(getI18n('invalidPagePrompt'))) {
-            window.location.href = `/note${path}`
+            window.location.href = `/note${window.location.pathname}`
             return
         }
     }
@@ -171,6 +176,12 @@ export async function initApp(): Promise<void> {
         renderEditorPreview('md', CONFIG.content, UI.homePreview)
     }
 
+    if (CONFIG.isHome) {
+        void initHomeTree()
+    }
+
+    initDocSidebar()
+
     initEditor(UI)
 
     document.body.addEventListener('click', async event => {
@@ -191,19 +202,12 @@ export async function initApp(): Promise<void> {
         const rawBtn = target.closest('.opt-raw')
         const exitBtn = target.closest('.opt-exit')
         const themeBtn = target.closest('.theme-toggle')
+        // `#btn-new-doc` is handled by homeTree; avoid double-opening the create dialog
         const newBtn = target.closest<HTMLAnchorElement>('a[href="/new"]')
 
         if (newBtn) {
             event.preventDefault()
-            const path = await showPrompt(getI18n('newNotePathPrompt'))
-            if (path === null) {
-                return
-            }
-            if (path.trim() === '') {
-                window.location.href = '/new'
-            } else {
-                window.location.href = `/edit/${encodeURIComponent(path.trim())}`
-            }
+            await showCreateDocDialog()
         } else if (pwBtn) {
             const passwd = await showPasswordPrompt()
             if (passwd == null) {

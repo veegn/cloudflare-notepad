@@ -41,6 +41,12 @@ export function flattenCustomMetadata(metadata) {
   if (metadata && metadata.mode && metadata.mode !== 'plain') custom.mode = String(metadata.mode)
   if (metadata && metadata.updateAt != null) custom.updateAt = String(metadata.updateAt)
   if (metadata && metadata.share === false) custom.share = 'false'
+  // Doc-type fields (new). Missing docType stays omitted → runtime treats as article.
+  if (metadata && metadata.docType && metadata.docType !== 'article') {
+    custom.docType = String(metadata.docType)
+  }
+  if (metadata && metadata.bookRef) custom.bookRef = String(metadata.bookRef)
+  if (metadata && metadata.title) custom.title = String(metadata.title)
   return custom
 }
 

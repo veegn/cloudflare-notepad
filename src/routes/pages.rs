@@ -71,6 +71,9 @@ fn build_config_json(
         "mode": metadata.mode.as_str(),
         "content": content.unwrap_or(""),
         "i18n": i18n_map,
+        "docType": metadata.doc_type.as_str(),
+        "bookRef": metadata.book_ref,
+        "title": metadata.title,
     });
     // Escape `<` to `\u003c` to prevent XSS in <script> blocks.
     config.to_string().replace('<', "\\u003c")
@@ -115,6 +118,9 @@ pub async fn home(req: Request, ctx: RouteContext<()>) -> Result<Response> {
     context.insert("is_edit", &false);
     context.insert("content", &record.content);
     context.insert("metadata", &record.metadata);
+    context.insert("doc_type", "article");
+    context.insert("book_ref", &Option::<String>::None);
+    context.insert("doc_title", &Option::<String>::None);
     context.insert("config_json", &config_json);
     context.insert("show_pw_prompt", &false);
     context.insert("note_path", INDEX_PATH);
@@ -125,11 +131,25 @@ pub async fn home(req: Request, ctx: RouteContext<()>) -> Result<Response> {
 
 // ── GET /new ─────────────────────────────────────────────────────────
 
-pub async fn create_note(_req: Request, _ctx: RouteContext<()>) -> Result<Response> {
-    let path = note::gen_random_path();
+pub async fn create_note(req: Request, _ctx: RouteContext<()>) -> Result<Response> {
+    let url = req.url()?;
+    let only_article = url
+        .query_pairs()
+        .find(|(k, _)| k == "type")
+        .map(|(_, v)| v == "article")
+        .unwrap_or(false);
+
+    if only_article {
+        let path = note::gen_random_path();
+        let mut resp = Response::empty()?.with_status(302);
+        resp.headers_mut()
+            .set("Location", &format!("/edit/{path}"))?;
+        return Ok(resp);
+    }
+
+    // Open homepage create dialog (article | book only).
     let mut resp = Response::empty()?.with_status(302);
-    resp.headers_mut()
-        .set("Location", &format!("/edit/{path}"))?;
+    resp.headers_mut().set("Location", "/")?;
     Ok(resp)
 }
 
@@ -213,11 +233,25 @@ pub async fn view_note(req: Request, ctx: RouteContext<()>) -> Result<Response> 
         &i18n_map,
     );
 
-    let mut context = base_context(lang, &title, &i18n_map);
+    let display_title = if record.metadata.doc_type.as_str() != "article" {
+        record
+            .metadata
+            .title
+            .clone()
+            .filter(|t| !t.trim().is_empty())
+            .unwrap_or_else(|| title.clone())
+    } else {
+        title.clone()
+    };
+
+    let mut context = base_context(lang, &display_title, &i18n_map);
     context.insert("is_home", &false);
     context.insert("is_edit", &false);
     context.insert("content", &record.content);
     context.insert("metadata", &record.metadata);
+    context.insert("doc_type", record.metadata.doc_type.as_str());
+    context.insert("book_ref", &record.metadata.book_ref);
+    context.insert("doc_title", &record.metadata.title);
     context.insert("config_json", &config_json);
     context.insert("show_pw_prompt", &false);
     context.insert("note_path", &path);
@@ -269,11 +303,21 @@ pub async fn edit_note(req: Request, ctx: RouteContext<()>) -> Result<Response> 
         &i18n_map,
     );
 
-    let mut context = base_context(lang, &title, &i18n_map);
+    let display_title = record
+        .metadata
+        .title
+        .clone()
+        .filter(|t| !t.trim().is_empty())
+        .unwrap_or_else(|| title.clone());
+
+    let mut context = base_context(lang, &display_title, &i18n_map);
     context.insert("is_home", &false);
     context.insert("is_edit", &true);
     context.insert("content", &record.content);
     context.insert("metadata", &record.metadata);
+    context.insert("doc_type", record.metadata.doc_type.as_str());
+    context.insert("book_ref", &record.metadata.book_ref);
+    context.insert("doc_title", &record.metadata.title);
     context.insert("config_json", &config_json);
     context.insert("show_pw_prompt", &false);
     context.insert("note_path", &path);
@@ -295,6 +339,9 @@ pub async fn not_found(req: Request, _ctx: RouteContext<()>) -> Result<Response>
     context.insert("is_edit", &false);
     context.insert("content", &"");
     context.insert("metadata", &NoteMetadata::default());
+    context.insert("doc_type", "article");
+    context.insert("book_ref", &Option::<String>::None);
+    context.insert("doc_title", &Option::<String>::None);
     context.insert("config_json", &"{}");
     context.insert("show_pw_prompt", &false);
     context.insert("note_path", &"");
@@ -329,6 +376,9 @@ fn render_need_passwd(
     context.insert("is_edit", &false);
     context.insert("content", &"");
     context.insert("metadata", &NoteMetadata::default());
+    context.insert("doc_type", "article");
+    context.insert("book_ref", &Option::<String>::None);
+    context.insert("doc_title", &Option::<String>::None);
     context.insert("config_json", &config_json);
     context.insert("show_pw_prompt", &show_pw_prompt);
     context.insert("note_path", note_path);

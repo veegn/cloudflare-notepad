@@ -27,3 +27,5 @@ pub const ERR_UNAUTHORIZED: u32 = 40002;
 pub const ERR_INVALID_MODE: u32 = 40102;
 #[allow(dead_code)]
 pub const ERR_STORAGE: u32 = 50001;
+#[allow(dead_code)]
+pub const ERR_INVALID_DOC: u32 = 40010;

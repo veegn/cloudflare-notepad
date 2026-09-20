@@ -1,11 +1,14 @@
 const { test, expect } = require('@playwright/test')
 const { saveNote, uniqueNotePath } = require('./helpers')
 
-test('create route redirects to a random edit path', async ({ request }) => {
-    const response = await request.get('/new', {
-        maxRedirects: 0,
-    })
+test('create route redirects home to open create dialog', async ({ request }) => {
+    const response = await request.get('/new', { maxRedirects: 0 })
+    expect(response.status()).toBe(302)
+    expect(response.headers().location).toBe('/')
+})
 
+test('create route with type=article redirects to random edit path', async ({ request }) => {
+    const response = await request.get('/new?type=article', { maxRedirects: 0 })
     expect(response.status()).toBe(302)
     expect(response.headers().location).toMatch(/^\/edit\/[a-z0-9]{5}$/)
 })
@@ -109,7 +112,9 @@ test('home page localizes copy, removes quick start, and renders home note markd
     })
     const localizedHtml = await localizedHome.text()
 
-    expect(localizedHtml).toContain('一个轻量的工作台，用于快速记录与安全分享。')
+    expect(localizedHtml).toContain('浏览书籍与文章')
+    expect(localizedHtml).toContain('云端文档库')
+    expect(localizedHtml).toContain('home-docs')
 
     // Seed the home note (requires index admin password auth) before checking the UI
     const indexPassword = process.env.SCN_INDEX_PASSWD || 'e2e-test-password'
@@ -123,7 +128,8 @@ test('home page localizes copy, removes quick start, and renders home note markd
     await expect(page.getByText('Quick Start')).toHaveCount(0)
     await expect(page.locator('#preview-home h2, #preview-home h3').first()).toBeVisible()
     await expect(page.locator('#preview-home li').first()).toBeVisible()
-    await expect(page.getByRole('link', { name: 'Edit Home' })).toBeVisible()
+    await expect(page.locator('#btn-new-doc')).toBeVisible()
+    await expect(page.getByRole('link', { name: '编辑首页' }).or(page.getByRole('link', { name: 'Edit Home' }))).toBeVisible()
 })
 
 test('clicking theme toggle switches data-theme attribute and persists in localStorage', async ({ page }) => {

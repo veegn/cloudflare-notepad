@@ -350,6 +350,7 @@ mod tests {
             update_at: None,
             share: true,
             pw: None,
+            ..Default::default()
         };
 
         assert!(!needs_view_auth(&meta));

@@ -15,8 +15,9 @@
 
 ## 功能亮点
 
-- 首页（`/`）提供欢迎视图与首页笔记预览。
-- 支持通过 `/new` 一键创建随机路径笔记。
+- 首页（`/`）展示**文档树**：目录可展开，区分**文章 / 书籍**；书籍分页不在树中列出。
+- 全局创建仅 **文章 / 书籍** 两类；**分页**在「编辑书籍」侧栏增删改查。
+- 书籍正文为分页目录（TOC）；查看书籍/分页时左侧展示目录。
 - 编辑与查看页面均基于 Cloudflare R2 自动保存。
 - 支持四种内容模式：纯文本、Markdown、JSON、YAML。
 - Markdown 支持分栏实时预览，并可在编辑 / 分栏 / 预览布局间切换。
@@ -30,12 +31,37 @@
 
 | 路由 | 说明 |
 | --- | --- |
-| `/` | 首页笔记（`_index`）仪表盘视图 |
-| `/new` | 创建笔记并跳转到编辑页 |
-| `/note/:path` | 查看指定笔记 |
-| `/edit/:path` | 编辑指定笔记 |
+| `/` | 文档树首页（文章 + 书籍；含 `_index` 钉住卡） |
+| `/new` | 打开创建对话框；`/new?type=article` 仍可随机建文章 |
+| `/note/:path` | 查看文档（书籍/分页带左侧 TOC） |
+| `/edit/:path` | 编辑文档（书籍带分页管理侧栏） |
+| `/api/docs` | 创建文章或书籍（不接受 page） |
+| `/api/notes` | 文档列表（可按 `docType` 过滤） |
+| `/api/books` · `/api/books/:book/pages` | 书架与分页管理 |
+| `/api/home-tree` · `/api/toc?book=` | 首页树 / 书籍目录 |
 | `/api/notes/:path?raw=1` | 获取笔记原文（受保护/私有笔记需先鉴权） |
 | `/api/auth` | 笔记密码鉴权并设置 HttpOnly Cookie |
+
+## 文档类型与历史数据
+
+| 类型 | `docType` | 创建入口 | 说明 |
+| --- | --- | --- | --- |
+| 文章 | `article`（缺省） | 全局「新建文档」 | 与旧单篇笔记行为一致 |
+| 书籍 | `book` | 全局「新建文档」 | 正文 = 分页目录 Markdown |
+| 书籍分页 | `page` | **编辑书籍** 侧栏 | 元数据含 `bookRef`；首页树不展示 |
+
+**历史数据适配（无需强制迁移）：**
+
+- R2 中**没有** `docType` 的对象一律按 **文章** 处理，功能与升级前一致。
+- 遗留首页键 `.index` 仍会映射到 `_index`。
+- 多段 path（如 `notes/todo`）在首页树中显示为虚拟目录 + 文章，不会破坏旧链接。
+- 需要把历史路径「升级」为书籍/分页时，优先使用应用内创建与书内分页；也可用本地检查脚本：
+
+```bash
+npm run migrate:doctype:dry
+```
+
+远程桶上写 `custom_metadata` 需一次性 Worker GET+PUT（与 KV→R2 迁移说明类似）。
 
 ## 环境变量
 
@@ -63,6 +89,7 @@ npm start
 - `npm run typecheck`：执行 TypeScript 类型检查。
 - `npm run test:e2e`：运行 Playwright 端到端测试。
 - `npm run check`：执行前端检查、Rust 格式/lint/单元测试。
+- `npm run migrate:doctype:dry`：检查本地历史笔记的文档类型兼容情况。
 
 ## 部署
 
