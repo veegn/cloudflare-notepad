@@ -32,7 +32,8 @@
     "migrate:kv-to-r2:dry": "node --no-warnings=ExperimentalWarning scripts/migrate-kv-to-r2.mjs --dry-run",
     "migrate:doctype": "node --no-warnings=ExperimentalWarning scripts/migrate-doctype.mjs",
     "migrate:doctype:dry": "node --no-warnings=ExperimentalWarning scripts/migrate-doctype.mjs --dry-run",
-    "adopt:book": "node --no-warnings=ExperimentalWarning scripts/adopt-book.mjs"
+    "adopt:book": "node --no-warnings=ExperimentalWarning scripts/adopt-book.mjs",
+    "cleanup:e2e": "node --no-warnings=ExperimentalWarning scripts/cleanup-e2e.mjs"
   },
   "dependencies": {
     "@codemirror/autocomplete": "^6.20.1",

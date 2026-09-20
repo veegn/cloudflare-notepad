@@ -39,6 +39,7 @@ pub async fn create_doc(
         },
     };
     put_note_object(bucket, path, &record).await?;
+    super::cache::invalidate_for_path(bucket, path).await;
     Ok(record)
 }
 

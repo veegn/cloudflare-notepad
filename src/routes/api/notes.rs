@@ -60,6 +60,7 @@ struct ListQuery {
     book_ref: Option<String>,
     q: Option<String>,
     limit: usize,
+    prefix: Option<String>,
 }
 
 fn parse_list_query(url: &worker::Url) -> ListQuery {
@@ -69,6 +70,7 @@ fn parse_list_query(url: &worker::Url) -> ListQuery {
         book_ref: None,
         q: None,
         limit: 100,
+        prefix: None,
     };
 
     for (k, v) in url.query_pairs() {
@@ -108,6 +110,11 @@ fn parse_list_query(url: &worker::Url) -> ListQuery {
                     query.limit = n.clamp(1, 200);
                 }
             }
+            "prefix" => {
+                if !v.is_empty() {
+                    query.prefix = Some(v.to_string());
+                }
+            }
             _ => {}
         }
     }
@@ -136,9 +143,8 @@ pub async fn list_notes(req: Request, ctx: RouteContext<()>) -> Result<Response>
             exclude_pages: query.exclude_pages,
             book_ref: query.book_ref,
             limit: 500,
-            // Bodies only when searching content is required (slow path).
+            prefix: query.prefix,
             include_body: query.q.is_some(),
-            ..Default::default()
         },
     )
     .await?;

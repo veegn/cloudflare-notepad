@@ -73,6 +73,7 @@ pub async fn overwrite_note(bucket: &Bucket, path: &str, record: &NoteRecord) ->
 pub async fn save_note(bucket: &Bucket, path: &str, content: &str) -> Result<()> {
     if content.trim().is_empty() {
         bucket.delete(path).await?;
+        super::cache::invalidate_for_path(bucket, path).await;
         return Ok(());
     }
 
@@ -85,7 +86,9 @@ pub async fn save_note(bucket: &Bucket, path: &str, content: &str) -> Result<()>
             ..existing.metadata
         },
     };
-    put_note_object(bucket, path, &record).await
+    put_note_object(bucket, path, &record).await?;
+    super::cache::invalidate_for_path(bucket, path).await;
+    Ok(())
 }
 
 pub async fn set_password(bucket: &Bucket, path: &str, pw_hash: Option<String>) -> Result<()> {
@@ -98,7 +101,9 @@ pub async fn set_password(bucket: &Bucket, path: &str, pw_hash: Option<String>) 
             ..existing.metadata
         },
     };
-    put_note_object(bucket, path, &record).await
+    put_note_object(bucket, path, &record).await?;
+    super::cache::invalidate_for_path(bucket, path).await;
+    Ok(())
 }
 
 pub async fn set_mode(bucket: &Bucket, path: &str, mode: NoteMode) -> Result<()> {
@@ -112,7 +117,9 @@ pub async fn set_mode(bucket: &Bucket, path: &str, mode: NoteMode) -> Result<()>
             ..existing.metadata
         },
     };
-    put_note_object(bucket, path, &record).await
+    put_note_object(bucket, path, &record).await?;
+    super::cache::invalidate_for_path(bucket, path).await;
+    Ok(())
 }
 
 pub async fn set_title(bucket: &Bucket, path: &str, title: Option<String>) -> Result<()> {
@@ -126,11 +133,14 @@ pub async fn set_title(bucket: &Bucket, path: &str, title: Option<String>) -> Re
             ..existing.metadata
         },
     };
-    put_note_object(bucket, path, &record).await
+    put_note_object(bucket, path, &record).await?;
+    super::cache::invalidate_for_path(bucket, path).await;
+    Ok(())
 }
 
 pub async fn delete_note(bucket: &Bucket, path: &str) -> Result<()> {
     bucket.delete(path).await?;
+    super::cache::invalidate_for_path(bucket, path).await;
     Ok(())
 }
 

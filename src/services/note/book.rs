@@ -50,6 +50,8 @@ pub async fn create_book_page(
     };
     put_note_object(bucket, page_path, &page).await?;
     append_toc_link(bucket, &book, page_path, title).await?;
+    super::cache::invalidate_for_path(bucket, page_path).await;
+    super::cache::invalidate_for_path(bucket, book_path).await;
     Ok(page)
 }
 
@@ -57,6 +59,7 @@ pub async fn create_book_page(
 pub async fn delete_book_page(bucket: &Bucket, page_path: &str, sync_book: bool) -> Result<()> {
     let Some(page) = get_note(bucket, page_path).await? else {
         bucket.delete(page_path).await?;
+        super::cache::invalidate_for_path(bucket, page_path).await;
         return Ok(());
     };
 
@@ -80,6 +83,10 @@ pub async fn delete_book_page(bucket: &Bucket, page_path: &str, sync_book: bool)
     }
 
     bucket.delete(page_path).await?;
+    super::cache::invalidate_for_path(bucket, page_path).await;
+    if let Some(book_path) = page.metadata.book_ref.as_deref() {
+        super::cache::invalidate_for_path(bucket, book_path).await;
+    }
     Ok(())
 }
 
@@ -357,6 +364,7 @@ pub async fn adopt_book(
         },
     };
     put_note_object(bucket, &book_path, &book_record).await?;
+    super::cache::invalidate_for_path(bucket, &book_path).await;
 
     Ok(AdoptBookResult {
         book_path,

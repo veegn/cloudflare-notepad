@@ -45,6 +45,11 @@ pub async fn get_toc(req: Request, ctx: RouteContext<()>) -> Result<Response> {
     };
 
     let bucket = ctx.env.bucket("NOTES")?;
+    let cache_key = note::toc_cache_key(&book_path);
+    if let Some(cached) = note::read_json_cache(&bucket, &cache_key).await {
+        return ok_json(cached);
+    }
+
     let book = note::query_note(&bucket, &book_path).await?;
     if book.metadata.doc_type != DocType::Book {
         return err_json(ERR_BAD_BOOK, "not a book", 400);
@@ -53,14 +58,16 @@ pub async fn get_toc(req: Request, ctx: RouteContext<()>) -> Result<Response> {
     let existing = book_page_existence(&bucket, &book_path).await?;
     let items = note::parse_book_toc(&book_path, &book.content, &existing);
 
-    ok_json(serde_json::json!({
+    let payload = serde_json::json!({
         "book": {
             "path": book_path,
             "title": book.display_title(),
             "docType": book.metadata.doc_type,
         },
         "items": items,
-    }))
+    });
+    note::write_json_cache(&bucket, &cache_key, &payload).await;
+    ok_json(payload)
 }
 
 // ── GET /api/books/{book}/pages ──────────────────────────────────────

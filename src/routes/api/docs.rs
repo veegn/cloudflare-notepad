@@ -153,7 +153,11 @@ pub async fn list_books(_req: Request, ctx: RouteContext<()>) -> Result<Response
 
 pub async fn home_tree(_req: Request, ctx: RouteContext<()>) -> Result<Response> {
     let bucket = ctx.env.bucket("NOTES")?;
-    // Metadata-only listing — do not download note bodies for the tree.
+
+    if let Some(cached) = note::read_json_cache(&bucket, note::HOME_TREE_CACHE_KEY).await {
+        return ok_json(cached);
+    }
+
     let records = note::list_visible_docs_fast(&bucket).await?;
     let tree = note::build_home_tree_with_counts(&bucket, &records).await?;
 
@@ -169,8 +173,10 @@ pub async fn home_tree(_req: Request, ctx: RouteContext<()>) -> Result<Response>
         }
     }
 
-    ok_json(serde_json::json!({
+    let payload = serde_json::json!({
         "counts": { "article": article_count, "book": book_count },
         "tree": tree,
-    }))
+    });
+    note::write_json_cache(&bucket, note::HOME_TREE_CACHE_KEY, &payload).await;
+    ok_json(payload)
 }
