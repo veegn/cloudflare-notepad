@@ -27,6 +27,7 @@ async fn fetch(req: Request, env: Env, _ctx: Context) -> Result<Response> {
         .post_async("/api/docs", routes::api::create_doc)
         .get_async("/api/books/:book/pages", routes::api::list_book_pages)
         .post_async("/api/books/:book/pages", routes::api::create_book_page)
+        .post_async("/api/books/:book/adopt", routes::api::adopt_book)
         .get_async("/api/notes/*path", routes::api::get_note)
         .put_async("/api/notes/*path", routes::api::put_note)
         .delete_async("/api/notes/*path", routes::api::delete_note)

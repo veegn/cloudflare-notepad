@@ -7,7 +7,7 @@ mod meta;
 mod store;
 mod tree;
 
-pub use book::{create_book_page, delete_book_page, parse_book_toc};
+pub use book::{adopt_book, create_book_page, delete_book_page, parse_book_toc};
 pub use create::{create_doc, gen_random_path};
 pub use list::{list_all_docs, ListOptions};
 pub use store::{delete_note, query_note, save_note, set_mode, set_password, set_title};

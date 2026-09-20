@@ -55,7 +55,21 @@
 - R2 中**没有** `docType` 的对象一律按 **文章** 处理，功能与升级前一致。
 - 遗留首页键 `.index` 仍会映射到 `_index`。
 - 多段 path（如 `notes/todo`）在首页树中显示为虚拟目录 + 文章，不会破坏旧链接。
-- 需要把历史路径「升级」为书籍/分页时，优先使用应用内创建与书内分页；也可用本地检查脚本：
+- 把某一历史前缀**收编为书籍**（例如 `network_concepts`）：
+
+```bash
+# 本地
+npm run adopt:book -- network_concepts --title "网络概念"
+
+# 生产（部署完成后，将 BASE_URL 换成你的 Worker 域名）
+BASE_URL=https://<your-worker> npm run adopt:book -- network_concepts --title "网络概念"
+# 等价于：
+# curl -X POST "https://<your-worker>/api/books/network_concepts/adopt?title=%E7%BD%91%E7%BB%9C%E6%A6%82%E5%BF%B5"
+```
+
+该接口会：将 `network_concepts` 标记为 `docType=book`，把 `network_concepts/*` 标记为 `docType=page` 并写入 `bookRef`，同时重建书籍正文中的 TOC。
+
+需要把历史路径「升级」为书籍/分页时，优先使用应用内创建与书内分页；也可用本地检查脚本：
 
 ```bash
 npm run migrate:doctype:dry

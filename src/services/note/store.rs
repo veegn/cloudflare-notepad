@@ -63,6 +63,12 @@ pub(super) async fn put_note_object(
     Ok(())
 }
 
+/// Rewrite a record (content + metadata) without empty-body delete semantics.
+#[allow(dead_code)]
+pub async fn overwrite_note(bucket: &Bucket, path: &str, record: &NoteRecord) -> Result<()> {
+    put_note_object(bucket, path, record).await
+}
+
 /// Save content. Empty/whitespace content deletes the object.
 pub async fn save_note(bucket: &Bucket, path: &str, content: &str) -> Result<()> {
     if content.trim().is_empty() {

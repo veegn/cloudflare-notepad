@@ -140,6 +140,47 @@ pub async fn create_book_page(mut req: Request, ctx: RouteContext<()>) -> Result
     }
 }
 
+// ── POST /api/books/{book}/adopt ─────────────────────────────────────
+/// Adopt a historical path prefix as a book; stamp child keys as pages.
+pub async fn adopt_book(req: Request, ctx: RouteContext<()>) -> Result<Response> {
+    let book_path = clean_path(ctx.param("book").unwrap_or(&String::new()));
+    if book_path.is_empty() {
+        return err_json(40012, "book path is required", 400);
+    }
+
+    let bucket = ctx.env.bucket("NOTES")?;
+    let existing = note::query_note(&bucket, &book_path).await?;
+
+    let secret = auth::required_jwt_secret(&ctx.env)?;
+    let index_pw = get_index_password(&ctx.env);
+    let cookie = cookie_header(&req);
+    if !is_edit_authorized(cookie.as_deref(), &book_path, &existing, &secret, &index_pw) {
+        return err_json(ERR_AUTH_FAILED, "Password auth failed", 401);
+    }
+
+    // Optional title from query ?title=
+    let title = req
+        .url()
+        .ok()
+        .and_then(|u| {
+            u.query_pairs()
+                .find(|(k, _)| k == "title")
+                .map(|(_, v)| v.to_string())
+        })
+        .filter(|t| !t.trim().is_empty());
+
+    match note::adopt_book(&bucket, &book_path, title.as_deref()).await {
+        Ok(result) => ok_json(serde_json::json!({
+            "bookPath": result.book_path,
+            "title": result.title,
+            "pagesAdopted": result.pages_adopted,
+            "pagesTotal": result.pages_total,
+        })),
+        Err(worker::Error::RustError(msg)) => err_json(40020, &msg, 400),
+        Err(e) => Err(e),
+    }
+}
+
 async fn list_pages_for_book(bucket: &worker::Bucket, book_path: &str) -> Result<Vec<NoteRecord>> {
     note::list_all_docs(
         bucket,

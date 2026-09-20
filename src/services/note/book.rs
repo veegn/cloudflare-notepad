@@ -247,6 +247,159 @@ fn find_toc_section_end(content: &str) -> Option<usize> {
     last_link_end.or(toc_header_end)
 }
 
+/// Result of adopting a historical path prefix as a book.
+#[derive(Debug, Clone, serde::Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct AdoptBookResult {
+    pub book_path: String,
+    pub title: String,
+    pub pages_adopted: u32,
+    pub pages_total: u32,
+}
+
+/// Stamp `book_path` as `docType=book` and all `book_path/*` keys as pages.
+/// Rebuilds the book TOC markdown from adopted pages (sorted by path).
+pub async fn adopt_book(
+    bucket: &Bucket,
+    book_path: &str,
+    title: Option<&str>,
+) -> Result<AdoptBookResult> {
+    let book_path = book_path.trim().trim_matches('/').to_string();
+    if book_path.is_empty() {
+        return Err(worker::Error::RustError("book path is required".into()));
+    }
+
+    let prefix = format!("{book_path}/");
+    let all = super::list::list_all_docs(
+        bucket,
+        &super::list::ListOptions {
+            doc_type: None,
+            exclude_pages: false,
+            book_ref: None,
+            limit: 5000,
+        },
+    )
+    .await?;
+
+    let mut children: Vec<NoteRecord> = all
+        .into_iter()
+        .filter(|r| r.path.starts_with(&prefix) && r.path != book_path)
+        .collect();
+    children.sort_by(|a, b| a.path.cmp(&b.path));
+
+    let book = get_note(bucket, &book_path)
+        .await?
+        .unwrap_or_else(|| NoteRecord {
+            path: book_path.clone(),
+            content: String::new(),
+            metadata: NoteMetadata::default(),
+        });
+
+    let title = title
+        .map(str::trim)
+        .filter(|t| !t.is_empty())
+        .map(|t| t.to_string())
+        .unwrap_or_else(|| {
+            if !book.metadata.title.as_deref().unwrap_or("").is_empty() {
+                book.metadata.title.clone().unwrap()
+            } else {
+                crate::models::note::first_markdown_h1(&book.content)
+                    .unwrap_or_else(|| path_display_name(&book_path))
+            }
+        });
+
+    // Stamp each child as a page of this book.
+    let mut adopted = 0u32;
+    for child in &children {
+        let page_title = child.display_title();
+        let mode = if child.content.trim_start().starts_with('#') {
+            NoteMode::Md
+        } else {
+            child.metadata.mode
+        };
+        let record = NoteRecord {
+            path: child.path.clone(),
+            content: child.content.clone(),
+            metadata: NoteMetadata {
+                doc_type: DocType::Page,
+                book_ref: Some(book_path.clone()),
+                title: Some(page_title),
+                mode,
+                update_at: child.metadata.update_at.or(Some(now_unix())),
+                ..child.metadata.clone()
+            },
+        };
+        put_note_object(bucket, &record.path, &record).await?;
+        adopted += 1;
+    }
+
+    // Rebuild book body: keep non-TOC preamble if any, then a clean TOC.
+    let preamble = extract_preamble(&book.content, &title);
+    let mut content = format!("# {title}\n\n");
+    if !preamble.trim().is_empty() {
+        content.push_str(preamble.trim());
+        content.push_str("\n\n");
+    } else if book.content.trim().is_empty() {
+        content.push_str("> Historical notes adopted as a book.\n\n");
+    }
+    content.push_str("## TOC\n\n");
+    if children.is_empty() {
+        content.push_str("<!-- No pages under this prefix yet. -->\n");
+    } else {
+        for child in &children {
+            let page_title = child.display_title();
+            content.push_str(&format!("- [{}]({})\n", page_title, child.path));
+        }
+    }
+
+    let book_record = NoteRecord {
+        path: book_path.clone(),
+        content,
+        metadata: NoteMetadata {
+            doc_type: DocType::Book,
+            title: Some(title.clone()),
+            mode: NoteMode::Md,
+            update_at: Some(now_unix()),
+            ..book.metadata
+        },
+    };
+    put_note_object(bucket, &book_path, &book_record).await?;
+
+    Ok(AdoptBookResult {
+        book_path,
+        title,
+        pages_adopted: adopted,
+        pages_total: children.len() as u32,
+    })
+}
+
+/// Non-TOC portion of historical book content (skip H1 we regenerate).
+fn extract_preamble(content: &str, title: &str) -> String {
+    let mut lines: Vec<&str> = Vec::new();
+    let mut in_toc = false;
+    for line in content.lines() {
+        let trimmed = line.trim();
+        if trimmed == format!("# {title}") {
+            continue;
+        }
+        if lines.is_empty() && trimmed.starts_with("# ") {
+            continue;
+        }
+        if is_toc_heading(trimmed) || trimmed.starts_with("## TOC") {
+            in_toc = true;
+            continue;
+        }
+        if in_toc && trimmed.starts_with("# ") {
+            in_toc = false;
+        }
+        if in_toc {
+            continue;
+        }
+        lines.push(line);
+    }
+    lines.join("\n")
+}
+
 fn is_toc_heading(trimmed: &str) -> bool {
     trimmed == TOC_HEADING_ZH
         || trimmed == TOC_HEADING_EN
