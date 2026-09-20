@@ -1663,7 +1663,7 @@ textarea {
 
 .doc-tree-row {
     display: grid;
-    grid-template-columns: 20px 22px minmax(0, 1fr) minmax(48px, max-content) minmax(0, 0.7fr);
+    grid-template-columns: 20px 22px minmax(0, 1fr) minmax(48px, max-content) minmax(0, 0.7fr) minmax(56px, max-content);
     align-items: center;
     column-gap: 8px;
     min-height: 40px;
@@ -1751,12 +1751,31 @@ textarea {
 }
 
 .doc-tree-actions {
-    display: none;
+    display: flex;
+    justify-content: flex-end;
+    align-items: center;
+    min-height: 28px;
 }
 
-.doc-tree-actions a,
 .doc-tree-action-btn {
-    display: none;
+    border: none;
+    background: transparent;
+    color: var(--vscode-accent);
+    font: inherit;
+    font-size: 11px;
+    cursor: pointer;
+    padding: 2px 6px;
+    border-radius: var(--radius-s);
+    white-space: nowrap;
+}
+
+.doc-tree-action-btn:hover {
+    text-decoration: underline;
+}
+
+.doc-tree-action-btn:focus-visible {
+    outline: 2px solid var(--vscode-accent);
+    outline-offset: 2px;
 }
 
 .badge {
@@ -1849,12 +1868,6 @@ textarea {
     flex-direction: column;
     gap: 8px;
     margin-top: 4px;
-}
-
-.doc-sidebar-repair {
-    width: 100%;
-    min-width: 0;
-    height: 32px;
 }
 
 .doc-tree-action-btn {

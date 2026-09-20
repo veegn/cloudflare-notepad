@@ -3,7 +3,7 @@ import type { HomeTreeResponse, TreeNode } from './types'
 import { showCreateDocDialog } from './createDoc'
 import { errHandle } from './ui'
 import { el, encodeNotePath, escapeHtml, input } from './pathUtils'
-import { runRepairAll } from './repair'
+import { runRepairBook, runRepairAll } from './repair'
 
 const EXPAND_KEY = 'homeTreeExpand'
 
@@ -75,6 +75,14 @@ function rowMeta(node: TreeNode): string {
         .join(' · ')
 }
 
+/** Books only: keep repair entry on the home tree row. */
+function rowActions(node: TreeNode): string {
+    if (node.nodeType !== 'book') return ''
+    return `<span class="doc-tree-actions">
+      <button type="button" class="doc-tree-action-btn" data-repair="${escapeHtml(node.path)}">${getI18n('repairTreeAction')}</button>
+    </span>`
+}
+
 function toggleExpand(path: string): void {
     if (expand.has(path)) expand.delete(path)
     else expand.add(path)
@@ -121,6 +129,7 @@ function renderNode(node: TreeNode, level: number, host: HTMLElement): void {
       <a class="doc-tree-title" href="${href}">${escapeHtml(node.title)}</a>
       <span class="doc-tree-badge">${typeBadge(node)}</span>
       <span class="doc-tree-meta">${escapeHtml(rowMeta(node))}</span>
+      ${rowActions(node)}
     `
 
     if (isDir) {
@@ -137,6 +146,12 @@ function renderNode(node: TreeNode, level: number, host: HTMLElement): void {
     if (node.nodeType === 'book') {
         row.title = getI18n('homeBookTooltip')
     }
+
+    row.querySelector<HTMLButtonElement>('[data-repair]')?.addEventListener('click', e => {
+        e.preventDefault()
+        e.stopPropagation()
+        void runRepairBook(node.path)
+    })
 
     host.appendChild(row)
 

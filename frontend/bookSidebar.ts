@@ -2,7 +2,6 @@ import { getI18n } from './config'
 import type { BookPageItem, TocItem } from './types'
 import { showPrompt, showConfirm, showToast, errHandle } from './ui'
 import { anchor, el, encodeNotePath, escapeHtml } from './pathUtils'
-import { runRepairBook } from './repair'
 
 function bookPathFromSidebar(node: HTMLElement): string {
     if (node.dataset.docType === 'book') return node.dataset.notePath || ''
@@ -294,9 +293,6 @@ export function initDocSidebar(): void {
 
     el('#btn-new-page')?.addEventListener('click', () => {
         void createPage(book)
-    })
-    el('#btn-repair-doc')?.addEventListener('click', () => {
-        void runRepairBook(book).then(() => invalidateTocCache(book))
     })
     window.addEventListener('scn:repaired', () => {
         invalidateTocCache(book)
