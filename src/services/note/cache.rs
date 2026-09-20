@@ -7,7 +7,7 @@
 //! Invalidation: delete cache objects on note/book mutations. TTL is a
 //! safety net if a write path misses invalidation.
 
-use worker::{Bucket, Result};
+use worker::Bucket;
 
 pub const HOME_TREE_CACHE_KEY: &str = "_meta/home-tree.json";
 pub const TOC_CACHE_PREFIX: &str = "_meta/toc/";
@@ -68,6 +68,7 @@ pub async fn invalidate_for_path(bucket: &Bucket, path: &str) {
 }
 
 /// Drop all known structured caches (used by cleanup tooling).
+#[allow(dead_code)]
 pub async fn invalidate_all(bucket: &Bucket) {
     let _ = bucket.delete(HOME_TREE_CACHE_KEY).await;
     if let Ok(list) = bucket
