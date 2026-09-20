@@ -2,7 +2,7 @@ use tera::Tera;
 use worker::*;
 
 use crate::i18n::{build_i18n_map, detect_language, get_i18n, I18nMap, LangCode};
-use crate::models::note::{is_index_path, NoteMetadata, INDEX_PATH};
+use crate::models::note::{NoteMetadata, INDEX_PATH};
 use crate::services::{auth, note};
 
 /// Build a Tera instance with all templates embedded via `include_str!`.
