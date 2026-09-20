@@ -1,16 +1,12 @@
 //! Repair inconsistent metadata ↔ body relationships.
 //!
-//! Sync model:
-//! - `metadata.title` is the display SSOT; body `# H1` is a human-readable copy.
-//! - Book TOC lives in the book markdown body; page objects carry `bookRef`.
+//! Default policy: **markdown body is the baseline** (`prefer=h1`).
+//! - Display title ← first `# H1` (falls back to path)
+//! - Book page structure ← links in the book body TOC
+//! - metadata is updated to match the body; body is not rewritten
 //!
-//! Repair can:
-//! - fill empty `title` from H1 / path
-//! - rewrite H1 from `title` (or the reverse via `prefer=h1`)
-//! - stamp missing `docType` / `bookRef` from path shape
-//! - rebuild book TOC from existing page objects
-//! - create missing page objects from TOC links (`create_missing`)
-//! - invalidate structured caches
+//! Optional `prefer=title` keeps metadata.title as SSOT and rewrites H1
+//! (legacy behaviour). Prefer body-first for repair UI / scripts.
 
 use std::collections::HashMap;
 
@@ -30,16 +26,21 @@ use super::store::{get_note, now_unix, put_note_object, query_note};
 pub enum TitlePrefer {
     /// metadata.title wins; body H1 is rewritten to match.
     Title,
-    /// body H1 wins; metadata.title is set from H1.
+    /// body H1 wins; metadata.title is set from H1 (default).
     H1,
 }
 
 impl TitlePrefer {
     pub fn parse(s: &str) -> Self {
         match s.trim().to_ascii_lowercase().as_str() {
-            "h1" | "body" | "content" => Self::H1,
-            _ => Self::Title,
+            "title" | "meta" | "metadata" => Self::Title,
+            // Body-first is the repair default.
+            _ => Self::H1,
         }
+    }
+
+    pub fn default_body_first() -> Self {
+        Self::H1
     }
 }
 
@@ -179,8 +180,131 @@ fn heal_mode(record: &mut NoteRecord, changes: &mut Vec<RepairChange>) {
     }
 }
 
-/// Rebuild book TOC from page objects that reference this book (or live under `book/`).
-async fn rebuild_book_toc(
+/// Sync page metadata **from the book body TOC** (body is baseline).
+/// Does not rewrite the book markdown. Optional create for dead TOC links.
+async fn sync_book_meta_from_body_toc(
+    bucket: &Bucket,
+    book_path: &str,
+    book: &mut NoteRecord,
+    create_missing: bool,
+    changes: &mut Vec<RepairChange>,
+) -> Result<(u32, u32, bool)> {
+    let mut pages_checked = 0u32;
+    let mut pages_created = 0u32;
+
+    // Empty map: TOC parse only needs titles/paths from markdown.
+    let empty: HashMap<String, NoteMetadata> = HashMap::new();
+    let toc_items = parse_book_toc(book_path, &book.content, &empty);
+    let mut toc_paths: Vec<String> = Vec::new();
+
+    for item in toc_items.iter().filter(|t| !t.heading) {
+        let Some(path) = item.path.clone() else {
+            continue;
+        };
+        if path.starts_with("http://") || path.starts_with("https://") {
+            continue;
+        }
+        toc_paths.push(path.clone());
+        pages_checked += 1;
+        let toc_title = item.title.clone();
+
+        match get_note(bucket, &path).await? {
+            Some(mut page) => {
+                let mut dirty = false;
+                if page.metadata.title.as_deref() != Some(toc_title.as_str()) {
+                    page.metadata.title = Some(toc_title.clone());
+                    changes.push(change(
+                        "title",
+                        format!("{path}: title <- TOC {:?}", toc_title),
+                    ));
+                    dirty = true;
+                }
+                if page.metadata.doc_type != DocType::Page {
+                    page.metadata.doc_type = DocType::Page;
+                    changes.push(change("docType", format!("{path}: -> page (from TOC)")));
+                    dirty = true;
+                }
+                if page.metadata.book_ref.as_deref() != Some(book_path) {
+                    page.metadata.book_ref = Some(book_path.to_string());
+                    changes.push(change("bookRef", format!("{path}: bookRef <- {book_path}")));
+                    dirty = true;
+                }
+                // Align page body H1 with TOC title (body remains human-editable copy).
+                if first_markdown_h1(&page.content).as_deref() != Some(toc_title.as_str()) {
+                    page.content = replace_or_prepend_h1(&page.content, &toc_title);
+                    changes.push(change("h1", format!("{path}: H1 <- TOC")));
+                    dirty = true;
+                }
+                if page.metadata.mode == NoteMode::Plain
+                    && page.content.trim_start().starts_with('#')
+                {
+                    page.metadata.mode = NoteMode::Md;
+                    dirty = true;
+                }
+                if dirty {
+                    page.metadata.update_at = Some(now_unix());
+                    put_note_object(bucket, &path, &page).await?;
+                }
+            }
+            None => {
+                if !create_missing {
+                    changes.push(change(
+                        "deadLink",
+                        format!("TOC link without object: {path}"),
+                    ));
+                    continue;
+                }
+                let page = NoteRecord {
+                    path: path.clone(),
+                    content: format!("# {toc_title}\n\n"),
+                    metadata: NoteMetadata {
+                        doc_type: DocType::Page,
+                        book_ref: Some(book_path.to_string()),
+                        title: Some(toc_title.clone()),
+                        mode: NoteMode::Md,
+                        update_at: Some(now_unix()),
+                        ..Default::default()
+                    },
+                };
+                put_note_object(bucket, &path, &page).await?;
+                pages_created += 1;
+                changes.push(change("createPage", format!("created {path} from TOC")));
+            }
+        }
+    }
+
+    // Orphans: R2 pages under prefix that body TOC does not list.
+    let keys = list_book_page_keys(bucket, book_path).await?;
+    for key in keys {
+        if toc_paths.iter().any(|p| p == &key) {
+            continue;
+        }
+        changes.push(change(
+            "orphanPage",
+            format!("{key}: in R2 but not in book TOC (body baseline keeps TOC)"),
+        ));
+    }
+
+    // Book display title ← body H1 (already applied by heal_title_fields).
+    if record_needs_book_meta(book) {
+        book.metadata.doc_type = DocType::Book;
+        if book.metadata.title.is_none() {
+            if let Some(h) = first_markdown_h1(&book.content) {
+                book.metadata.title = Some(h);
+            }
+        }
+    }
+
+    Ok((pages_checked, pages_created, false))
+}
+
+fn record_needs_book_meta(book: &NoteRecord) -> bool {
+    book.metadata.doc_type != DocType::Book
+}
+
+/// Legacy: rebuild body TOC from R2 page objects (metadata → body).
+/// Only used when `prefer=title`.
+async fn rebuild_book_toc_from_objects(
     bucket: &Bucket,
     book_path: &str,
     book: &mut NoteRecord,
@@ -346,8 +470,30 @@ pub async fn repair_doc(
             changes.push(change("docType", "-> book (TOC detected)"));
         }
         heal_title_fields(&mut record, prefer, &mut changes);
-        let (checked, created, rebuilt) =
-            rebuild_book_toc(bucket, &path, &mut record, create_missing, &mut changes).await?;
+        let (checked, created, rebuilt) = match prefer {
+            // Body-first (default): TOC links in markdown drive page metadata.
+            TitlePrefer::H1 => {
+                sync_book_meta_from_body_toc(
+                    bucket,
+                    &path,
+                    &mut record,
+                    create_missing,
+                    &mut changes,
+                )
+                .await?
+            }
+            // Legacy: R2 page objects drive book body TOC.
+            TitlePrefer::Title => {
+                rebuild_book_toc_from_objects(
+                    bucket,
+                    &path,
+                    &mut record,
+                    create_missing,
+                    &mut changes,
+                )
+                .await?
+            }
+        };
         pages_checked = checked;
         pages_created = created;
         toc_rebuilt = rebuilt;
@@ -479,7 +625,12 @@ mod tests {
 
     #[test]
     fn prefer_parse() {
+        // Body-first is default for unspecified values.
         assert_eq!(TitlePrefer::parse("h1"), TitlePrefer::H1);
+        assert_eq!(TitlePrefer::parse("body"), TitlePrefer::H1);
+        assert_eq!(TitlePrefer::parse(""), TitlePrefer::H1);
         assert_eq!(TitlePrefer::parse("title"), TitlePrefer::Title);
+        assert_eq!(TitlePrefer::parse("meta"), TitlePrefer::Title);
+        assert_eq!(TitlePrefer::default_body_first(), TitlePrefer::H1);
     }
 }

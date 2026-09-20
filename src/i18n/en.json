@@ -104,7 +104,7 @@
     "repairDoc": "Repair data",
     "repairAll": "Repair data",
     "repairAllHint": "Reconcile metadata with markdown bodies and book TOCs",
-    "repairConfirmBook": "Repair metadata and TOC for \"{path}\"? Titles, types and book TOC will be synced.",
+    "repairConfirmBook": "Repair \"{path}\" using markdown body as baseline? Titles and book TOC will sync metadata.",
     "repairConfirmAll": "Scan and repair documents on this service? (book TOC, titles, metadata)",
     "repairDone": "Repaired {n} change(s)",
     "repairNoChanges": "Already consistent",

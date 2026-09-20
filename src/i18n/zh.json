@@ -104,7 +104,7 @@
     "repairDoc": "修复数据",
     "repairAll": "修复数据",
     "repairAllHint": "对账元数据与 Markdown 正文 / 书籍目录",
-    "repairConfirmBook": "要修复「{path}」的元数据与目录吗？将同步标题、类型与书籍 TOC。",
+    "repairConfirmBook": "要以正文为基准修复「{path}」吗？将根据 Markdown 标题/目录同步元数据。",
     "repairConfirmAll": "要扫描并修复当前服务下的文档数据吗？（书籍目录、标题与元数据）",
     "repairDone": "已修复 {n} 项",
     "repairNoChanges": "数据一致，无需修复",

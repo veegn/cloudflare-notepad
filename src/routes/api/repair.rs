@@ -13,7 +13,8 @@ fn parse_prefer(req: &Request) -> Result<TitlePrefer> {
         .query_pairs()
         .find(|(k, _)| k == "prefer")
         .map(|(_, v)| TitlePrefer::parse(&v))
-        .unwrap_or(TitlePrefer::Title);
+        // Repair defaults to body-first: markdown H1 / book TOC drive metadata.
+        .unwrap_or_else(TitlePrefer::default_body_first);
     Ok(prefer)
 }
 
@@ -43,8 +44,10 @@ fn query_limit(req: &Request) -> Result<usize> {
         .clamp(1, 200))
 }
 
-/// POST /api/repair?path=network_concepts&prefer=title&rebuildToc=1&createMissing=0
-/// POST /api/repair?all=1&prefer=h1&createMissing=1&limit=50
+/// POST /api/repair?path=network_concepts&rebuildToc=1&createMissing=0
+/// Default prefer=h1 (markdown body drives metadata).
+/// POST /api/repair?all=1&createMissing=1&limit=50
+/// POST /api/repair?path=...&prefer=title  # metadata.title drives H1 (legacy)
 pub async fn repair(req: Request, ctx: RouteContext<()>) -> Result<Response> {
     let bucket = ctx.env.bucket("NOTES")?;
     let secret = crate::services::auth::required_jwt_secret(&ctx.env)?;

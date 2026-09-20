@@ -4,15 +4,19 @@
  *
  * Examples:
  *   BASE_URL=https://notes.dayti.de npm run repair -- network_concepts
- *   BASE_URL=https://notes.dayti.de npm run repair -- network_concepts --prefer h1 --create-missing
+ *   BASE_URL=https://notes.dayti.de npm run repair -- network_concepts
+ *   BASE_URL=https://notes.dayti.de npm run repair -- network_concepts --prefer title
+ *   BASE_URL=https://notes.dayti.de npm run repair -- network_concepts --create-missing
  *   BASE_URL=https://notes.dayti.de npm run repair -- --all --limit 30
+ *
+ * Default prefer=h1: markdown body (H1 / book TOC) is the baseline for metadata.
  */
 
 const base = process.env.BASE_URL || 'http://127.0.0.1:8799'
 const args = process.argv.slice(2)
 let path = null
 let all = false
-let prefer = 'title'
+let prefer = 'h1'
 let createMissing = false
 let rebuildToc = true
 let limit = 50
@@ -20,7 +24,7 @@ let limit = 50
 for (let i = 0; i < args.length; i++) {
   const a = args[i]
   if (a === '--all') all = true
-  else if (a === '--prefer') prefer = args[++i] || 'title'
+  else if (a === '--prefer') prefer = args[++i] || 'h1'
   else if (a === '--create-missing') createMissing = true
   else if (a === '--no-rebuild-toc') rebuildToc = false
   else if (a === '--limit') limit = Number(args[++i] || 50)

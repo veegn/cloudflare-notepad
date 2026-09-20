@@ -29,7 +29,8 @@ export async function repairDocPath(
 ): Promise<RepairResult> {
     const url = new URL('/api/repair', window.location.origin)
     url.searchParams.set('path', path)
-    url.searchParams.set('prefer', options.prefer || 'title')
+    // Body-first: markdown H1 / book TOC are the baseline for metadata.
+    url.searchParams.set('prefer', options.prefer || 'h1')
     if (options.rebuildToc !== false) url.searchParams.set('rebuildToc', '1')
     if (options.createMissing) url.searchParams.set('createMissing', '1')
 
@@ -45,6 +46,7 @@ export async function repairDocPath(
 export async function repairAllDocs(limit = 50): Promise<{ count: number; results: RepairResult[] }> {
     const url = new URL('/api/repair', window.location.origin)
     url.searchParams.set('all', '1')
+    url.searchParams.set('prefer', 'h1')
     url.searchParams.set('rebuildToc', '1')
     url.searchParams.set('limit', String(limit))
 
@@ -69,7 +71,7 @@ export async function runRepairBook(bookPath: string): Promise<void> {
     const ok = await showConfirm(getI18n('repairConfirmBook').replace('{path}', bookPath))
     if (!ok) return
     try {
-        const result = await repairDocPath(bookPath, { rebuildToc: true })
+        const result = await repairDocPath(bookPath, { prefer: 'h1', rebuildToc: true })
         showToast(summarize(result))
         // let caller reload list/toc
         window.dispatchEvent(
