@@ -10,8 +10,8 @@ mod tree;
 pub use book::{adopt_book, create_book_page, delete_book_page, parse_book_toc};
 pub use create::{create_doc, gen_random_path};
 pub use list::{
-    book_page_counts, list_all_docs, list_book_page_keys, list_doc_metas,
-    list_visible_docs_fast, ListOptions,
+    book_page_counts, list_all_docs, list_book_page_keys, list_doc_metas, list_visible_docs_fast,
+    ListOptions,
 };
 pub use store::{delete_note, query_note, save_note, set_mode, set_password, set_title};
 pub use tree::build_home_tree_with_counts;

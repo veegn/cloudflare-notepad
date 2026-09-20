@@ -62,10 +62,7 @@ fn matches_filters(metadata: &NoteMetadata, opts: &ListOptions) -> bool {
     true
 }
 
-fn build_list_request<'a>(
-    bucket: &'a Bucket,
-    prefix: Option<&str>,
-) -> ListOptionsBuilder<'a> {
+fn build_list_request<'a>(bucket: &'a Bucket, prefix: Option<&str>) -> ListOptionsBuilder<'a> {
     let mut list = bucket.list().limit(1000);
     if let Some(p) = prefix {
         if !p.is_empty() {
@@ -76,7 +73,11 @@ fn build_list_request<'a>(
 }
 
 /// Read custom_metadata from list object; fall back to GET **without body**.
-async fn read_meta(bucket: &Bucket, key: &str, list_custom: HashMap<String, String>) -> NoteMetadata {
+async fn read_meta(
+    bucket: &Bucket,
+    key: &str,
+    list_custom: HashMap<String, String>,
+) -> NoteMetadata {
     if !list_custom.is_empty() {
         return meta::from_custom(&list_custom);
     }
