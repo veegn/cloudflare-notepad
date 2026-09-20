@@ -126,13 +126,13 @@ fn heal_title_fields(
             if let Some(h) = &h1 {
                 if h != &resolved {
                     record.content = replace_or_prepend_h1(&record.content, &resolved);
-                    changes.push(change("h1", format!("body H1 → {:?}", resolved)));
+                    changes.push(change("h1", format!("body H1 -> {:?}", resolved)));
                 }
-            } else if !record.content.trim().is_empty() || meta_title.is_some() {
-                if first_markdown_h1(&record.content).as_deref() != Some(resolved.as_str()) {
-                    record.content = replace_or_prepend_h1(&record.content, &resolved);
-                    changes.push(change("h1", format!("prepend H1 {:?}", resolved)));
-                }
+            } else if (!record.content.trim().is_empty() || meta_title.is_some())
+                && first_markdown_h1(&record.content).as_deref() != Some(resolved.as_str())
+            {
+                record.content = replace_or_prepend_h1(&record.content, &resolved);
+                changes.push(change("h1", format!("prepend H1 {:?}", resolved)));
             }
         }
         TitlePrefer::H1 => {
