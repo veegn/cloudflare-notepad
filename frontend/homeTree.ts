@@ -126,8 +126,8 @@ function renderNode(node: TreeNode, level: number, host: HTMLElement): void {
     row.innerHTML = `
       ${chevron}
       <span class="doc-tree-icon" aria-hidden="true">${icon}</span>
-      <a class="doc-tree-title" href="${href}">${escapeHtml(node.title)}</a>
       <span class="doc-tree-badge">${typeBadge(node)}</span>
+      <a class="doc-tree-title" href="${href}">${escapeHtml(node.title)}</a>
       <span class="doc-tree-meta">${escapeHtml(rowMeta(node))}</span>
       ${rowActions(node)}
     `
