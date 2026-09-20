@@ -314,42 +314,57 @@ textarea {
     }
 
     .composer-preview {
-        max-width: 1024px;
+        max-width: 720px;
         margin: 0 auto;
         padding-bottom: 32px;
-        font-family: 'IBM Plex Sans', 'Segoe UI', sans-serif;
+        font-family: 'IBM Plex Sans', -apple-system, BlinkMacSystemFont, 'Segoe UI',
+            'PingFang SC', 'Hiragino Sans GB', 'Microsoft YaHei', sans-serif;
         font-size: 16px;
-        line-height: 1.45;
+        line-height: 1.75;
+        letter-spacing: 0.01em;
         color: color-mix(in srgb, var(--vscode-text) 96%, transparent);
         text-wrap: pretty;
         white-space: normal;
+        word-break: normal;
+        overflow-wrap: break-word;
+        line-break: strict;
 
         /* replaced nested children */
 
         :is(h1, h2, h3, h4, h5, h6) {
-            margin-top: 8px;
-            margin-bottom: 2px;
+            margin-top: 1.6em;
+            margin-bottom: 0.55em;
             color: var(--vscode-text);
-            font-weight: 700;
-            line-height: 1.2;
-            letter-spacing: -0.02em;
+            font-weight: 650;
+            line-height: 1.35;
+            /* CJK-safe: avoid tight negative tracking used on Latin display type */
+            letter-spacing: 0;
             text-wrap: balance;
         }
 
         h1 {
-            font-size: 2em;
-            padding-bottom: 0.3em;
+            font-size: 1.75em;
+            padding-bottom: 0.35em;
             border-bottom: 1px solid var(--vscode-border);
         }
 
         h2 {
-            font-size: 1.5em;
-            padding-bottom: 0.2em;
+            font-size: 1.4em;
+            padding-bottom: 0.25em;
             border-bottom: 1px solid color-mix(in srgb, var(--vscode-border) 60%, transparent);
         }
 
+        h3 {
+            font-size: 1.2em;
+        }
+
         :is(p, ul, ol, blockquote, pre, table, hr) {
-            margin: 4px 0;
+            margin: 0.85em 0;
+        }
+
+        li {
+            margin: 0.35em 0;
+            line-height: 1.7;
         }
 
         blockquote {
@@ -496,9 +511,11 @@ textarea {
     .welcome-title {
         margin: 16px 0 10px;
         max-width: 720px;
-        font-size: clamp(32px, 5vw, 52px);
-        line-height: 1.08;
-        letter-spacing: -0.03em;
+        font-size: clamp(28px, 4vw, 44px);
+        line-height: 1.2;
+        /* Latin display can tighten; keep CJK-readable tracking */
+        letter-spacing: 0;
+        font-weight: 650;
     }
 
     .welcome-copy {
@@ -554,19 +571,97 @@ textarea {
 
 .welcome-note-preview {
     min-height: 180px;
-    padding: 16px;
+    padding: 20px 22px;
     border: none;
     border-radius: 10px;
     background: rgba(0, 0, 0, 0.12);
-    font-size: 15px;
-    line-height: 1.4;
+    /* Markdown reading metrics (not mono / not tight) */
+    font-family: 'IBM Plex Sans', -apple-system, BlinkMacSystemFont, 'Segoe UI',
+        'PingFang SC', 'Hiragino Sans GB', 'Microsoft YaHei', sans-serif !important;
+    font-size: 16px;
+    line-height: 1.75;
+    letter-spacing: 0.01em;
+    white-space: normal;
+    word-break: normal;
+    overflow-wrap: break-word;
     color: color-mix(in srgb, var(--vscode-text) 96%, transparent);
 }
 
+.welcome-note-preview.composer-preview {
+    max-width: 720px;
+}
+
+.welcome-note-preview :is(h1, h2, h3, h4, h5, h6),
+.home-index-card :is(h1, h2, h3, h4, h5, h6) {
+    margin-top: 1.5em;
+    margin-bottom: 0.5em;
+    font-weight: 650;
+    line-height: 1.35;
+    letter-spacing: 0;
+}
+
+.welcome-note-preview h1,
+.home-index-card h1 {
+    font-size: 1.65em;
+    margin-top: 0.2em;
+    padding-bottom: 0.35em;
+    border-bottom: 1px solid var(--vscode-border);
+}
+
+.welcome-note-preview h2,
+.home-index-card h2 {
+    font-size: 1.35em;
+}
+
+.welcome-note-preview h3,
+.home-index-card h3 {
+    font-size: 1.15em;
+}
+
+.welcome-note-preview :is(p, ul, ol, blockquote, pre, table),
+.home-index-card :is(p, ul, ol, blockquote, pre, table) {
+    margin: 0.85em 0;
+}
+
+.welcome-note-preview li,
+.home-index-card li {
+    margin: 0.35em 0;
+    line-height: 1.7;
+}
+
+.welcome-note-preview :not(pre) > code,
+.home-index-card :not(pre) > code {
+    font-family: 'IBM Plex Mono', ui-monospace, Consolas, monospace;
+    font-size: 0.9em;
+    letter-spacing: 0;
+}
+
+.welcome-note-preview pre,
+.home-index-card pre {
+    font-family: 'IBM Plex Mono', ui-monospace, Consolas, monospace;
+    font-size: 13.5px;
+    line-height: 1.6;
+    letter-spacing: 0;
+}
+
+.welcome-note-preview blockquote,
+.home-index-card blockquote {
+    padding: 0.55em 1em;
+    border-left: 3px solid var(--vscode-accent);
+    color: var(--vscode-text-muted);
+    background: var(--vscode-accent-soft);
+    border-radius: 0 var(--radius-m) var(--radius-m) 0;
+}
+
+.home-index-card .composer-preview {
+    font-family: inherit;
+    max-width: 720px;
+}
+
 .welcome-card.mode-md .welcome-note-preview {
-    max-width: none;
+    max-width: 720px;
     margin: 0;
-    padding-bottom: 16px;
+    padding-bottom: 20px;
 }
 
 .welcome-card.mode-md {
@@ -692,29 +787,15 @@ textarea {
 .composer-preview h3 {
     margin-top: 24px;
     margin-bottom: 12px;
-    font-family: 'IBM Plex Sans', sans-serif;
-    line-height: 1.3;
-}
-
-.composer-preview h1 {
-    margin-top: 8px;
-    padding-bottom: 12px;
-    border-bottom: 1px solid var(--vscode-border);
-    font-size: 2.3em;
-}
-
-.composer-preview h2 {
-    margin-top: 2.2em;
-    font-size: 1.7em;
-}
-
-.composer-preview h3 {
-    margin-top: 1.8em;
-    font-size: 1.3em;
+    font-family: 'IBM Plex Sans', -apple-system, 'PingFang SC', 'Microsoft YaHei', sans-serif;
+    line-height: 1.35;
+    letter-spacing: 0;
 }
 
 .composer-preview p {
     margin: 1em 0;
+    line-height: 1.75;
+    letter-spacing: 0.01em;
 }
 
 .composer-preview ul,
@@ -1210,7 +1291,8 @@ textarea {
     }
 
     .mode-md {
-        .composer-preview { max-width: 100%; font-size: 16px; }
+        .composer-preview { max-width: 100%; font-size: 16px; line-height: 1.75; letter-spacing: 0.01em; }
+        .welcome-note-preview { font-size: 16px; line-height: 1.75; padding: 16px; }
         .composer-split-pane,
         &.md-layout-split .composer-split-pane {
             grid-template-columns: 1fr;
