@@ -9,7 +9,10 @@ mod tree;
 
 pub use book::{adopt_book, create_book_page, delete_book_page, parse_book_toc};
 pub use create::{create_doc, gen_random_path};
-pub use list::{list_all_docs, ListOptions};
+pub use list::{
+    book_page_counts, list_all_docs, list_book_page_keys, list_doc_metas,
+    list_visible_docs_fast, ListOptions,
+};
 pub use store::{delete_note, query_note, save_note, set_mode, set_password, set_title};
 pub use tree::build_home_tree_with_counts;
 
@@ -76,16 +79,16 @@ mod tests {
     #[test]
     fn parse_toc_marks_exists_and_depth() {
         let content = "# Book\n\n## TOC\n\n- [intro](hb/intro)\n  - [install](install)\n";
-        let pages = vec![NoteRecord {
-            path: "hb/intro".into(),
-            content: "# intro".into(),
-            metadata: NoteMetadata {
+        let mut existing = std::collections::HashMap::new();
+        existing.insert(
+            "hb/intro".to_string(),
+            NoteMetadata {
                 doc_type: DocType::Page,
                 book_ref: Some("hb".into()),
                 ..Default::default()
             },
-        }];
-        let toc = parse_book_toc("hb", content, &pages);
+        );
+        let toc = parse_book_toc("hb", content, &existing);
         assert!(toc.iter().any(|t| t.heading && t.title.contains("TOC")));
         let intro = toc
             .iter()

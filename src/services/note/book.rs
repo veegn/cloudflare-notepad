@@ -100,13 +100,13 @@ pub fn strip_toc_link(content: &str, page_path: &str) -> String {
     s
 }
 
-/// Parse book markdown into TOC items; mark existence via known pages.
-pub fn parse_book_toc(book_path: &str, book_content: &str, pages: &[NoteRecord]) -> Vec<TocItem> {
-    let mut page_map: HashMap<&str, &NoteRecord> = HashMap::new();
-    for p in pages {
-        page_map.insert(p.path.as_str(), p);
-    }
-
+/// Parse TOC from book markdown. `existing` maps page path → metadata
+/// (or empty metadata when only existence is known).
+pub fn parse_book_toc(
+    book_path: &str,
+    book_content: &str,
+    existing: &HashMap<String, NoteMetadata>,
+) -> Vec<TocItem> {
     let mut items = Vec::new();
     for line in book_content.lines() {
         let trimmed = line.trim();
@@ -130,7 +130,7 @@ pub fn parse_book_toc(book_path: &str, book_content: &str, pages: &[NoteRecord])
             continue;
         }
 
-        if let Some(item) = parse_list_link(book_path, line, trimmed, &page_map) {
+        if let Some(item) = parse_list_link(book_path, line, trimmed, existing) {
             items.push(item);
         }
     }
@@ -141,7 +141,7 @@ fn parse_list_link(
     book_path: &str,
     line: &str,
     trimmed: &str,
-    page_map: &HashMap<&str, &NoteRecord>,
+    existing: &HashMap<String, NoteMetadata>,
 ) -> Option<TocItem> {
     let idx = trimmed.find("- [")?;
     let indent = line.len() - line.trim_start().len();
@@ -153,7 +153,7 @@ fn parse_list_link(
     let end = rest.find(')')?;
     let raw_path = rest[..end].trim();
     let path = normalize_toc_path(book_path, raw_path);
-    let page = page_map.get(path.as_str());
+    let meta = existing.get(&path);
 
     Some(TocItem {
         title: if title.is_empty() {
@@ -163,9 +163,9 @@ fn parse_list_link(
         },
         path: Some(path),
         depth,
-        exists: page.is_some(),
-        doc_type: page.map(|p| p.metadata.doc_type),
-        protected: page.map(|p| p.metadata.pw.is_some()).unwrap_or(false),
+        exists: meta.is_some(),
+        doc_type: meta.map(|m| m.doc_type),
+        protected: meta.map(|m| m.pw.is_some()).unwrap_or(false),
         heading: false,
     })
 }
@@ -270,21 +270,14 @@ pub async fn adopt_book(
     }
 
     let prefix = format!("{book_path}/");
-    let all = super::list::list_all_docs(
-        bucket,
-        &super::list::ListOptions {
-            doc_type: None,
-            exclude_pages: false,
-            book_ref: None,
-            limit: 5000,
-        },
-    )
-    .await?;
-
-    let mut children: Vec<NoteRecord> = all
-        .into_iter()
-        .filter(|r| r.path.starts_with(&prefix) && r.path != book_path)
-        .collect();
+    // Only scan keys under this book prefix (not the whole bucket).
+    let children_keys = super::list::list_keys_with_prefix(bucket, &prefix).await?;
+    let mut children: Vec<NoteRecord> = Vec::new();
+    for key in children_keys {
+        if let Some(rec) = get_note(bucket, &key).await? {
+            children.push(rec);
+        }
+    }
     children.sort_by(|a, b| a.path.cmp(&b.path));
 
     let book = get_note(bucket, &book_path)

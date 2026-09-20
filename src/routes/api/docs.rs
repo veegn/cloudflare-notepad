@@ -4,7 +4,7 @@ use worker::*;
 
 use crate::error::*;
 use crate::models::api::{CreateDocRequest, CreateDocResponse};
-use crate::models::note::{is_index_path, DocListItem, DocType};
+use crate::models::note::{is_index_path, DocType};
 use crate::services::note;
 
 use super::util::clean_path;
@@ -107,49 +107,38 @@ fn validate_doc_path(path: &str) -> std::result::Result<(), String> {
 
 pub async fn list_books(_req: Request, ctx: RouteContext<()>) -> Result<Response> {
     let bucket = ctx.env.bucket("NOTES")?;
-    let books = note::list_all_docs(
+    let books = note::list_doc_metas(
         &bucket,
         &note::ListOptions {
             doc_type: Some(DocType::Book),
             exclude_pages: false,
-            book_ref: None,
             limit: 200,
+            include_body: false,
+            ..Default::default()
         },
     )
     .await?;
 
-    let pages = note::list_all_docs(
-        &bucket,
-        &note::ListOptions {
-            doc_type: Some(DocType::Page),
-            exclude_pages: false,
-            book_ref: None,
-            limit: 2000,
-        },
-    )
-    .await?;
-
-    let mut counts: std::collections::HashMap<String, u32> = Default::default();
-    for p in &pages {
-        if let Some(br) = &p.metadata.book_ref {
-            *counts.entry(br.clone()).or_insert(0) += 1;
-        }
-    }
+    let counts = note::book_page_counts(&bucket).await.unwrap_or_default();
 
     let items: Vec<_> = books
         .iter()
         .map(|b| {
-            let item = DocListItem::from_record(b, true);
+            let title = b
+                .metadata
+                .title
+                .clone()
+                .unwrap_or_else(|| crate::models::note::path_display_name(&b.path));
             serde_json::json!({
-                "path": item.path,
-                "docType": item.doc_type,
-                "title": item.title,
-                "excerpt": item.excerpt,
-                "updateAt": item.update_at,
-                "mode": item.mode,
-                "protected": item.protected,
-                "shared": item.shared,
-                "hasExcerpt": item.has_excerpt,
+                "path": b.path,
+                "docType": b.metadata.doc_type,
+                "title": title,
+                "excerpt": Option::<String>::None,
+                "updateAt": b.metadata.update_at,
+                "mode": b.metadata.mode,
+                "protected": b.metadata.pw.is_some(),
+                "shared": b.metadata.share,
+                "hasExcerpt": false,
                 "pageCount": counts.get(&b.path).copied().unwrap_or(0),
             })
         })
@@ -165,17 +154,8 @@ pub async fn list_books(_req: Request, ctx: RouteContext<()>) -> Result<Response
 
 pub async fn home_tree(_req: Request, ctx: RouteContext<()>) -> Result<Response> {
     let bucket = ctx.env.bucket("NOTES")?;
-    let records = note::list_all_docs(
-        &bucket,
-        &note::ListOptions {
-            doc_type: None,
-            exclude_pages: true,
-            book_ref: None,
-            limit: 1000,
-        },
-    )
-    .await?;
-
+    // Metadata-only listing — do not download note bodies for the tree.
+    let records = note::list_visible_docs_fast(&bucket).await?;
     let tree = note::build_home_tree_with_counts(&bucket, &records).await?;
 
     let mut article_count = 0u32;

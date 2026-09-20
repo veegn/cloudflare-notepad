@@ -136,6 +136,9 @@ pub async fn list_notes(req: Request, ctx: RouteContext<()>) -> Result<Response>
             exclude_pages: query.exclude_pages,
             book_ref: query.book_ref,
             limit: 500,
+            // Bodies only when searching content is required (slow path).
+            include_body: query.q.is_some(),
+            ..Default::default()
         },
     )
     .await?;

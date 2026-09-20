@@ -11,6 +11,26 @@ use super::util::{clean_path, cookie_header, get_index_password, is_edit_authori
 
 const ERR_BAD_BOOK: u32 = 40004;
 
+/// Build path→metadata map for book pages using prefix list (no full-bucket scan).
+async fn book_page_existence(
+    bucket: &worker::Bucket,
+    book_path: &str,
+) -> Result<std::collections::HashMap<String, crate::models::note::NoteMetadata>> {
+    let keys = note::list_book_page_keys(bucket, book_path).await?;
+    let mut map = std::collections::HashMap::new();
+    for key in keys {
+        map.insert(
+            key,
+            crate::models::note::NoteMetadata {
+                doc_type: DocType::Page,
+                book_ref: Some(book_path.to_string()),
+                ..Default::default()
+            },
+        );
+    }
+    Ok(map)
+}
+
 // ── GET /api/toc?book= ───────────────────────────────────────────────
 
 pub async fn get_toc(req: Request, ctx: RouteContext<()>) -> Result<Response> {
@@ -30,8 +50,8 @@ pub async fn get_toc(req: Request, ctx: RouteContext<()>) -> Result<Response> {
         return err_json(ERR_BAD_BOOK, "not a book", 400);
     }
 
-    let pages = list_pages_for_book(&bucket, &book_path).await?;
-    let items = note::parse_book_toc(&book_path, &book.content, &pages);
+    let existing = book_page_existence(&bucket, &book_path).await?;
+    let items = note::parse_book_toc(&book_path, &book.content, &existing);
 
     ok_json(serde_json::json!({
         "book": {
@@ -52,28 +72,22 @@ pub async fn list_book_pages(_req: Request, ctx: RouteContext<()>) -> Result<Res
     if book.metadata.doc_type != DocType::Book {
         return err_json(ERR_BAD_BOOK, "not a book", 400);
     }
-    let pages = list_pages_for_book(&bucket, &book_path).await?;
-    let toc = note::parse_book_toc(&book_path, &book.content, &pages);
 
-    let mut page_map: std::collections::HashMap<String, &NoteRecord> = Default::default();
-    for p in &pages {
-        page_map.insert(p.path.clone(), p);
-    }
+    let existing = book_page_existence(&bucket, &book_path).await?;
+    let toc = note::parse_book_toc(&book_path, &book.content, &existing);
 
     let items: Vec<_> = toc
         .iter()
         .filter(|t| !t.heading && t.path.is_some())
         .map(|t| {
-            let path = t.path.clone().unwrap();
-            let rec = page_map.get(&path);
             serde_json::json!({
-                "path": path,
+                "path": t.path,
                 "title": t.title,
                 "depth": t.depth,
                 "exists": t.exists,
                 "protected": t.protected,
-                "updateAt": rec.and_then(|r| r.metadata.update_at),
-                "mode": rec.map(|r| r.metadata.mode),
+                "updateAt": Option::<i64>::None,
+                "mode": Option::<String>::None,
             })
         })
         .collect();
@@ -181,6 +195,7 @@ pub async fn adopt_book(req: Request, ctx: RouteContext<()>) -> Result<Response>
     }
 }
 
+#[allow(dead_code)]
 async fn list_pages_for_book(bucket: &worker::Bucket, book_path: &str) -> Result<Vec<NoteRecord>> {
     note::list_all_docs(
         bucket,
@@ -189,6 +204,8 @@ async fn list_pages_for_book(bucket: &worker::Bucket, book_path: &str) -> Result
             exclude_pages: false,
             book_ref: Some(book_path.to_string()),
             limit: 2000,
+            prefix: Some(format!("{}/", book_path.trim_matches('/'))),
+            include_body: false,
         },
     )
     .await

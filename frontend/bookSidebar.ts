@@ -8,7 +8,24 @@ function bookPathFromSidebar(node: HTMLElement): string {
     return node.dataset.bookRef || ''
 }
 
+function tocCacheKey(book: string): string {
+    return `scn:toc:${book}`
+}
+
 async function fetchToc(book: string): Promise<TocItem[]> {
+    const cacheKey = tocCacheKey(book)
+    try {
+        const raw = sessionStorage.getItem(cacheKey)
+        if (raw) {
+            const cached = JSON.parse(raw) as { ts: number; items: TocItem[] }
+            if (Date.now() - cached.ts < 60_000 && Array.isArray(cached.items)) {
+                return cached.items
+            }
+        }
+    } catch {
+        /* ignore cache errors */
+    }
+
     const res = await fetch(`/api/toc?book=${encodeURIComponent(book)}`)
     const json = (await res.json()) as {
         code: number
@@ -16,7 +33,33 @@ async function fetchToc(book: string): Promise<TocItem[]> {
         data?: { items?: TocItem[] }
     }
     if (json.code !== 0) throw new Error(json.message || 'toc failed')
-    return json.data?.items || []
+    const items = json.data?.items || []
+    try {
+        sessionStorage.setItem(
+            cacheKey,
+            JSON.stringify({ ts: Date.now(), items }),
+        )
+    } catch {
+        /* quota */
+    }
+    return items
+}
+
+function invalidateTocCache(book?: string): void {
+    try {
+        if (book) {
+            sessionStorage.removeItem(tocCacheKey(book))
+            return
+        }
+        const keys: string[] = []
+        for (let i = 0; i < sessionStorage.length; i++) {
+            const k = sessionStorage.key(i)
+            if (k?.startsWith('scn:toc:')) keys.push(k)
+        }
+        keys.forEach(k => sessionStorage.removeItem(k))
+    } catch {
+        /* ignore */
+    }
 }
 
 async function fetchPages(book: string): Promise<{ title: string; items: BookPageItem[] }> {
@@ -186,6 +229,7 @@ async function renamePage(item: BookPageItem, book: string): Promise<void> {
         const json = (await res.json()) as { code: number; message?: string }
         if (json.code !== 0) throw new Error(json.message || 'rename failed')
         showToast(getI18n('bookRenamed'))
+        invalidateTocCache(book)
         await reloadSidebar(book)
     } catch (err) {
         errHandle(err)
@@ -203,6 +247,7 @@ async function deletePage(item: BookPageItem, book: string): Promise<void> {
         const json = (await res.json()) as { code: number; message?: string }
         if (json.code !== 0) throw new Error(json.message || 'delete failed')
         showToast(getI18n('bookDeleted'))
+        invalidateTocCache(book)
         await reloadSidebar(book)
     } catch (err) {
         errHandle(err)
@@ -228,6 +273,7 @@ async function createPage(book: string): Promise<void> {
         }
         if (json.code !== 0) throw new Error(json.message || 'create page failed')
         showToast(getI18n('bookPageCreated'))
+        invalidateTocCache(book)
         const goEdit = await showConfirm(getI18n('bookPageCreatedEdit'))
         if (goEdit && json.data?.editUrl) {
             window.location.href = json.data.editUrl

@@ -8,8 +8,6 @@ use crate::models::note::{
     is_index_path, path_display_name, DocListItem, DocType, NoteRecord, TreeNode,
 };
 
-use super::list::{list_all_docs, ListOptions};
-
 /// Build homepage tree from records that already exclude pages (typically).
 pub fn build_home_tree(records: &[NoteRecord]) -> Vec<TreeNode> {
     #[derive(Default)]
@@ -140,24 +138,7 @@ pub async fn build_home_tree_with_counts(
     bucket: &Bucket,
     records: &[NoteRecord],
 ) -> Result<Vec<TreeNode>> {
-    let pages = list_all_docs(
-        bucket,
-        &ListOptions {
-            doc_type: Some(DocType::Page),
-            exclude_pages: false,
-            book_ref: None,
-            limit: 5000,
-        },
-    )
-    .await?;
-
-    let mut counts: HashMap<String, u32> = HashMap::new();
-    for p in &pages {
-        if let Some(br) = &p.metadata.book_ref {
-            *counts.entry(br.clone()).or_insert(0) += 1;
-        }
-    }
-
+    let counts = super::list::book_page_counts(bucket).await?;
     let mut tree = build_home_tree(records);
     patch_page_counts(&mut tree, &counts);
     Ok(tree)
