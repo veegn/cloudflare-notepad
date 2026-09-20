@@ -99,5 +99,15 @@
     "bookDelete": "Delete",
     "bookDeleteConfirm": "Delete page \"{title}\"? Content will be removed and the TOC link will be updated.",
     "bookDeleted": "Page deleted.",
-    "newNotePathPrompt": "Enter the path for the new note (leave empty for random path)"
+    "newNotePathPrompt": "Enter the path for the new note (leave empty for random path)",
+    "repairDoc": "Repair data",
+    "repairAll": "Repair data",
+    "repairAllHint": "Reconcile metadata with markdown bodies and book TOCs",
+    "repairConfirmBook": "Repair metadata and TOC for \"{path}\"? Titles, types and book TOC will be synced.",
+    "repairConfirmAll": "Scan and repair documents on this service? (book TOC, titles, metadata)",
+    "repairDone": "Repaired {n} change(s)",
+    "repairNoChanges": "Already consistent",
+    "repairAllDone": "Repair done: {books}/{total} updated",
+    "repairFailed": "Repair failed",
+    "repairTreeAction": "Repair"
 }

@@ -99,5 +99,15 @@
     "bookDelete": "删除",
     "bookDeleteConfirm": "删除分页「{title}」？正文将被删除，并从书籍目录移除链接。",
     "bookDeleted": "分页已删除。",
-    "newNotePathPrompt": "请输入新笔记路径（留空则生成随机路径）"
+    "newNotePathPrompt": "请输入新笔记路径（留空则生成随机路径）",
+    "repairDoc": "修复数据",
+    "repairAll": "修复数据",
+    "repairAllHint": "对账元数据与 Markdown 正文 / 书籍目录",
+    "repairConfirmBook": "要修复「{path}」的元数据与目录吗？将同步标题、类型与书籍 TOC。",
+    "repairConfirmAll": "要扫描并修复当前服务下的文档数据吗？（书籍目录、标题与元数据）",
+    "repairDone": "已修复 {n} 项",
+    "repairNoChanges": "数据一致，无需修复",
+    "repairAllDone": "修复完成：{books}/{total} 项有变更",
+    "repairFailed": "修复失败",
+    "repairTreeAction": "修复"
 }

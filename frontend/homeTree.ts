@@ -3,6 +3,7 @@ import type { HomeTreeResponse, TreeNode } from './types'
 import { showCreateDocDialog } from './createDoc'
 import { errHandle } from './ui'
 import { el, encodeNotePath, escapeHtml, input } from './pathUtils'
+import { runRepairBook, runRepairAll } from './repair'
 
 const EXPAND_KEY = 'homeTreeExpand'
 
@@ -75,7 +76,10 @@ function rowMeta(node: TreeNode): string {
 
 function rowActions(node: TreeNode): string {
     if (node.nodeType === 'book') {
-        return `<span class="doc-tree-actions"><a href="/edit/${encodeNotePath(node.path)}">${getI18n('homeBookEdit')}</a></span>`
+        return `<span class="doc-tree-actions">
+          <a href="/edit/${encodeNotePath(node.path)}">${getI18n('homeBookEdit')}</a>
+          <button type="button" class="doc-tree-action-btn" data-repair="${escapeHtml(node.path)}">${getI18n('repairTreeAction')}</button>
+        </span>`
     }
     if (node.nodeType === 'article') {
         return `<span class="doc-tree-actions"><a href="/edit/${encodeNotePath(node.path)}">${getI18n('editButtonText')}</a></span>`
@@ -146,6 +150,12 @@ function renderNode(node: TreeNode, level: number, host: HTMLElement): void {
     if (node.nodeType === 'book') {
         row.title = getI18n('homeBookTooltip')
     }
+
+    row.querySelector<HTMLButtonElement>('[data-repair]')?.addEventListener('click', e => {
+        e.preventDefault()
+        e.stopPropagation()
+        void runRepairBook(node.path)
+    })
 
     host.appendChild(row)
 
@@ -252,6 +262,13 @@ export async function initHomeTree(): Promise<void> {
     })
     el('#home-expand-all')?.addEventListener('click', expandAll)
     el('#home-collapse-all')?.addEventListener('click', collapseAll)
+    el('#home-repair-all')?.addEventListener('click', () => {
+        void runRepairAll()
+    })
+
+    window.addEventListener('scn:repaired', () => {
+        void initHomeTree()
+    })
 
     const search = input('#home-search')
     let debounce: number | undefined

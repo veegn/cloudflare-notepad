@@ -1683,6 +1683,40 @@ textarea {
     margin-top: 4px;
 }
 
+.doc-sidebar-actions {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    margin-top: 4px;
+}
+
+.doc-sidebar-repair {
+    width: 100%;
+    min-width: 0;
+    height: 32px;
+}
+
+.doc-tree-action-btn {
+    border: none;
+    background: transparent;
+    color: var(--vscode-accent);
+    font: inherit;
+    font-size: 11px;
+    cursor: pointer;
+    padding: 2px 6px;
+    border-radius: var(--radius-s);
+}
+
+.doc-tree-action-btn:hover {
+    text-decoration: underline;
+}
+
+.doc-tree-actions {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+}
+
 .doc-sidebar-body {
     flex: 1;
     overflow: auto;
