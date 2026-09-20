@@ -124,10 +124,9 @@ textarea {
     justify-content: space-between;
     gap: 12px;
     min-width: 0;
-    background: color-mix(in srgb, var(--vscode-tab) 88%, transparent);
+    /* Unified title-bar chrome: one color for the whole strip */
+    background: var(--vscode-tab);
     border-bottom: 1px solid var(--vscode-border);
-    backdrop-filter: blur(10px);
-    box-shadow: 0 8px 18px rgba(0, 0, 0, 0.12);
 }
 
 .editor-tab {
@@ -137,8 +136,9 @@ textarea {
     max-width: 340px;
     min-width: 0;
     padding: 0 14px;
-    border-top: 1px solid var(--vscode-accent);
-    background: var(--vscode-tab-active);
+    border-top: 2px solid var(--vscode-accent);
+    background: var(--vscode-tab);
+    color: var(--vscode-text);
 }
 
 .editor-tab-icon {
