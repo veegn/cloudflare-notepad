@@ -1663,7 +1663,7 @@ textarea {
 
 .doc-tree-row {
     display: grid;
-    grid-template-columns: 20px 22px minmax(0, 1fr) 52px minmax(0, 0.9fr);
+    grid-template-columns: 20px 22px minmax(0, 1fr) minmax(48px, max-content) minmax(0, 0.7fr);
     align-items: center;
     column-gap: 8px;
     min-height: 40px;
@@ -1730,15 +1730,13 @@ textarea {
 
 .doc-tree-badge {
     display: flex;
-    justify-content: flex-start;
+    justify-content: flex-end;
     align-items: center;
     min-width: 48px;
 }
 
 .doc-tree-badge .badge {
-    min-width: 44px;
-    justify-content: center;
-    text-align: center;
+    flex-shrink: 0;
 }
 
 .doc-tree-meta {
