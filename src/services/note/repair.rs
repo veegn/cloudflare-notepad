@@ -302,8 +302,6 @@ async fn rebuild_book_toc(
         ));
     }
 
-    // strip leftover links that do not point at known pages (already rebuilt)
-    let _ = strip_toc_link;
     Ok((pages_checked, pages_created, rebuilt))
 }
 
