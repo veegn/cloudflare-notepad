@@ -37,6 +37,7 @@
             <aside class="doc-sidebar" id="doc-sidebar" data-doc-type="{{ doc_type | default(value="article") }}" data-book-ref="{{ book_ref | default(value="") }}" data-note-path="{{ note_path | default(value="") }}" data-is-edit="{% if is_edit %}true{% else %}false{% endif %}">
               <div class="doc-sidebar-head">
                 <div class="doc-sidebar-title" id="doc-sidebar-title">…</div>
+                <a class="doc-sidebar-book-link" id="doc-sidebar-book-link" href="#" hidden></a>
                 {% if doc_type == "book" and is_edit %}
                 <button type="button" class="welcome-button primary doc-sidebar-new" id="btn-new-page">{{ i18n[lang].bookNewPage | default(value="New page") }}</button>
                 {% endif %}

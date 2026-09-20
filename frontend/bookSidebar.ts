@@ -1,7 +1,7 @@
 import { getI18n } from './config'
 import type { BookPageItem, TocItem } from './types'
 import { showPrompt, showConfirm, showToast, errHandle } from './ui'
-import { el, encodeNotePath, escapeHtml } from './pathUtils'
+import { anchor, el, encodeNotePath, escapeHtml } from './pathUtils'
 
 function bookPathFromSidebar(node: HTMLElement): string {
     if (node.dataset.docType === 'book') return node.dataset.notePath || ''
@@ -30,30 +30,58 @@ async function fetchPages(book: string): Promise<{ title: string; items: BookPag
     return { title: json.data?.book?.title || book, items: json.data?.items || [] }
 }
 
+/** Generic section labels that add noise in a book TOC sidebar. */
+function isNoiseHeading(title: string): boolean {
+    return /^(toc|contents|目录|目录导航|table of contents)$/i.test(title.trim())
+}
+
 function renderTocSidebar(body: HTMLElement, items: TocItem[], currentPath: string): void {
     body.innerHTML = ''
-    if (items.length === 0) {
+    const navItems = items.filter(i => !i.heading && i.path)
+    const headings = items.filter(i => i.heading && !isNoiseHeading(i.title))
+
+    if (navItems.length === 0 && headings.length === 0) {
         body.innerHTML = `<div class="doc-tree-empty-hint">${getI18n('bookEmptyToc')}</div>`
         return
     }
 
+    body.classList.add('doc-toc-list')
+    let pageNo = 0
     for (const item of items) {
-        const node = document.createElement('div')
         if (item.heading) {
+            if (isNoiseHeading(item.title)) continue
+            const node = document.createElement('div')
             node.className = 'doc-toc-heading'
             node.textContent = item.title
             body.appendChild(node)
             continue
         }
 
+        pageNo += 1
         const active = item.path === currentPath
+        const node = document.createElement('div')
         node.className = `doc-toc-item${active ? ' is-active' : ''}${item.exists ? '' : ' is-dead'}`
         node.style.setProperty('--toc-depth', String(item.depth || 0))
-        node.innerHTML = `<span class="doc-toc-label">${escapeHtml(item.title)}</span>${item.protected ? ' 🔒' : ''}`
+        if (item.title) node.title = item.title
+
+        const lock = item.protected ? `<span class="doc-toc-lock" aria-hidden="true">🔒</span>` : ''
+        node.innerHTML = `
+          <span class="doc-toc-num" aria-hidden="true">${String(pageNo).padStart(2, '0')}</span>
+          <span class="doc-toc-label">${escapeHtml(item.title)}</span>
+          ${lock}
+        `
 
         if (item.path && item.exists) {
+            node.setAttribute('role', 'link')
+            node.tabIndex = 0
             node.addEventListener('click', () => {
                 window.location.href = `/note/${encodeNotePath(item.path!)}`
+            })
+            node.addEventListener('keydown', e => {
+                if (e.key === 'Enter' || e.key === ' ') {
+                    e.preventDefault()
+                    window.location.href = `/note/${encodeNotePath(item.path!)}`
+                }
             })
         } else {
             node.title = getI18n('bookDeadLink')
@@ -108,17 +136,35 @@ async function reloadSidebar(book: string): Promise<void> {
     const current = sidebar.dataset.notePath || ''
     const isEdit = sidebar.dataset.isEdit === 'true'
     const titleEl = el('#doc-sidebar-title')
+    const bookLink = anchor('#doc-sidebar-book-link')
 
     try {
         if (sidebar.dataset.docType === 'book' && isEdit) {
             const { title, items } = await fetchPages(book)
-            if (titleEl) titleEl.textContent = `${getI18n('bookPages')} · ${title}`
+            if (titleEl) titleEl.textContent = `${getI18n('bookPages')}`
+            if (bookLink) {
+                bookLink.hidden = false
+                bookLink.textContent = title || book
+                bookLink.href = `/note/${encodeNotePath(book)}`
+                bookLink.title = book
+            }
             renderPageManager(body, book, items, current)
-        } else {
-            const items = await fetchToc(book)
-            if (titleEl) titleEl.textContent = getI18n('bookToc')
-            renderTocSidebar(body, items, current)
+            return
         }
+
+        const toc = await fetchToc(book)
+        const bookMeta = (await fetch(`/api/notes/${encodeNotePath(book)}`)
+            .then(r => r.json())
+            .catch(() => null)) as { data?: { metadata?: { title?: string } } } | null
+        const bookTitle = bookMeta?.data?.metadata?.title || book
+        if (titleEl) titleEl.textContent = getI18n('bookToc')
+        if (bookLink) {
+            bookLink.hidden = false
+            bookLink.textContent = bookTitle
+            bookLink.href = `/note/${encodeNotePath(book)}`
+            bookLink.title = book
+        }
+        renderTocSidebar(body, toc, current)
     } catch (err) {
         body.innerHTML = `<div class="doc-tree-empty-hint">${getI18n('homeError')}</div>`
         errHandle(err)

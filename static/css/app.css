@@ -1625,7 +1625,7 @@ textarea {
 /* ── Doc sidebar (book / page) ─────────────────────────────────── */
 .doc-layout {
     display: grid;
-    grid-template-columns: 220px minmax(0, 1fr);
+    grid-template-columns: 260px minmax(0, 1fr);
     min-height: 0;
     height: 100%;
 }
@@ -1645,27 +1645,58 @@ textarea {
 .doc-sidebar-head {
     display: flex;
     flex-direction: column;
-    gap: 8px;
-    padding: 12px;
+    gap: 6px;
+    padding: 12px 14px 10px;
     border-bottom: 1px solid var(--vscode-border);
 }
 
 .doc-sidebar-title {
-    font-size: 12px;
+    font-size: 11px;
     font-weight: 600;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+    color: var(--vscode-text-subtle);
+}
+
+.doc-sidebar-book-link {
+    display: block;
+    max-width: 100%;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
     color: var(--vscode-text);
+    font-size: 14px;
+    font-weight: 600;
+    line-height: 1.35;
+    text-decoration: none;
+}
+
+.doc-sidebar-book-link:hover {
+    color: var(--vscode-accent);
+    text-decoration: none;
 }
 
 .doc-sidebar-new {
     width: 100%;
     min-width: 0;
     height: 32px;
+    margin-top: 4px;
 }
 
 .doc-sidebar-body {
     flex: 1;
     overflow: auto;
-    padding: 8px;
+    padding: 8px 6px 16px;
+    scrollbar-width: thin;
+}
+
+.doc-sidebar-body::-webkit-scrollbar {
+    width: 8px;
+}
+
+.doc-sidebar-body::-webkit-scrollbar-thumb {
+    border-radius: 8px;
+    background: color-mix(in srgb, var(--vscode-text-subtle) 35%, transparent);
 }
 
 .doc-main {
@@ -1698,52 +1729,115 @@ body[data-is-home="true"] .welcome-view {
     min-height: 0;
 }
 
-.doc-toc-item,
-.book-page-row {
-    display: flex;
-    align-items: center;
-    gap: 6px;
-    min-height: 32px;
-    padding: 4px 8px 4px calc(8px + var(--toc-depth, 0) * 12px);
-    border-radius: var(--radius-s);
-    font-size: 12px;
+/* ── Book TOC sidebar ─────────────────────────────────────────────── */
+.doc-toc-item {
+    display: grid;
+    grid-template-columns: 28px minmax(0, 1fr) auto;
+    align-items: start;
+    gap: 4px 6px;
+    min-height: 36px;
+    padding: 8px 10px 8px calc(8px + var(--toc-depth, 0) * 14px);
+    border-radius: 6px;
+    font-size: 13px;
+    line-height: 1.45;
     color: var(--vscode-text);
     cursor: pointer;
+    transition: background var(--transition), color var(--transition);
+}
+
+.doc-toc-num {
+    font-family: 'IBM Plex Mono', ui-monospace, Consolas, monospace;
+    font-size: 11px;
+    line-height: 1.45;
+    color: var(--vscode-text-subtle);
+    user-select: none;
+    padding-top: 1px;
+}
+
+.doc-toc-label {
+    min-width: 0;
+    display: -webkit-box;
+    -webkit-box-orient: vertical;
+    -webkit-line-clamp: 2;
+    line-clamp: 2;
+    overflow: hidden;
+    word-break: break-word;
+}
+
+.doc-toc-lock {
+    font-size: 11px;
+    line-height: 1.45;
+    opacity: 0.85;
 }
 
 .doc-toc-heading {
-    margin: 8px 8px 4px;
+    margin: 14px 10px 6px;
     font-size: 11px;
     font-weight: 600;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
     color: var(--vscode-text-subtle);
 }
 
-.doc-toc-item:hover,
+.doc-toc-item:hover {
+    background: rgba(255, 255, 255, 0.05);
+    color: var(--vscode-text);
+}
+
+[data-theme="light"] .doc-toc-item:hover {
+    background: rgba(0, 0, 0, 0.04);
+}
+
+.doc-toc-item.is-active {
+    background: var(--vscode-accent-soft);
+    color: var(--vscode-text);
+    font-weight: 600;
+    box-shadow: inset 2px 0 0 var(--vscode-accent);
+}
+
+.doc-toc-item.is-active .doc-toc-num {
+    color: var(--vscode-accent);
+}
+
+.doc-toc-item.is-dead {
+    color: var(--vscode-text-subtle);
+    cursor: default;
+}
+
+.doc-toc-item:focus-visible {
+    outline: 2px solid var(--vscode-accent);
+    outline-offset: -2px;
+}
+
+/* Page manager rows (edit book) keep a denser list style */
+.book-page-row {
+    display: grid;
+    grid-template-columns: 28px minmax(0, 1fr) auto;
+    align-items: center;
+    gap: 6px;
+    min-height: 36px;
+    padding: 6px 8px 6px 8px;
+    border-radius: 6px;
+    font-size: 13px;
+    color: var(--vscode-text);
+    cursor: default;
+}
+
 .book-page-row:hover {
     background: rgba(255, 255, 255, 0.05);
 }
 
-[data-theme="light"] .doc-toc-item:hover,
 [data-theme="light"] .book-page-row:hover {
     background: rgba(0, 0, 0, 0.04);
 }
 
-.doc-toc-item.is-active,
 .book-page-row.is-active {
     background: var(--vscode-accent-soft);
     box-shadow: inset 2px 0 0 var(--vscode-accent);
 }
 
-.doc-toc-item.is-dead,
 .book-page-row.is-dead {
     color: var(--vscode-text-subtle);
-    cursor: default;
-}
-
-.book-page-row {
-    flex-wrap: wrap;
-    cursor: default;
-    padding-right: 4px;
 }
 
 .book-page-index {
@@ -1753,11 +1847,13 @@ body[data-is-home="true"] .welcome-view {
 }
 
 .book-page-title {
-    flex: 1;
     min-width: 0;
+    display: -webkit-box;
+    -webkit-box-orient: vertical;
+    -webkit-line-clamp: 2;
+    line-clamp: 2;
     overflow: hidden;
-    text-overflow: ellipsis;
-    white-space: nowrap;
+    word-break: break-word;
 }
 
 .book-page-actions {

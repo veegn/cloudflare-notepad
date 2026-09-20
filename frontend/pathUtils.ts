@@ -26,3 +26,8 @@ export function input(selector: string, parent: ParentNode = document): HTMLInpu
     const node = parent.querySelector(selector)
     return node instanceof HTMLInputElement ? node : null
 }
+
+export function anchor(selector: string, parent: ParentNode = document): HTMLAnchorElement | null {
+    const node = parent.querySelector(selector)
+    return node instanceof HTMLAnchorElement ? node : null
+}
