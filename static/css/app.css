@@ -485,11 +485,155 @@ textarea {
 .welcome-view {
     display: flex;
     flex-direction: column;
-    gap: 28px;
-    padding: 28px;
+    gap: 20px;
+    padding: 20px 22px 28px;
     min-height: 100%;
-    /* allow tree content to define height when parent scrolls */
     box-sizing: border-box;
+}
+
+/* ── Home layout (clean document library) ─────────────────────── */
+.home-view {
+    max-width: 920px;
+    width: 100%;
+    margin: 0 auto;
+    gap: 16px;
+}
+
+.home-header {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 12px 20px;
+    padding: 4px 2px 2px;
+}
+
+.home-header-text {
+    min-width: 0;
+    flex: 1 1 280px;
+}
+
+.home-title {
+    margin: 0;
+    font-size: 22px;
+    font-weight: 650;
+    line-height: 1.25;
+    letter-spacing: 0;
+    color: var(--vscode-text);
+}
+
+.home-copy {
+    margin: 6px 0 0;
+    max-width: 42em;
+    font-size: 13px;
+    line-height: 1.5;
+    color: var(--vscode-text-muted);
+}
+
+.home-header-actions {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 8px;
+    margin-top: 0;
+    flex: 0 0 auto;
+}
+
+.welcome-button.ghost {
+    min-width: 0;
+    height: 34px;
+    padding: 0 12px;
+    border-color: transparent;
+    background: transparent;
+    color: var(--vscode-text-muted);
+    font-weight: 500;
+}
+
+.welcome-button.ghost:hover {
+    background: rgba(255, 255, 255, 0.06);
+    color: var(--vscode-text);
+}
+
+[data-theme="light"] .welcome-button.ghost:hover {
+    background: rgba(0, 0, 0, 0.04);
+}
+
+.home-docs {
+    display: flex;
+    flex-direction: column;
+    gap: 0;
+    border: 1px solid var(--vscode-border);
+    border-radius: 12px;
+    background: var(--vscode-editor);
+    box-shadow: var(--shadow-panel);
+    overflow: hidden;
+}
+
+.home-docs-head {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: space-between;
+    gap: 10px 16px;
+    padding: 14px 16px 10px;
+    border-bottom: 1px solid color-mix(in srgb, var(--vscode-border) 70%, transparent);
+}
+
+.home-docs-head-left {
+    display: flex;
+    align-items: baseline;
+    gap: 8px;
+}
+
+.home-docs-filters {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: space-between;
+    gap: 8px 12px;
+    padding: 10px 12px;
+    border-bottom: 1px solid color-mix(in srgb, var(--vscode-border) 55%, transparent);
+    background: color-mix(in srgb, var(--vscode-tab) 55%, transparent);
+}
+
+.home-docs-tools {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 4px;
+}
+
+.home-tool-btn {
+    height: 28px;
+    padding: 0 10px;
+    border: 1px solid transparent;
+    border-radius: 6px;
+    background: transparent;
+    color: var(--vscode-text-muted);
+    font-size: 12px;
+    cursor: pointer;
+}
+
+.home-tool-btn:hover {
+    border-color: var(--vscode-border);
+    color: var(--vscode-text);
+    background: rgba(255, 255, 255, 0.04);
+}
+
+[data-theme="light"] .home-tool-btn:hover {
+    background: rgba(0, 0, 0, 0.03);
+}
+
+.home-tool-btn:focus-visible,
+.welcome-button.ghost:focus-visible {
+    outline: 2px solid var(--vscode-accent);
+    outline-offset: 2px;
+}
+
+.home-docs .doc-tree {
+    border: 0;
+    border-radius: 0;
+    background: transparent;
+    box-shadow: none;
 }
 
 .welcome-hero {
@@ -513,7 +657,6 @@ textarea {
         max-width: 720px;
         font-size: clamp(28px, 4vw, 44px);
         line-height: 1.2;
-        /* Latin display can tighten; keep CJK-readable tracking */
         letter-spacing: 0;
         font-weight: 650;
     }
@@ -538,9 +681,9 @@ textarea {
     display: inline-flex;
     align-items: center;
     justify-content: center;
-    min-width: 130px;
-    height: 38px;
-    padding: 0 16px;
+    min-width: 110px;
+    height: 36px;
+    padding: 0 14px;
     border: 1px solid var(--vscode-border);
     border-radius: var(--radius-m);
     background: rgba(255, 255, 255, 0.03);
@@ -1424,7 +1567,7 @@ textarea {
 
 .home-section-title {
     margin: 0;
-    font-size: 15px;
+    font-size: 14px;
     font-weight: 600;
 }
 
@@ -1441,12 +1584,12 @@ textarea {
 }
 
 .home-search {
-    width: min(240px, 100%);
+    width: min(220px, 100%);
     height: 32px;
     padding: 0 12px;
     border: 1px solid var(--vscode-border);
     border-radius: var(--radius-m);
-    background: var(--vscode-editor);
+    background: var(--vscode-bg);
     color: var(--vscode-text);
     font: inherit;
     font-size: 12px;
@@ -1460,7 +1603,7 @@ textarea {
 .home-chips {
     display: flex;
     flex-wrap: wrap;
-    gap: 8px;
+    gap: 6px;
 }
 
 .home-chip {
@@ -1469,9 +1612,13 @@ textarea {
     border: 1px solid var(--vscode-border);
     border-radius: 999px;
     background: transparent;
-    color: var(--vscode-text);
+    color: var(--vscode-text-muted);
     font-size: 12px;
     cursor: pointer;
+}
+
+.home-chip:hover {
+    color: var(--vscode-text);
 }
 
 .home-chip.active {
@@ -1518,10 +1665,14 @@ textarea {
     display: flex;
     align-items: center;
     gap: 8px;
-    min-height: 36px;
-    padding: 4px 12px 4px calc(12px + var(--tree-level, 0) * 20px);
-    border-bottom: 1px solid transparent;
+    min-height: 40px;
+    padding: 6px 14px 6px calc(12px + var(--tree-level, 0) * 18px);
+    border-bottom: 1px solid color-mix(in srgb, var(--vscode-border) 35%, transparent);
     color: var(--vscode-text);
+}
+
+.doc-tree-row:last-child {
+    border-bottom: 0;
 }
 
 .doc-tree-row:hover {
@@ -1580,11 +1731,18 @@ textarea {
     color: var(--vscode-text-subtle);
     font-size: 11px;
     white-space: nowrap;
+    max-width: 160px;
+    overflow: hidden;
+    text-overflow: ellipsis;
 }
 
 .doc-tree-actions {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
     opacity: 0;
     font-size: 11px;
+    transition: opacity var(--transition);
 }
 
 .doc-tree-row:hover .doc-tree-actions,
@@ -1709,12 +1867,6 @@ textarea {
 
 .doc-tree-action-btn:hover {
     text-decoration: underline;
-}
-
-.doc-tree-actions {
-    display: inline-flex;
-    align-items: center;
-    gap: 6px;
 }
 
 .doc-sidebar-body {

@@ -112,7 +112,7 @@ test('home page localizes copy, removes quick start, and renders home note markd
     })
     const localizedHtml = await localizedHome.text()
 
-    expect(localizedHtml).toContain('浏览书籍与文章')
+    expect(localizedHtml).toContain('文档库')
     expect(localizedHtml).toContain('云端文档库')
     expect(localizedHtml).toContain('home-docs')
     expect(localizedHtml).toContain('操作文档')

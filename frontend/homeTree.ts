@@ -63,6 +63,7 @@ function typeBadge(node: TreeNode): string {
 }
 
 function rowMeta(node: TreeNode): string {
+    if (node.nodeType === 'dir') return ''
     return [
         node.pageCount != null && node.nodeType === 'book'
             ? getI18n('homePageCount').replace('{n}', String(node.pageCount))
@@ -132,7 +133,7 @@ function renderNode(node: TreeNode, level: number, host: HTMLElement): void {
       <span class="doc-tree-icon" aria-hidden="true">${icon}</span>
       <a class="doc-tree-title" href="${href}">${escapeHtml(node.title)}</a>
       ${typeBadge(node)}
-      <span class="doc-tree-meta">${escapeHtml(rowMeta(node))}</span>
+      ${rowMeta(node) ? `<span class="doc-tree-meta">${escapeHtml(rowMeta(node))}</span>` : ''}
       ${rowActions(node)}
     `
 
