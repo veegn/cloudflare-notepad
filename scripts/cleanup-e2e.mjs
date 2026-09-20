@@ -33,7 +33,12 @@ async function listPaths(prefix) {
   url.searchParams.set('limit', '200')
   if (prefix) url.searchParams.set('prefix', prefix)
   const res = await fetch(url)
-  const json = await res.json()
+  const text = await res.text()
+  if (!text.trim().startsWith('{')) {
+    console.log(`[cleanup] skip non-JSON prefix=${prefix || '(all)'} status=${res.status}`)
+    return []
+  }
+  const json = JSON.parse(text)
   return (json?.data?.items || []).map(i => i.path).filter(Boolean)
 }
 

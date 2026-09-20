@@ -264,23 +264,19 @@ pub async fn list_doc_metas(
         if is_index_path(&key) {
             continue;
         }
-        // Prefer list metadata; do not GET by default (body transfer is expensive).
-        let mut metadata = match obj.custom_metadata() {
-            Ok(custom) if !custom.is_empty() => meta::from_custom(&custom),
-            _ => NoteMetadata::default(),
-        };
-
-        // Heuristic when metadata missing: nested paths look like pages.
-        if metadata.doc_type == DocType::Article && key.contains('/') {
+        // Never call list-object custom_metadata here: on some Workers/R2
+        // combinations it throws (1101/500). Use path heuristics instead.
+        let mut metadata = NoteMetadata::default();
+        if key.contains('/') {
             metadata.doc_type = DocType::Page;
             let root = key.split('/').next().unwrap_or("").to_string();
             if !root.is_empty() {
                 metadata.book_ref = Some(root);
             }
+        } else {
+            metadata.doc_type = DocType::Article;
         }
-        if metadata.title.is_none() {
-            metadata.title = Some(path_display_name(&key));
-        }
+        metadata.title = Some(path_display_name(&key));
 
         if !matches_filters(&metadata, opts) {
             continue;
