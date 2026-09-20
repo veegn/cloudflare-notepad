@@ -110,10 +110,8 @@ fn parse_list_query(url: &worker::Url) -> ListQuery {
                     query.limit = n.clamp(1, 200);
                 }
             }
-            "prefix" => {
-                if !v.is_empty() {
-                    query.prefix = Some(v.to_string());
-                }
+            "prefix" if !v.is_empty() => {
+                query.prefix = Some(v.to_string());
             }
             _ => {}
         }
