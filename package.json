@@ -27,7 +27,9 @@
     "build:frontend:prod": "node scripts/build-frontend.mjs prod",
     "typecheck": "tsc --noEmit",
     "lint": "eslint frontend/**/*.ts",
-    "check": "npm run lint && npm run typecheck && cargo fmt --check && cargo clippy --all-targets -- -D warnings && cargo test"
+    "check": "npm run lint && npm run typecheck && cargo fmt --check && cargo clippy --all-targets -- -D warnings && cargo test",
+    "migrate:kv-to-r2": "node --no-warnings=ExperimentalWarning scripts/migrate-kv-to-r2.mjs",
+    "migrate:kv-to-r2:dry": "node --no-warnings=ExperimentalWarning scripts/migrate-kv-to-r2.mjs --dry-run"
   },
   "dependencies": {
     "@codemirror/autocomplete": "^6.20.1",

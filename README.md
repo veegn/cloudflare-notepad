@@ -9,7 +9,7 @@
 
 一个轻量的无服务云笔记项目，支持快速记录、格式化和安全分享。
 
-项目基于 Cloudflare Workers、Workers KV 和 GitHub Actions，易于私有化部署。
+项目基于 Cloudflare Workers、Workers R2 和 GitHub Actions，易于私有化部署。
 
 `static/js/app.js` 会在本地启动、测试和部署前自动构建，前端源码位于 `frontend/`。
 
@@ -17,7 +17,7 @@
 
 - 首页（`/`）提供欢迎视图与首页笔记预览。
 - 支持通过 `/new` 一键创建随机路径笔记。
-- 编辑与查看页面均基于 Cloudflare KV 自动保存。
+- 编辑与查看页面均基于 Cloudflare R2 自动保存。
 - 支持四种内容模式：纯文本、Markdown、JSON、YAML。
 - Markdown 支持分栏实时预览，并可在编辑 / 分栏 / 预览布局间切换。
 - 内置格式化能力（按钮 + 快捷键）用于结构化内容。
@@ -68,7 +68,8 @@ npm start
 
 ### 1. 准备 Cloudflare
 1. 前往 [Cloudflare API Token 页面](https://dash.cloudflare.com/profile/api-tokens)，使用 `Edit Cloudflare Workers` 模板创建令牌。
-2. 在 Cloudflare Worker 控制台，进入你的项目（或先部署一次生成项目），在 `Settings -> Variables` 中添加以下 **Environment Variables**（建议点击 "Encrypt" 设为 Secret）：
+2. 在 Cloudflare 控制台确认/创建 R2 存储桶（正式环境使用 `cloud-notepad-notes`，需与 `wrangler.toml` 中 `bucket_name` 一致）。
+3. 在 Cloudflare Worker 控制台，进入你的项目（或先部署一次生成项目），在 `Settings -> Variables` 中添加以下 **Environment Variables**（建议点击 "Encrypt" 设为 Secret）：
    - `SCN_SALT`: 用于加密逻辑的盐（随机字符串）
    - `SCN_SECRET`: JWT 签名密钥（较长的随机字符串）。请配置为 Cloudflare Worker Secret，而不是明文变量。
    - `SCN_INDEX_PASSWD`: (可选) 保护首页编辑的管理员密码
@@ -88,6 +89,41 @@ npm start
 npm install
 npm run deploy
 ```
+
+### 迁移历史 KV 数据到 R2
+
+项目已从 Workers KV 切换到 R2。历史笔记可用迁移脚本导入：
+
+```bash
+# 预览（本地 miniflare KV → 本地 miniflare R2，不写入）
+npm run migrate:kv-to-r2:dry
+
+# 本地迁移（读 .wrangler/state/v3/kv，写 .wrangler/state/v3/r2）
+npm run migrate:kv-to-r2
+
+# 强制覆盖 R2 中已有的同名对象
+npm run migrate:kv-to-r2 -- --force
+
+# 只导出转换结果，便于检查
+npm run migrate:kv-to-r2 -- --target dump --out .temp/kv-dump
+
+# 远程 KV → 远程 R2（需已登录 wrangler，并创建好 R2 桶）
+npm run migrate:kv-to-r2 -- --source remote --target remote \
+  --kv-namespace-id <YOUR_KV_NAMESPACE_ID> \
+  --r2-bucket cloud-notepad-notes
+```
+
+运行时只认 **body 纯内容 + R2 打平后的 custom_metadata**（键：`pw` / `mode` / `updateAt` / `share`，值均为字符串；默认值省略）。迁移脚本在**读取历史 KV 源数据**时仍会识别旧的 `\0META:{json}\0\n{content}` 与过渡期 JSON 信封，写入 R2 时一律打平。`.index` 默认保留原 key；若要把旧首页迁成 `_index`，加 `--rename-legacy-index`。
+
+远程重刷需能写入 custom metadata（`wrangler r2 object put` 不支持）。可使用一次性 Worker：
+
+```bash
+wrangler deploy -c wrangler.migrate.toml
+curl -X POST https://<migrate-worker>.workers.dev/flush
+wrangler delete --name cloudflare-notepad-migrate -c wrangler.migrate.toml --force
+```
+
+正式环境已完成：KV `cloud-notepad-NOTES_preview` → R2 桶 `cloud-notepad-notes`，并全量重刷为纯 body + custom metadata（20 条有效笔记）。
 
 ## 致谢
 

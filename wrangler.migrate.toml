@@ -1,0 +1,13 @@
+name = "cloudflare-notepad-migrate"
+main = "scripts/migrate-worker.js"
+compatibility_date = "2025-01-01"
+
+# Historical production KV namespace (NOTES)
+[[kv_namespaces]]
+binding = "NOTES_KV"
+id = "b485b873ed1a41d686bb26799e2eb527"
+
+# Target R2 bucket
+[[r2_buckets]]
+binding = "NOTES_R2"
+bucket_name = "cloud-notepad-notes"

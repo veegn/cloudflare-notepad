@@ -95,8 +95,8 @@ fn render_html(tera: &Tera, template: &str, ctx: &tera::Context) -> Result<Respo
 
 pub async fn home(req: Request, ctx: RouteContext<()>) -> Result<Response> {
     let lang = detect_lang(&req);
-    let kv = ctx.env.kv("NOTES")?;
-    let record = note::query_note(&kv, INDEX_PATH).await?;
+    let bucket = ctx.env.bucket("NOTES")?;
+    let record = note::query_note(&bucket, INDEX_PATH).await?;
     let i18n_map = build_i18n_map();
     let tera = build_tera();
 
@@ -147,8 +147,8 @@ pub async fn view_note(req: Request, ctx: RouteContext<()>) -> Result<Response> 
         return Ok(resp);
     }
 
-    let kv = ctx.env.kv("NOTES")?;
-    let record = note::query_note(&kv, &path).await?;
+    let bucket = ctx.env.bucket("NOTES")?;
+    let record = note::query_note(&bucket, &path).await?;
     let title = urlencoding::decode(&path)
         .unwrap_or_else(|_| path.clone().into())
         .to_string();
@@ -233,8 +233,8 @@ pub async fn edit_note(req: Request, ctx: RouteContext<()>) -> Result<Response> 
     let path = clean_path(&raw_path);
     let lang = detect_lang(&req);
 
-    let kv = ctx.env.kv("NOTES")?;
-    let record = note::query_note(&kv, &path).await?;
+    let bucket = ctx.env.bucket("NOTES")?;
+    let record = note::query_note(&bucket, &path).await?;
     let title = urlencoding::decode(&path)
         .unwrap_or_else(|_| path.clone().into())
         .to_string();

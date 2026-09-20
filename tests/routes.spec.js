@@ -111,7 +111,12 @@ test('home page localizes copy, removes quick start, and renders home note markd
 
     expect(localizedHtml).toContain('一个轻量的工作台，用于快速记录与安全分享。')
 
-    // Seed the home note before checking the UI
+    // Seed the home note (requires index admin password auth) before checking the UI
+    const indexPassword = process.env.SCN_INDEX_PASSWD || 'e2e-test-password'
+    const authResponse = await request.post('/api/auth', {
+        data: { path: '_index', password: indexPassword },
+    })
+    expect(authResponse.ok()).toBeTruthy()
     await saveNote(request, '_index', '## Dashboard\n### Metrics\n- CPU\n- Memory')
 
     await page.goto('/')

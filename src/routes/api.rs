@@ -32,8 +32,8 @@ fn get_index_password(env: &Env) -> Option<String> {
 pub async fn get_note(req: Request, ctx: RouteContext<()>) -> Result<Response> {
     let raw_path = ctx.param("path").unwrap_or(&String::new()).to_string();
     let path = clean_path(&raw_path);
-    let kv = ctx.env.kv("NOTES")?;
-    let record = note::query_note(&kv, &path).await?;
+    let bucket = ctx.env.bucket("NOTES")?;
+    let record = note::query_note(&bucket, &path).await?;
 
     let secret = auth::required_jwt_secret(&ctx.env)?;
     let salt = get_salt(&ctx.env);
@@ -84,8 +84,8 @@ pub async fn get_note(req: Request, ctx: RouteContext<()>) -> Result<Response> {
 pub async fn put_note(mut req: Request, ctx: RouteContext<()>) -> Result<Response> {
     let raw_path = ctx.param("path").unwrap_or(&String::new()).to_string();
     let path = clean_path(&raw_path);
-    let kv = ctx.env.kv("NOTES")?;
-    let record = note::query_note(&kv, &path).await?;
+    let bucket = ctx.env.bucket("NOTES")?;
+    let record = note::query_note(&bucket, &path).await?;
 
     let secret = auth::required_jwt_secret(&ctx.env)?;
     let index_pw = get_index_password(&ctx.env);
@@ -102,7 +102,7 @@ pub async fn put_note(mut req: Request, ctx: RouteContext<()>) -> Result<Respons
     }
 
     let body: SaveNoteRequest = req.json().await?;
-    note::save_note(&kv, &path, &body.content).await?;
+    note::save_note(&bucket, &path, &body.content).await?;
 
     ok_empty()
 }
@@ -112,8 +112,8 @@ pub async fn put_note(mut req: Request, ctx: RouteContext<()>) -> Result<Respons
 pub async fn delete_note(req: Request, ctx: RouteContext<()>) -> Result<Response> {
     let raw_path = ctx.param("path").unwrap_or(&String::new()).to_string();
     let path = clean_path(&raw_path);
-    let kv = ctx.env.kv("NOTES")?;
-    let record = note::query_note(&kv, &path).await?;
+    let bucket = ctx.env.bucket("NOTES")?;
+    let record = note::query_note(&bucket, &path).await?;
 
     let secret = auth::required_jwt_secret(&ctx.env)?;
     let index_pw = get_index_password(&ctx.env);
@@ -129,7 +129,7 @@ pub async fn delete_note(req: Request, ctx: RouteContext<()>) -> Result<Response
         return err_json(ERR_AUTH_FAILED, "Password auth failed", 401);
     }
 
-    note::delete_note(&kv, &path).await?;
+    note::delete_note(&bucket, &path).await?;
     ok_empty()
 }
 
@@ -139,8 +139,8 @@ pub async fn patch_note(req: Request, ctx: RouteContext<()>) -> Result<Response>
     let mut req = req; // need mut to extract json
     let raw_path = ctx.param("path").unwrap_or(&String::new()).to_string();
     let path = clean_path(&raw_path);
-    let kv = ctx.env.kv("NOTES")?;
-    let record = note::query_note(&kv, &path).await?;
+    let bucket = ctx.env.bucket("NOTES")?;
+    let record = note::query_note(&bucket, &path).await?;
 
     let secret = auth::required_jwt_secret(&ctx.env)?;
     let index_pw = get_index_password(&ctx.env);
@@ -177,8 +177,8 @@ pub async fn patch_note(req: Request, ctx: RouteContext<()>) -> Result<Response>
                 }
             }
         };
-        if let Err(e) = note::set_password(&kv, &path, pw_hash).await {
-            worker::console_error!("KV set_password error: {}", e);
+        if let Err(e) = note::set_password(&bucket, &path, pw_hash).await {
+            worker::console_error!("R2 set_password error: {}", e);
             return Err(e);
         }
 
@@ -202,8 +202,8 @@ pub async fn patch_note(req: Request, ctx: RouteContext<()>) -> Result<Response>
     }
 
     if let Some(mode) = body.mode {
-        if let Err(e) = note::set_mode(&kv, &path, mode).await {
-            worker::console_error!("KV set_mode error: {}", e);
+        if let Err(e) = note::set_mode(&bucket, &path, mode).await {
+            worker::console_error!("R2 set_mode error: {}", e);
             return Err(e);
         }
     }
@@ -217,8 +217,8 @@ pub async fn auth_note(mut req: Request, ctx: RouteContext<()>) -> Result<Respon
     let body: AuthRequest = req.json().await?;
     let path = clean_path(&body.path);
 
-    let kv = ctx.env.kv("NOTES")?;
-    let record = note::query_note(&kv, &path).await?;
+    let bucket = ctx.env.bucket("NOTES")?;
+    let record = note::query_note(&bucket, &path).await?;
 
     let secret = auth::required_jwt_secret(&ctx.env)?;
     let salt = get_salt(&ctx.env);

@@ -1,4 +1,6 @@
 # Development-only values. Use unique, private values in .dev.vars.
+# For local e2e (`npm run test:e2e`), keep SCN_INDEX_PASSWD aligned with
+# playwright.config.js (`e2e-test-password`) so /api/notes/_index can be seeded.
 SCN_SALT=local-development-salt
 SCN_SECRET=replace-with-a-random-local-secret
-SCN_INDEX_PASSWD=
+SCN_INDEX_PASSWD=e2e-test-password

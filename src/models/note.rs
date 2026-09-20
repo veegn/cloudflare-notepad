@@ -39,10 +39,10 @@ impl std::fmt::Display for NoteMode {
     }
 }
 
-/// Metadata attached to a note in Cloudflare KV.
+/// Metadata attached to a note in Cloudflare R2.
 ///
-/// Field names use camelCase to match the existing KV data written by
-/// the TypeScript worker (`updateAt`, not `updated_at`).
+/// Field names use camelCase to match data written by the TypeScript
+/// worker (`updateAt`, not `updated_at`).
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct NoteMetadata {
@@ -51,7 +51,7 @@ pub struct NoteMetadata {
     pub pw: Option<String>,
 
     /// Whether the note is publicly shareable.
-    /// Absent in KV → defaults to `true`.
+    /// Absent metadata → defaults to `true`.
     #[serde(default = "default_share", skip_serializing_if = "is_true")]
     pub share: bool,
 
@@ -83,7 +83,7 @@ impl Default for NoteMetadata {
     }
 }
 
-/// A full note record as read from KV (value + metadata).
+/// A full note record as read from R2 (body + metadata).
 #[derive(Debug, Clone)]
 pub struct NoteRecord {
     #[allow(dead_code)]

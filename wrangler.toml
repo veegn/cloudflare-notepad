@@ -2,9 +2,9 @@ name = "cloudflare-notepad"
 main = "build/worker/shim.mjs"
 compatibility_date = "2025-01-01"
 
-[[kv_namespaces]]
+[[r2_buckets]]
 binding = "NOTES"
-id = "b485b873ed1a41d686bb26799e2eb527"
+bucket_name = "cloud-notepad-notes"
 
 [build]
 command = "worker-build --release"
