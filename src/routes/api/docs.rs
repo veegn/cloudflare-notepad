@@ -123,23 +123,22 @@ pub async fn list_books(_req: Request, ctx: RouteContext<()>) -> Result<Response
 
     let items: Vec<_> = books
         .iter()
-        .map(|b| {
-            let title = b
-                .metadata
+        .map(|(path, metadata)| {
+            let title = metadata
                 .title
                 .clone()
-                .unwrap_or_else(|| crate::models::note::path_display_name(&b.path));
+                .unwrap_or_else(|| crate::models::note::path_display_name(path));
             serde_json::json!({
-                "path": b.path,
-                "docType": b.metadata.doc_type,
+                "path": path,
+                "docType": metadata.doc_type,
                 "title": title,
                 "excerpt": Option::<String>::None,
-                "updateAt": b.metadata.update_at,
-                "mode": b.metadata.mode,
-                "protected": b.metadata.pw.is_some(),
-                "shared": b.metadata.share,
+                "updateAt": metadata.update_at,
+                "mode": metadata.mode,
+                "protected": metadata.pw.is_some(),
+                "shared": metadata.share,
                 "hasExcerpt": false,
-                "pageCount": counts.get(&b.path).copied().unwrap_or(0),
+                "pageCount": counts.get(path).copied().unwrap_or(0),
             })
         })
         .collect();
