@@ -132,6 +132,7 @@ test('home page localizes copy, removes quick start, and renders home note markd
     await expect(page.locator('#preview-home')).toHaveCount(0)
     await expect(page.locator('#btn-new-doc')).toBeVisible()
     await expect(page.getByRole('link', { name: '操作文档' })).toBeVisible()
+    await expect(page.getByRole('link', { name: '编辑首页' })).toHaveCount(0)
 
     // Operations guide renders at /note/_index
     await page.goto('/note/_index')
