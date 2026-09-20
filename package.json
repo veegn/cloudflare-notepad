@@ -33,7 +33,8 @@
     "migrate:doctype": "node --no-warnings=ExperimentalWarning scripts/migrate-doctype.mjs",
     "migrate:doctype:dry": "node --no-warnings=ExperimentalWarning scripts/migrate-doctype.mjs --dry-run",
     "adopt:book": "node --no-warnings=ExperimentalWarning scripts/adopt-book.mjs",
-    "cleanup:e2e": "node --no-warnings=ExperimentalWarning scripts/cleanup-e2e.mjs"
+    "cleanup:e2e": "node --no-warnings=ExperimentalWarning scripts/cleanup-e2e.mjs",
+    "repair": "node --no-warnings=ExperimentalWarning scripts/repair-doc.mjs"
   },
   "dependencies": {
     "@codemirror/autocomplete": "^6.20.1",

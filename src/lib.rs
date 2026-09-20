@@ -25,6 +25,7 @@ async fn fetch(req: Request, env: Env, _ctx: Context) -> Result<Response> {
         .get_async("/api/home-tree", routes::api::home_tree)
         .get_async("/api/toc", routes::api::get_toc)
         .post_async("/api/docs", routes::api::create_doc)
+        .post_async("/api/repair", routes::api::repair)
         .get_async("/api/books/:book/pages", routes::api::list_book_pages)
         .post_async("/api/books/:book/pages", routes::api::create_book_page)
         .post_async("/api/books/:book/adopt", routes::api::adopt_book)
