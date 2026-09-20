@@ -15,7 +15,7 @@
   <link href="/css/app.css" rel="stylesheet" media="screen" />
 </head>
 
-<body data-show-pw-prompt="{{ show_pw_prompt }}">
+<body data-show-pw-prompt="{{ show_pw_prompt }}" data-is-home="{% if is_home %}true{% else %}false{% endif %}">
   <div class="app-shell">
     {# ── Workbench ── #}
     <main class="workbench">

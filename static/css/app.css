@@ -473,6 +473,8 @@ textarea {
     gap: 28px;
     padding: 28px;
     min-height: 100%;
+    /* allow tree content to define height when parent scrolls */
+    box-sizing: border-box;
 }
 
 .welcome-hero {
@@ -1590,6 +1592,22 @@ textarea {
     overflow: hidden;
     display: flex;
     flex-direction: column;
+}
+
+/* Homepage document tree must scroll inside the workbench pane.
+   Body/html stay fixed; only the home main column becomes scrollable. */
+.doc-main:has(> .welcome-view),
+body[data-is-home="true"] .doc-main {
+    overflow-y: auto;
+    overflow-x: hidden;
+    -webkit-overflow-scrolling: touch;
+    overscroll-behavior: contain;
+}
+
+.doc-main:has(> .welcome-view) .welcome-view,
+body[data-is-home="true"] .welcome-view {
+    min-height: auto;
+    flex: 0 0 auto;
 }
 
 .editor-body.has-doc-sidebar > .composer-frame,
