@@ -110,5 +110,6 @@
     "repairNoChanges": "Already consistent",
     "repairAllDone": "Repair done: {books}/{total} updated",
     "repairFailed": "Repair failed",
+    "repairRunning": "Repairing…",
     "repairTreeAction": "Repair"
 }

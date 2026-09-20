@@ -45,9 +45,15 @@ pub async fn get_toc(req: Request, ctx: RouteContext<()>) -> Result<Response> {
     };
 
     let bucket = ctx.env.bucket("NOTES")?;
+    let url = req.url()?;
+    let skip_cache = url
+        .query_pairs()
+        .any(|(k, v)| (k == "refresh" || k == "nocache") && v != "0" && v != "false");
     let cache_key = note::toc_cache_key(&book_path);
-    if let Some(cached) = note::read_json_cache(&bucket, &cache_key).await {
-        return ok_json(cached);
+    if !skip_cache {
+        if let Some(cached) = note::read_json_cache(&bucket, &cache_key).await {
+            return ok_json(cached);
+        }
     }
 
     let book = note::query_note(&bucket, &book_path).await?;

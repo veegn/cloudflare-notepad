@@ -5,6 +5,7 @@ use worker::*;
 use crate::error::*;
 use crate::services::note::{repair_all, repair_doc, TitlePrefer};
 
+use super::docs::build_home_tree_payload;
 use super::util::{clean_path, cookie_header, get_index_password, is_edit_authorized};
 
 fn parse_prefer(req: &Request) -> Result<TitlePrefer> {
@@ -85,6 +86,7 @@ pub async fn repair(req: Request, ctx: RouteContext<()>) -> Result<Response> {
         }
         let limit = query_limit(&req)?;
         let results = repair_all(&bucket, prefer, create_missing, limit).await?;
+        warm_home_tree_cache(&bucket).await;
         return ok_json(serde_json::json!({
             "mode": "all",
             "count": results.len(),
@@ -102,11 +104,33 @@ pub async fn repair(req: Request, ctx: RouteContext<()>) -> Result<Response> {
     }
 
     match repair_doc(&bucket, &path, prefer, rebuild_toc, create_missing).await {
-        Ok(result) => ok_json(result),
+        Ok(result) => {
+            // Invalidate caches, then warm homepage tree so UI sees fresh titles.
+            crate::services::note::invalidate_for_path(&bucket, &path).await;
+            if path.contains('/') {
+                if let Some(root) = path.split('/').next() {
+                    crate::services::note::invalidate_for_path(&bucket, root).await;
+                }
+            }
+            warm_home_tree_cache(&bucket).await;
+            ok_json(result)
+        }
         Err(worker::Error::RustError(msg)) if msg.contains("not found") => {
             err_json(40400, "not found", 404)
         }
         Err(worker::Error::RustError(msg)) => err_json(40020, &msg, 400),
         Err(e) => Err(e),
+    }
+}
+
+/// Rebuild homepage tree cache after mutations.
+async fn warm_home_tree_cache(bucket: &worker::Bucket) {
+    if let Ok(payload) = build_home_tree_payload(bucket).await {
+        crate::services::note::write_json_cache(
+            bucket,
+            crate::services::note::HOME_TREE_CACHE_KEY,
+            &payload,
+        )
+        .await;
     }
 }

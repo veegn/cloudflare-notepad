@@ -151,15 +151,27 @@ pub async fn list_books(_req: Request, ctx: RouteContext<()>) -> Result<Response
 
 // ── GET /api/home-tree ───────────────────────────────────────────────
 
-pub async fn home_tree(_req: Request, ctx: RouteContext<()>) -> Result<Response> {
+pub async fn home_tree(req: Request, ctx: RouteContext<()>) -> Result<Response> {
     let bucket = ctx.env.bucket("NOTES")?;
+    let url = req.url()?;
+    let skip_cache = url
+        .query_pairs()
+        .any(|(k, v)| (k == "refresh" || k == "nocache") && v != "0" && v != "false");
 
-    if let Some(cached) = note::read_json_cache(&bucket, note::HOME_TREE_CACHE_KEY).await {
-        return ok_json(cached);
+    if !skip_cache {
+        if let Some(cached) = note::read_json_cache(&bucket, note::HOME_TREE_CACHE_KEY).await {
+            return ok_json(cached);
+        }
     }
 
-    let records = note::list_visible_docs_fast(&bucket).await?;
-    let tree = note::build_home_tree_with_counts(&bucket, &records).await?;
+    let payload = build_home_tree_payload(&bucket).await?;
+    note::write_json_cache(&bucket, note::HOME_TREE_CACHE_KEY, &payload).await;
+    ok_json(payload)
+}
+
+pub(crate) async fn build_home_tree_payload(bucket: &worker::Bucket) -> Result<serde_json::Value> {
+    let records = note::list_visible_docs_fast(bucket).await?;
+    let tree = note::build_home_tree_with_counts(bucket, &records).await?;
 
     let mut article_count = 0u32;
     let mut book_count = 0u32;
@@ -173,10 +185,8 @@ pub async fn home_tree(_req: Request, ctx: RouteContext<()>) -> Result<Response>
         }
     }
 
-    let payload = serde_json::json!({
+    Ok(serde_json::json!({
         "counts": { "article": article_count, "book": book_count },
         "tree": tree,
-    });
-    note::write_json_cache(&bucket, note::HOME_TREE_CACHE_KEY, &payload).await;
-    ok_json(payload)
+    }))
 }

@@ -147,12 +147,6 @@ function renderNode(node: TreeNode, level: number, host: HTMLElement): void {
         row.title = getI18n('homeBookTooltip')
     }
 
-    row.querySelector<HTMLButtonElement>('[data-repair]')?.addEventListener('click', e => {
-        e.preventDefault()
-        e.stopPropagation()
-        void runRepairBook(node.path)
-    })
-
     host.appendChild(row)
 
     if ((isDir || node.nodeType === 'article') && hasChildren && open) {
@@ -228,8 +222,9 @@ function collapseAll(): void {
     renderTree()
 }
 
-async function loadTree(): Promise<void> {
-    const res = await fetch('/api/home-tree')
+async function loadTree(opts: { refresh?: boolean } = {}): Promise<void> {
+    const qs = opts.refresh ? '?refresh=1' : ''
+    const res = await fetch(`/api/home-tree${qs}`, { cache: opts.refresh ? 'no-store' : 'default' })
     const json = (await res.json()) as {
         code: number
         message?: string
@@ -247,48 +242,65 @@ async function loadTree(): Promise<void> {
     renderTree()
 }
 
+let toolbarBound = false
+
 export async function initHomeTree(): Promise<void> {
     const host = el('#doc-tree')
     if (!host) return
 
-    rerender = renderTree
+    rerender = () => void loadTree({ refresh: true })
 
-    el('#btn-new-doc')?.addEventListener('click', () => {
-        void showCreateDocDialog()
-    })
-    el('#home-expand-all')?.addEventListener('click', expandAll)
-    el('#home-collapse-all')?.addEventListener('click', collapseAll)
-    el('#home-repair-all')?.addEventListener('click', () => {
-        void runRepairAll()
-    })
-
-    window.addEventListener('scn:repaired', () => {
-        void initHomeTree()
-    })
-
-    const search = input('#home-search')
-    let debounce: number | undefined
-    search?.addEventListener('input', () => {
-        window.clearTimeout(debounce)
-        debounce = window.setTimeout(() => {
-            query = search.value || ''
-            renderTree()
-        }, 300)
-    })
-
-    el('#home-filters')?.querySelectorAll<HTMLButtonElement>('.home-chip').forEach(chip => {
-        chip.addEventListener('click', () => {
-            el('#home-filters')
-                ?.querySelectorAll('.home-chip')
-                .forEach(c => c.classList.remove('active'))
-            chip.classList.add('active')
-            filter = chip.dataset.filter || 'all'
-            renderTree()
+    if (!toolbarBound) {
+        toolbarBound = true
+        el('#btn-new-doc')?.addEventListener('click', () => {
+            void showCreateDocDialog()
         })
-    })
+        el('#home-expand-all')?.addEventListener('click', expandAll)
+        el('#home-collapse-all')?.addEventListener('click', collapseAll)
+        el('#home-repair-all')?.addEventListener('click', () => {
+            void runRepairAll()
+        })
+
+        const search = input('#home-search')
+        let debounce: number | undefined
+        search?.addEventListener('input', () => {
+            window.clearTimeout(debounce)
+            debounce = window.setTimeout(() => {
+                query = search.value || ''
+                renderTree()
+            }, 300)
+        })
+
+        el('#home-filters')?.querySelectorAll<HTMLButtonElement>('.home-chip').forEach(chip => {
+            chip.addEventListener('click', () => {
+                el('#home-filters')
+                    ?.querySelectorAll('.home-chip')
+                    .forEach(c => c.classList.remove('active'))
+                chip.classList.add('active')
+                filter = chip.dataset.filter || 'all'
+                renderTree()
+            })
+        })
+
+        // Event delegation: works after every re-render.
+        host.addEventListener('click', e => {
+            const target = e.target as Element | null
+            const repairBtn = target?.closest('[data-repair]') as HTMLElement | null
+            if (repairBtn) {
+                e.preventDefault()
+                e.stopPropagation()
+                const path = repairBtn.getAttribute('data-repair')
+                if (path) void runRepairBook(path)
+            }
+        })
+
+        window.addEventListener('scn:repaired', () => {
+            void loadTree({ refresh: true })
+        })
+    }
 
     try {
-        await loadTree()
+        await loadTree({ refresh: true })
     } catch (err) {
         host.innerHTML = `<div class="doc-tree-empty"><div class="doc-tree-empty-title">${getI18n('homeError')}</div>
           <button type="button" class="welcome-button" id="home-retry">${getI18n('homeRetry')}</button></div>`

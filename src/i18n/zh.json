@@ -110,5 +110,6 @@
     "repairNoChanges": "数据一致，无需修复",
     "repairAllDone": "修复完成：{books}/{total} 项有变更",
     "repairFailed": "修复失败",
+    "repairRunning": "正在修复…",
     "repairTreeAction": "修复"
 }
