@@ -115,6 +115,8 @@ test('home page localizes copy, removes quick start, and renders home note markd
     expect(localizedHtml).toContain('浏览书籍与文章')
     expect(localizedHtml).toContain('云端文档库')
     expect(localizedHtml).toContain('home-docs')
+    expect(localizedHtml).toContain('操作文档')
+    expect(localizedHtml).not.toContain('home-index-card')
 
     // Seed the home note (requires index admin password auth) before checking the UI
     const indexPassword = process.env.SCN_INDEX_PASSWD || 'e2e-test-password'
@@ -126,10 +128,14 @@ test('home page localizes copy, removes quick start, and renders home note markd
 
     await page.goto('/')
     await expect(page.getByText('Quick Start')).toHaveCount(0)
-    await expect(page.locator('#preview-home h2, #preview-home h3').first()).toBeVisible()
-    await expect(page.locator('#preview-home li').first()).toBeVisible()
+    // _index body is not embedded on home; operations guide is a dedicated entry
+    await expect(page.locator('#preview-home')).toHaveCount(0)
     await expect(page.locator('#btn-new-doc')).toBeVisible()
-    await expect(page.getByRole('link', { name: '编辑首页' }).or(page.getByRole('link', { name: 'Edit Home' }))).toBeVisible()
+    await expect(page.getByRole('link', { name: '操作文档' })).toBeVisible()
+
+    // Operations guide renders at /note/_index
+    await page.goto('/note/_index')
+    await expect(page.locator('#preview')).toContainText('Dashboard')
 })
 
 test('clicking theme toggle switches data-theme attribute and persists in localStorage', async ({ page }) => {

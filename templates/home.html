@@ -8,20 +8,10 @@
     <p class="welcome-copy">{{ i18n[lang].homeCopy | default(value="") }}</p>
     <div class="welcome-actions">
       <button type="button" class="welcome-button primary" id="btn-new-doc">{{ i18n[lang].homeNewDoc | default(value="New Document") }}</button>
+      <a class="welcome-button" href="/note/_index">{{ i18n[lang].homeOpsDoc | default(value="Operations guide") }}</a>
       <a class="welcome-button" href="/edit/_index">{{ i18n[lang].homeEditHome | default(value="Edit Home") }}</a>
     </div>
   </div>
-
-  {% if content %}
-  <section class="home-index-card">
-    <div class="home-index-head">
-      <span class="badge badge-article">{{ i18n[lang].homeIndexCard | default(value="Home note") }}</span>
-      <span class="home-index-path">_index</span>
-      <a class="home-index-edit" href="/edit/_index">{{ i18n[lang].editButtonText | default(value="Edit") }}</a>
-    </div>
-    <div id="preview-home" class="welcome-note-preview composer-preview">{{ content }}</div>
-  </section>
-  {% endif %}
 
   <section class="home-docs" id="home-docs">
     <div class="home-toolbar">

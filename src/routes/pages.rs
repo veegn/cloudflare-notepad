@@ -160,12 +160,9 @@ pub async fn view_note(req: Request, ctx: RouteContext<()>) -> Result<Response> 
     let path = clean_path(&raw_path);
     let lang = detect_lang(&req);
 
-    // Redirect /note/_index to home.
-    if is_index_path(&path) {
-        let mut resp = Response::empty()?.with_status(302);
-        resp.headers_mut().set("Location", "/")?;
-        return Ok(resp);
-    }
+    // Home note `_index` is opened via /note/_index (operations guide).
+    // Do not redirect to `/` — homepage is the document tree, not the note body.
+
 
     let bucket = ctx.env.bucket("NOTES")?;
     let record = note::query_note(&bucket, &path).await?;
