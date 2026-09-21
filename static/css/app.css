@@ -2177,3 +2177,29 @@ body[data-is-home="true"] .welcome-view {
 .composer-preview .markdown-alert.markdown-alert-caution { border-left-color: #f85149; }
 .composer-preview .markdown-alert.markdown-alert-caution .markdown-alert-title { color: #f85149; }
 [data-theme="light"] .composer-preview .markdown-alert.markdown-alert-caution .markdown-alert-title { color: #cf222e; }
+
+/* Markdown image upload */
+.composer-editor-pane {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  min-height: 0;
+}
+.composer-editor-toolbar {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-height: 36px;
+  padding: 4px 10px;
+  border-bottom: 1px solid var(--vscode-border);
+  background: color-mix(in srgb, var(--vscode-tab) 70%, transparent);
+  flex-shrink: 0;
+}
+.composer-editor-hint {
+  font-size: 11px;
+  color: var(--vscode-text-subtle);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+#btn-upload-image, #btn-upload-image-md { height: 28px; flex-shrink: 0; }
