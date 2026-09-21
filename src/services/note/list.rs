@@ -114,25 +114,22 @@ pub struct FastDoc {
 
 pub async fn list_docs_fast(bucket: &Bucket) -> Result<Vec<FastDoc>> {
     let keys = list_keys(bucket, None).await?;
-    let key_set: HashSet<&str> = keys.iter().map(|s| s.as_str()).collect();
+    let key_set: HashSet<String> = keys.iter().cloned().collect();
 
     // All directory prefixes implied by nested keys.
     let mut prefixes: HashSet<String> = HashSet::new();
     for key in &keys {
         if let Some(pos) = key.find('/') {
             let mut acc = String::new();
-            for seg in key[..pos].split('/').chain(key[pos + 1..].split('/')) {
-                if acc.is_empty() {
-                    acc = seg.to_string();
-                } else {
-                    acc.push('/');
-                    acc.push_str(seg);
-                }
-                // stop before full key; prefixes are ancestors only
+            let head = &key[..pos];
+            acc.push_str(head);
+            prefixes.insert(acc.clone());
+            let rest = &key[pos + 1..];
+            for seg in rest.split('/') {
+                acc.push('/');
+                acc.push_str(seg);
                 if acc != *key {
                     prefixes.insert(acc.clone());
-                } else {
-                    break;
                 }
             }
         }
@@ -142,6 +139,7 @@ pub async fn list_docs_fast(bucket: &Bucket) -> Result<Vec<FastDoc>> {
     let mut seen: HashSet<String> = HashSet::new();
     let mut classify_gets = 0usize;
     const MAX_CLASSIFY_GETS: usize = 24;
+    let mut top_doc_type: HashMap<String, DocType> = HashMap::new();
 
     // Virtual directories that are not themselves objects.
     for prefix in &prefixes {
@@ -158,82 +156,84 @@ pub async fn list_docs_fast(bucket: &Bucket) -> Result<Vec<FastDoc>> {
         });
     }
 
+    // Classify top-level objects first (so nested keys can follow book vs article).
     for key in &keys {
-        if seen.contains(key) {
+        if key.contains('/') || seen.contains(key) {
             continue;
         }
         seen.insert(key.clone());
 
-        let nested = key.contains('/');
         let has_children = prefixes.contains(key.as_str());
+        let mut metadata = NoteMetadata {
+            title: Some(path_display_name(key)),
+            ..Default::default()
+        };
 
-        if nested {
-            // Nested objects: treat as pages/articles without GET.
-            // Hide under-book pages from the homepage tree (caller filters pages).
-            let root = key.split('/').next().unwrap_or(key).to_string();
-            let under_object = key_set.contains(root.as_str());
-            let root_is_book = if under_object {
-                // Only GET the root when we must classify; reuse later via meta_get cache
-                false
-            } else {
-                false
-            };
-            let _ = root_is_book;
+        if has_children && classify_gets < MAX_CLASSIFY_GETS {
+            classify_gets += 1;
+            let m = meta_get(bucket, key).await;
+            // Respect real docType. Only `book` becomes a book — having
+            // child keys (e.g. `sub/xxx`) is NOT enough.
+            metadata.doc_type = m.doc_type;
+            if m.title
+                .as_deref()
+                .map(|t| !t.trim().is_empty())
+                .unwrap_or(false)
+            {
+                metadata.title = m.title.clone();
+            }
+            metadata.update_at = m.update_at;
+            metadata.pw = m.pw.clone();
+            metadata.share = m.share;
+            metadata.mode = m.mode;
+        } else {
+            metadata.doc_type = DocType::Article;
+        }
+
+        let is_book = metadata.doc_type == DocType::Book;
+        top_doc_type.insert(key.clone(), metadata.doc_type);
+        out.push(FastDoc {
+            path: key.clone(),
+            metadata,
+            is_book,
+            is_page: false,
+            is_dir: false,
+        });
+    }
+
+    // Nested keys: pages only when parent is a book; otherwise nested articles.
+    for key in &keys {
+        if !key.contains('/') || seen.contains(key) {
+            continue;
+        }
+        seen.insert(key.clone());
+        let root = key.split('/').next().unwrap_or(key).to_string();
+        let parent_is_book = top_doc_type.get(&root) == Some(&DocType::Book);
+        if parent_is_book {
             out.push(FastDoc {
                 path: key.clone(),
                 metadata: NoteMetadata {
-                    doc_type: if under_object {
-                        // likely page under a book/dir object
-                        DocType::Page
-                    } else {
-                        DocType::Article
-                    },
-                    book_ref: if under_object { Some(root) } else { None },
+                    doc_type: DocType::Page,
+                    book_ref: Some(root),
                     title: Some(path_display_name(key)),
                     ..Default::default()
                 },
                 is_book: false,
-                is_page: under_object,
+                is_page: true,
                 is_dir: false,
             });
-            continue;
-        }
-
-        // Top-level object.
-        if has_children {
-            // Candidate book — classify with GET, but cap GETs so noisy
-            // buckets cannot blow the Worker CPU budget.
-            classify_gets += 1;
-            let metadata = if classify_gets <= MAX_CLASSIFY_GETS {
-                let m = meta_get(bucket, key).await;
-                NoteMetadata {
-                    doc_type: DocType::Book,
-                    title: m.title.clone().or_else(|| Some(path_display_name(key))),
-                    update_at: m.update_at,
-                    pw: m.pw.clone(),
-                    share: m.share,
-                    mode: m.mode,
-                    ..Default::default()
-                }
+        } else if key_set.contains(root.as_str()) || prefixes.contains(&root) {
+            // Nested article (or child of a non-book prefix) — not a book page.
+            let book_ref = if key_set.contains(root.as_str()) {
+                Some(root.clone())
             } else {
-                NoteMetadata {
-                    doc_type: DocType::Book,
-                    title: Some(path_display_name(key)),
-                    ..Default::default()
-                }
+                None
             };
-            out.push(FastDoc {
-                path: key.clone(),
-                metadata,
-                is_book: true,
-                is_page: false,
-                is_dir: false,
-            });
-        } else {
             out.push(FastDoc {
                 path: key.clone(),
                 metadata: NoteMetadata {
                     doc_type: DocType::Article,
+                    book_ref,
                     title: Some(path_display_name(key)),
                     ..Default::default()
                 },
@@ -320,16 +320,32 @@ pub async fn list_all_docs(bucket: &Bucket, opts: &ListOptions) -> Result<Vec<No
 }
 
 /// Count pages per book using prefix keys only (no body download).
+/// Only counts nested keys whose top-level parent is a known book object.
 pub async fn book_page_counts(bucket: &Bucket) -> Result<HashMap<String, u32>> {
     let mut counts: HashMap<String, u32> = HashMap::new();
-    // One full list; count nested keys as pages of their top-level book prefix.
     let keys = list_keys(bucket, None).await?;
-    for key in keys {
+    let mut tops: HashMap<String, DocType> = HashMap::new();
+    for key in &keys {
+        if key.contains('/') {
+            continue;
+        }
+        let mut meta = NoteMetadata::default();
+        // cheap: only GET top-level keys (few compared to full tree)
+        if let Ok(Some(object)) = bucket.get(key).execute().await {
+            let custom = object.custom_metadata().unwrap_or_default();
+            meta = super::meta::from_custom(&custom);
+        }
+        tops.insert(key.clone(), meta.doc_type);
+    }
+    for key in &keys {
         if !key.contains('/') {
             continue;
         }
         let root = key.split('/').next().unwrap_or("").to_string();
         if root.is_empty() || is_system_key(&root) {
+            continue;
+        }
+        if tops.get(&root) != Some(&DocType::Book) {
             continue;
         }
         *counts.entry(root).or_insert(0) += 1;
