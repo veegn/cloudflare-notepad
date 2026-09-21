@@ -111,5 +111,12 @@
     "repairAllDone": "修复完成：{books}/{total} 项有变更",
     "repairFailed": "修复失败",
     "repairRunning": "正在修复…",
-    "repairTreeAction": "修复"
+    "repairTreeAction": "修复",
+    "uploadImage": "图片",
+    "uploadImageHint": "上传图片并插入 Markdown（也可直接粘贴/拖入图片）",
+    "uploadUploading": "正在上传图片…",
+    "uploadDone": "图片已插入",
+    "uploadFailed": "图片上传失败",
+    "uploadUnsupported": "仅支持 PNG / JPEG / WebP / GIF",
+    "uploadTooLarge": "图片不能超过 8MB"
 }

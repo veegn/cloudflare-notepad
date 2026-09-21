@@ -5,7 +5,7 @@ use std::collections::HashMap;
 use worker::{Bucket, Result};
 
 use crate::models::note::{
-    is_index_path, path_display_name, DocListItem, DocType, NoteRecord, TreeNode,
+    is_system_key, path_display_name, DocListItem, DocType, NoteRecord, TreeNode,
 };
 
 use super::list::book_page_counts;
@@ -107,7 +107,7 @@ pub fn build_home_tree(records: &[NoteRecord]) -> Vec<TreeNode> {
 
     let mut roots: Vec<DirNode> = Vec::new();
     for rec in records {
-        if is_index_path(&rec.path) || rec.metadata.doc_type == DocType::Page {
+        if is_system_key(&rec.path) || rec.metadata.doc_type == DocType::Page {
             continue;
         }
         let item = DocListItem::from_record(rec, true);

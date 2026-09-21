@@ -26,6 +26,7 @@ async fn fetch(req: Request, env: Env, _ctx: Context) -> Result<Response> {
         .get_async("/api/toc", routes::api::get_toc)
         .post_async("/api/docs", routes::api::create_doc)
         .post_async("/api/repair", routes::api::repair)
+        .post_async("/api/upload", routes::api::upload_image)
         .get_async("/api/books/:book/pages", routes::api::list_book_pages)
         .post_async("/api/books/:book/pages", routes::api::create_book_page)
         .post_async("/api/books/:book/adopt", routes::api::adopt_book)
@@ -34,6 +35,8 @@ async fn fetch(req: Request, env: Env, _ctx: Context) -> Result<Response> {
         .delete_async("/api/notes/*path", routes::api::delete_note)
         .patch_async("/api/notes/*path", routes::api::patch_note)
         .post_async("/api/auth", routes::api::auth_note)
+        // Static images stored under R2 `_assets/`
+        .get_async("/assets/*path", routes::api::get_asset)
         // ── Fallback ─────────────────────────────────────────────
         .get_async("/*catchall", routes::pages::not_found)
         .run(req, env)

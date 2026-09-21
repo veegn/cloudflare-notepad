@@ -10,7 +10,7 @@ use std::collections::{HashMap, HashSet};
 
 use worker::{Bucket, ListOptionsBuilder, Result};
 
-use crate::models::note::{is_index_path, path_display_name, DocType, NoteMetadata, NoteRecord};
+use crate::models::note::{is_system_key, path_display_name, DocType, NoteMetadata, NoteRecord};
 
 use super::meta;
 
@@ -74,7 +74,7 @@ pub async fn list_keys(bucket: &Bucket, prefix: Option<&str>) -> Result<Vec<Stri
         .objects();
     for obj in objects {
         let key = obj.key();
-        if is_index_path(&key) {
+        if is_system_key(&key) {
             continue;
         }
         keys.push(key);
@@ -261,7 +261,7 @@ pub async fn list_doc_metas(
 
     for obj in objects {
         let key = obj.key();
-        if is_index_path(&key) {
+        if is_system_key(&key) {
             continue;
         }
         // Never call list-object custom_metadata here: on some Workers/R2
@@ -329,7 +329,7 @@ pub async fn book_page_counts(bucket: &Bucket) -> Result<HashMap<String, u32>> {
             continue;
         }
         let root = key.split('/').next().unwrap_or("").to_string();
-        if root.is_empty() || is_index_path(&root) {
+        if root.is_empty() || is_system_key(&root) {
             continue;
         }
         *counts.entry(root).or_insert(0) += 1;
@@ -342,7 +342,7 @@ pub async fn list_visible_docs_fast(bucket: &Bucket) -> Result<Vec<NoteRecord>> 
     let fast = list_docs_fast(bucket).await?;
     let docs = fast
         .into_iter()
-        .filter(|d| !d.is_page && !is_index_path(&d.path))
+        .filter(|d| !d.is_page && !is_system_key(&d.path))
         .map(|d| {
             let mut metadata = d.metadata;
             if d.is_dir {

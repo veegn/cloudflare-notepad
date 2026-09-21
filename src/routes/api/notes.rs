@@ -4,7 +4,7 @@ use worker::*;
 
 use crate::error::*;
 use crate::models::api::*;
-use crate::models::note::{is_index_path, DocListItem, DocType};
+use crate::models::note::{is_system_key, DocListItem, DocType};
 use crate::services::{auth, note};
 
 use super::util::{
@@ -149,7 +149,7 @@ pub async fn list_notes(req: Request, ctx: RouteContext<()>) -> Result<Response>
 
     let mut items: Vec<DocListItem> = Vec::new();
     for rec in &records {
-        if is_index_path(&rec.path) {
+        if is_system_key(&rec.path) {
             continue;
         }
         let item = DocListItem::from_record(rec, true);

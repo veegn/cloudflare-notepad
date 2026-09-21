@@ -244,6 +244,15 @@ pub const INDEX_PATH: &str = "_index";
 /// The legacy index path from the TypeScript version.
 pub const LEGACY_INDEX_PATH: &str = ".index";
 
+/// Check whether a path is a system/reserved key (home note, caches, assets).
+pub fn is_system_key(path: &str) -> bool {
+    is_index_path(path)
+        || path.starts_with("_assets/")
+        || path.starts_with("_meta/")
+        || path == "_assets"
+        || path == "_meta"
+}
+
 /// Check whether a path refers to the home index note (new or legacy).
 pub fn is_index_path(path: &str) -> bool {
     path == INDEX_PATH || path == LEGACY_INDEX_PATH

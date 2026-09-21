@@ -87,6 +87,9 @@
       </div>
       <div class="statusbar-right">
         {% if is_edit and not is_home %}
+        {% if metadata.mode == "md" %}
+        <button class="opt-button" id="btn-upload-image" type="button" title="{{ i18n[lang].uploadImageHint | default(value='Upload image') }}">{{ i18n[lang].uploadImage | default(value="Image") }}</button>
+        {% endif %}
         <button class="opt-button opt-format" id="format-trigger" type="button">Format Now</button>
         <div class="mode-picker" id="mode-picker">
           <button class="opt-button mode-picker-trigger" id="mode-trigger" type="button">Format</button>

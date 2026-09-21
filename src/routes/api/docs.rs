@@ -4,7 +4,7 @@ use worker::*;
 
 use crate::error::*;
 use crate::models::api::{CreateDocRequest, CreateDocResponse};
-use crate::models::note::{is_index_path, DocType};
+use crate::models::note::{is_system_key, DocType};
 use crate::services::note;
 
 use super::util::clean_path;
@@ -176,7 +176,7 @@ pub(crate) async fn build_home_tree_payload(bucket: &worker::Bucket) -> Result<s
     let mut article_count = 0u32;
     let mut book_count = 0u32;
     for r in &records {
-        if is_index_path(&r.path) {
+        if is_system_key(&r.path) {
             continue;
         }
         match r.metadata.doc_type {

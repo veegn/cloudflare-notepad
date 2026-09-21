@@ -111,5 +111,12 @@
     "repairAllDone": "Repair done: {books}/{total} updated",
     "repairFailed": "Repair failed",
     "repairRunning": "Repairing…",
-    "repairTreeAction": "Repair"
+    "repairTreeAction": "Repair",
+    "uploadImage": "Image",
+    "uploadImageHint": "Upload image and insert Markdown (paste or drop also works)",
+    "uploadUploading": "Uploading image…",
+    "uploadDone": "Image inserted",
+    "uploadFailed": "Image upload failed",
+    "uploadUnsupported": "Only PNG / JPEG / WebP / GIF",
+    "uploadTooLarge": "Image must be 8MB or smaller"
 }

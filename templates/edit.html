@@ -6,6 +6,11 @@
 <div class="composer-frame is-editing mode-md" data-mode="md">
   <div class="composer-split-pane">
     <div class="composer-editor-pane">
+      <div class="composer-editor-toolbar">
+        <button type="button" class="opt-button" id="btn-upload-image-md"
+          title="{{ i18n[lang].uploadImageHint | default(value='Upload image') }}">{{ i18n[lang].uploadImage | default(value="Image") }}</button>
+        <span class="composer-editor-hint">{{ i18n[lang].uploadImageHint | default(value='Paste or drop images to upload') }}</span>
+      </div>
       <div id="cm-editor" class="cm-editor-host"
         data-placeholder="{{ i18n[lang].emptyPH | default(value='') }}">{{ content | default(value="") }}</div>
     </div>

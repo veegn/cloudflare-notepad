@@ -9,6 +9,7 @@
 //! | `auth`  | `POST /api/auth` |
 //! | `util`  | shared request helpers |
 
+mod assets;
 mod auth;
 mod books;
 mod docs;
@@ -16,6 +17,7 @@ mod notes;
 mod repair;
 mod util;
 
+pub use assets::{get_asset, upload_image};
 pub use auth::auth_note;
 pub use books::{adopt_book, create_book_page, get_toc, list_book_pages};
 pub use docs::{create_doc, home_tree, list_books};

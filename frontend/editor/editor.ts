@@ -3,6 +3,7 @@ import { buildFormatError, formatTextByMode } from './formatters'
 import { renderEditorPreview } from './renderers'
 import { errHandle, showToast } from '../core/ui'
 import type { Mode, UIRefs } from '../core/types'
+import { handleImageFile, imageFilesFrom, pickAndUploadImage } from '../features/imageUpload'
 import { autocompletion, closeBrackets, closeBracketsKeymap, completionKeymap } from '@codemirror/autocomplete'
 import { defaultKeymap, history, historyKeymap, indentWithTab } from '@codemirror/commands'
 import { json } from '@codemirror/lang-json'
@@ -33,6 +34,7 @@ type EditorAdapter = {
     focus: () => void
     getScrollTop: () => number
     getScrollLeft: () => number
+    insertText?: (text: string) => void
 }
 
 type CodeEditorHost = HTMLElement & {
@@ -209,6 +211,36 @@ function createCodeMirrorAdapter(host: HTMLElement, mode: Mode, callbacks: Edito
             keywordHighlightPlugin,
             createEditorTheme(mode),
             ...getModeExtensions(mode),
+            EditorView.domEventHandlers({
+                paste: (event, view) => {
+                    if (mode !== 'md') return false
+                    const files = imageFilesFrom(event.clipboardData)
+                    if (!files.length) return false
+                    event.preventDefault()
+                    files.forEach(file => {
+                        void handleImageFile(
+                            file,
+                            text => insertAtCursor(view, text),
+                            CONFIG.notePath,
+                        )
+                    })
+                    return true
+                },
+                drop: (event, view) => {
+                    if (mode !== 'md') return false
+                    const files = imageFilesFrom(event.dataTransfer)
+                    if (!files.length) return false
+                    event.preventDefault()
+                    files.forEach(file => {
+                        void handleImageFile(
+                            file,
+                            text => insertAtCursor(view, text),
+                            CONFIG.notePath,
+                        )
+                    })
+                    return true
+                },
+            }),
             EditorView.updateListener.of(update => {
                 if (update.docChanged) {
                     callbacks.onDocChange?.(update.state.doc.toString())
@@ -239,7 +271,16 @@ function createCodeMirrorAdapter(host: HTMLElement, mode: Mode, callbacks: Edito
         focus: () => view.focus(),
         getScrollTop: () => view.scrollDOM.scrollTop,
         getScrollLeft: () => view.scrollDOM.scrollLeft,
+        insertText: (text: string) => insertAtCursor(view, text),
     }
+}
+
+function insertAtCursor(view: EditorView, text: string): void {
+    const range = view.state.selection.main
+    view.dispatch({
+        changes: { from: range.from, to: range.to, insert: text },
+        selection: { anchor: range.from + text.length },
+    })
 }
 
 function persistValue(UI: UIRefs, value: string): Promise<void> {
@@ -356,6 +397,18 @@ function initMarkdownLayoutControls(UI: UIRefs, editor: EditorAdapter): void {
     })
 }
 
+function bindImageUpload(editor: EditorAdapter): void {
+    const selector = CONFIG.mode === 'md' ? '#btn-upload-image-md, #btn-upload-image' : '#btn-upload-image'
+    document.querySelectorAll<HTMLElement>(selector).forEach(btn => {
+        btn.addEventListener('click', () => {
+            pickAndUploadImage(text => {
+                if (editor.insertText) editor.insertText(text)
+                else editor.setValue(`${editor.getValue()}\n\n${text}\n`)
+            }, CONFIG.notePath)
+        })
+    })
+}
+
 function initMarkdownEditor(UI: UIRefs): void {
     if (!UI.codeEditorHost || !UI.preview || !UI.previewScroll) {
         return
@@ -386,6 +439,7 @@ function initMarkdownEditor(UI: UIRefs): void {
     renderPreview(editor.getValue(), 0)
     initMarkdownLayoutControls(UI, editor)
     bindFormatAction(UI, editor)
+    bindImageUpload(editor)
     editor.focus()
 }
 
@@ -405,6 +459,7 @@ function initCodeEditor(UI: UIRefs): void {
     })
 
     bindFormatAction(UI, editor)
+    bindImageUpload(editor)
     editor.focus()
 }
 
