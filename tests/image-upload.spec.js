@@ -53,6 +53,28 @@ test('upload without note uses legacy _assets prefix', async ({ request }) => {
   expect(asset.ok()).toBeTruthy()
 })
 
+test('upload accepts UTF-8 filename via query name param', async ({ request }) => {
+  const notePath = uniqueNotePath()
+  await saveNote(request, notePath, '# utf8 name\n')
+  const png = tinyPng()
+  const res = await request.post(
+    `/api/upload?note=${notePath}&name=${encodeURIComponent('中文图片.png')}`,
+    {
+      headers: {
+        'Content-Type': 'image/png',
+        'X-Filename': 'ascii-fallback.png',
+      },
+      data: png,
+    },
+  )
+  expect(res.ok()).toBeTruthy()
+  const json = await res.json()
+  expect(json.code).toBe(0)
+  expect(json.data.path).toContain('.assets/')
+  // alt/markdown derived from decoded Chinese name → sanitized ascii stem or image
+  expect(json.data.markdown).toMatch(/^!\[[^\]]+\]\(\.\/[^)]+\.assets\/[^)]+\)$/)
+})
+
 test('upload rejects unsupported content type', async ({ request }) => {
   const res = await request.post('/api/upload', {
     headers: { 'Content-Type': 'text/plain' },

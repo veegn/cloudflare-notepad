@@ -129,11 +129,24 @@ pub async fn upload_image(mut req: Request, ctx: RouteContext<()>) -> Result<Res
         return err_json(40102, "Image too large (max 8MB)", 413);
     }
 
-    let filename = req
-        .headers()
-        .get("x-filename")
-        .ok()
-        .flatten()
+    // Filename: query `name` supports UTF-8; `X-Filename` is ISO-8859-1 only.
+    let filename = url
+        .query_pairs()
+        .find(|(k, _)| k == "name")
+        .map(|(_, v)| v.to_string())
+        .filter(|s| !s.trim().is_empty())
+        .or_else(|| {
+            req.headers()
+                .get("x-filename")
+                .ok()
+                .flatten()
+                .map(|h| {
+                    urlencoding::decode(&h)
+                        .map(|s| s.to_string())
+                        .unwrap_or_else(|_| h.clone())
+                })
+                .filter(|s| !s.trim().is_empty())
+        })
         .unwrap_or_default();
     let ext = ext_for_content_type(&content_type);
     let id = random_id();

@@ -15,6 +15,22 @@ export function markdownImage(url: string, alt = 'image'): string {
     return `![${alt}](${url})`
 }
 
+/** HTTP header values must be ISO-8859-1; strip/replace other code points. */
+function asciiHeaderValue(name: string): string {
+    const raw = (name || '').trim()
+    if (!raw) return 'image'
+    let out = ''
+    for (const ch of raw) {
+        const code = ch.codePointAt(0) ?? 0
+        // Skip CR/LF; keep Latin-1 printable + common filename chars
+        if (code === 10 || code === 13) continue
+        if (code <= 0xff) out += ch
+        else out += '-'
+    }
+    const cleaned = out.replace(/-{2,}/g, '-').replace(/^-+|-+$/g, '')
+    return cleaned || 'image'
+}
+
 /** Upload image bytes; returns public URL + markdown snippet. */
 export async function uploadImageFile(file: File, notePath?: string): Promise<UploadResult> {
     const type = (file.type || '').toLowerCase()
@@ -29,6 +45,9 @@ export async function uploadImageFile(file: File, notePath?: string): Promise<Up
     if (notePath && notePath !== '_index') {
         params.set('note', notePath)
     }
+    // UTF-8 filename goes in query (headers cannot hold non ISO-8859-1)
+    const displayName = (file.name || 'image').trim() || 'image'
+    params.set('name', displayName)
     const qs = params.toString()
     const url = `/api/upload${qs ? `?${qs}` : ''}`
 
@@ -36,7 +55,8 @@ export async function uploadImageFile(file: File, notePath?: string): Promise<Up
         method: 'POST',
         headers: {
             'Content-Type': type || 'application/octet-stream',
-            'X-Filename': file.name || 'image',
+            // ASCII-only fallback for older API paths
+            'X-Filename': asciiHeaderValue(displayName),
         },
         body: file,
     })
