@@ -1,4 +1,15 @@
-//! Note storage service: R2 IO, metadata, list/tree, book pages.
+//! Note storage domain (R2).
+//!
+//! | Module | Role |
+//! |--------|------|
+//! | `store` | read/write single objects + metadata |
+//! | `meta`  | custom_metadata encode/decode |
+//! | `list`  | prefix listing, fast tree inputs (avoid body GETs) |
+//! | `create`| create article/book |
+//! | `book`  | book pages + TOC markdown |
+//! | `tree`  | homepage tree |
+//! | `cache` | `_meta/*` derived JSON caches |
+//! | `repair`| reconcile body ↔ metadata (body-first default) |
 
 mod book;
 mod cache;

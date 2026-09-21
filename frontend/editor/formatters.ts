@@ -1,4 +1,4 @@
-import type { Mode } from './types'
+import type { Mode } from '../core/types'
 import yaml from 'js-yaml'
 
 export function normalizeText(text: string): string {

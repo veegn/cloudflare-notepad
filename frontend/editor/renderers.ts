@@ -1,5 +1,5 @@
-import { KEYWORD_PATTERN } from './config'
-import type { Mode } from './types'
+import { KEYWORD_PATTERN } from '../core/config'
+import type { Mode } from '../core/types'
 import { marked } from 'marked'
 import markedAlert from 'marked-alert'
 import DOMPurify from 'dompurify'

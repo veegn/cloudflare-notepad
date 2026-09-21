@@ -1,7 +1,7 @@
-import { getI18n } from './config'
-import type { CreateDocPayload, CreateDocResult } from './types'
-import { showToast, errHandle } from './ui'
-import { input } from './pathUtils'
+import { getI18n } from '../core/config'
+import type { CreateDocPayload, CreateDocResult } from '../core/types'
+import { showToast, errHandle } from '../core/ui'
+import { input } from '../core/pathUtils'
 
 function slugify(input: string): string {
     let out = ''

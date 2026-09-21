@@ -13,6 +13,8 @@
 
 `static/js/app.js` 会在本地启动、测试和部署前自动构建，前端源码位于 `frontend/`。
 
+代码结构与 API 说明见 **[docs/ARCHITECTURE.md](./docs/ARCHITECTURE.md)**；产品文档索引见 [docs/README.md](./docs/README.md)。
+
 ## 功能亮点
 
 - 首页（`/`）展示**文档树**：目录可展开，区分**文章 / 书籍**；书籍分页不在树中列出。

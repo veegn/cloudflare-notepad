@@ -1,11 +1,13 @@
-//! HTTP API handlers.
+//! HTTP JSON API.
 //!
-//! Layout:
-//! - `notes` — single note CRUD + list
-//! - `docs` — create article/book, books list, home tree
-//! - `books` — book TOC and page management
-//! - `auth` — password auth cookie
-//! - `util` — request helpers shared by handlers
+//! | Module | Routes |
+//! |--------|--------|
+//! | `docs`  | `POST /api/docs`, `GET /api/books`, `GET /api/home-tree` |
+//! | `books` | `GET/POST /api/books/:book/pages`, `POST .../adopt`, `GET /api/toc` |
+//! | `notes` | `GET /api/notes`, CRUD `/api/notes/*path` |
+//! | `repair`| `POST /api/repair` |
+//! | `auth`  | `POST /api/auth` |
+//! | `util`  | shared request helpers |
 
 mod auth;
 mod books;

@@ -1,8 +1,8 @@
-import { CONFIG, getI18n } from './config'
-import type { HomeTreeResponse, TreeNode } from './types'
+import { CONFIG, getI18n } from '../core/config'
+import type { HomeTreeResponse, TreeNode } from '../core/types'
 import { showCreateDocDialog } from './createDoc'
-import { errHandle } from './ui'
-import { el, encodeNotePath, escapeHtml, input } from './pathUtils'
+import { errHandle } from '../core/ui'
+import { el, encodeNotePath, escapeHtml, input } from '../core/pathUtils'
 import { runRepairBook, runRepairAll } from './repair'
 
 const EXPAND_KEY = 'homeTreeExpand'

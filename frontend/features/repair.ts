@@ -1,6 +1,6 @@
-import { getI18n } from './config'
-import { encodeNotePath } from './pathUtils'
-import { showToast, errHandle, showConfirm } from './ui'
+import { getI18n } from '../core/config'
+import { encodeNotePath } from '../core/pathUtils'
+import { showToast, errHandle, showConfirm } from '../core/ui'
 
 export interface RepairChange {
     kind: string
