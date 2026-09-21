@@ -29,6 +29,7 @@ docs/                产品与架构文档
 | 对象 key | 文档 path，如 `handbook`、`handbook/install` |
 | body | Markdown 等正文；**书籍的 TOC 也在 body 里** |
 | custom_metadata | `docType` / `bookRef` / `title` / `pw` / `mode` / `updateAt` / `share` |
+| 图片资产 | 与文档**同级**：`{note}.assets/{id}-{name}`（如 `handbook/install.assets/a.png`）；Markdown 写相对路径 `./install.assets/a.png` |
 | 派生缓存 | `_meta/home-tree.json`、`_meta/toc/<book>.json` |
 
 **文档类型**

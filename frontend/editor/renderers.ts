@@ -1,4 +1,4 @@
-import { KEYWORD_PATTERN } from '../core/config'
+import { CONFIG, KEYWORD_PATTERN } from '../core/config'
 import type { Mode } from '../core/types'
 import { marked } from 'marked'
 import markedAlert from 'marked-alert'
@@ -264,12 +264,41 @@ function highlightKeywordsInHtml(root: HTMLElement): void {
     })
 }
 
+/** Resolve export-oriented relative image paths to web `/assets/...` URLs. */
+export function resolveAssetSrc(src: string, notePath = CONFIG.notePath): string {
+    if (!src) return src
+    if (/^(https?:|data:|blob:)/i.test(src)) return src
+    if (src.startsWith('/assets/')) return src
+    if (src.startsWith('/')) return src
+
+    const rel = src.replace(/^\.\//, '')
+    const dir = (notePath || '').split('/').slice(0, -1).filter(Boolean).join('/')
+
+    // `./install.assets/x.png` or `_assets/x.png` (legacy) relative to note directory
+    if (rel.includes('.assets/') || rel.startsWith('_assets/') || rel.includes('/_assets/')) {
+        const full = dir ? `${dir}/${rel}` : rel
+        return `/assets/${full.replace(/\/{2,}/g, '/')}`
+    }
+    // Fallback: relative to note path itself
+    return `/assets/${(notePath ? `${notePath}/` : '') + rel}`.replace(/\/{2,}/g, '/')
+}
+
+function rewriteImageSrcs(root: HTMLElement): void {
+    root.querySelectorAll('img[src]').forEach(img => {
+        const src = img.getAttribute('src')
+        if (!src) return
+        const next = resolveAssetSrc(src)
+        if (next !== src) img.setAttribute('src', next)
+    })
+}
+
 function renderMarkdownPreview(node: HTMLElement, text: string): void {
     marked.setOptions({
         gfm: true,
         breaks: true,
     })
     node.innerHTML = DOMPurify.sanitize(marked.parse(text) as string)
+    rewriteImageSrcs(node)
     highlightKeywordsInHtml(node)
 
     const mermaidNodes = node.querySelectorAll('.mermaid')

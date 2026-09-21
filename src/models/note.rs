@@ -246,11 +246,17 @@ pub const LEGACY_INDEX_PATH: &str = ".index";
 
 /// Check whether a path is a system/reserved key (home note, caches, assets).
 pub fn is_system_key(path: &str) -> bool {
-    is_index_path(path)
-        || path.starts_with("_assets/")
-        || path.starts_with("_meta/")
-        || path == "_assets"
-        || path == "_meta"
+    if is_index_path(path) {
+        return true;
+    }
+    if path.starts_with("_assets/") || path == "_assets" {
+        return true;
+    }
+    if path.starts_with("_meta/") || path == "_meta" {
+        return true;
+    }
+    // Sibling asset folders: `note.assets/...`
+    path.contains(".assets/")
 }
 
 /// Check whether a path refers to the home index note (new or legacy).

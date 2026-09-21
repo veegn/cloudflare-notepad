@@ -9,7 +9,7 @@ function tinyPng() {
   )
 }
 
-test('upload image returns asset url and serves bytes', async ({ request }) => {
+test('upload image stores beside note and returns relative markdown', async ({ request }) => {
   const notePath = uniqueNotePath()
   await saveNote(request, notePath, '# Upload test\n')
 
@@ -24,15 +24,33 @@ test('upload image returns asset url and serves bytes', async ({ request }) => {
   expect(res.ok()).toBeTruthy()
   const json = await res.json()
   expect(json.code).toBe(0)
-  expect(json.data.url).toMatch(/^\/assets\//)
-  expect(json.data.markdown).toContain('![pixel](')
-  expect(json.data.markdown).toContain(json.data.url)
+  // Sibling folder: {note}.assets/...
+  expect(json.data.path).toContain('.assets/')
+  expect(json.data.path.startsWith(`${notePath}.assets/`)).toBeTruthy()
+  // Export-friendly relative markdown
+  expect(json.data.relative).toMatch(/^\.\/[^/]+\.assets\//)
+  expect(json.data.markdown).toContain(json.data.relative)
+  // Web URL mirrors full R2 key under /assets/
+  expect(json.data.url).toBe(`/assets/${json.data.path}`)
 
   const asset = await request.get(json.data.url)
   expect(asset.ok()).toBeTruthy()
   expect(asset.headers()['content-type']).toContain('image/png')
   const body = await asset.body()
   expect(body.length).toBe(png.length)
+})
+
+test('upload without note uses legacy _assets prefix', async ({ request }) => {
+  const png = tinyPng()
+  const res = await request.post('/api/upload', {
+    headers: { 'Content-Type': 'image/png', 'X-Filename': 'a.png' },
+    data: png,
+  })
+  expect(res.ok()).toBeTruthy()
+  const json = await res.json()
+  expect(json.data.path.startsWith('_assets/')).toBeTruthy()
+  const asset = await request.get(json.data.url)
+  expect(asset.ok()).toBeTruthy()
 })
 
 test('upload rejects unsupported content type', async ({ request }) => {
