@@ -16,6 +16,7 @@ pub struct PatchNoteRequest {
     pub password: Option<String>,
     pub mode: Option<NoteMode>,
     pub title: Option<String>,
+    pub share: Option<bool>,
 }
 
 /// `POST /api/auth`

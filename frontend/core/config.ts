@@ -7,6 +7,7 @@ export const CONFIG: AppConfig = window.CONFIG || {
     isHome: false,
     updateAt: null,
     pw: false,
+    shared: true,
     mode: 'plain',
     i18n: {},
     docType: 'article',

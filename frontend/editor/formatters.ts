@@ -6,10 +6,15 @@ export function normalizeText(text: string): string {
 }
 
 function formatPlainText(text: string): string {
-    return normalizeText(text)
+    const normalized = normalizeText(text)
+    if (!normalized.trim()) {
+        return normalized
+    }
+    return normalized
         .split('\n')
         .map(line => line.replace(/\s+$/g, ''))
         .join('\n')
+        .replace(/\n*$/, '\n')
 }
 
 function formatMarkdownText(text: string): string {

@@ -121,27 +121,38 @@ pub async fn list_books(_req: Request, ctx: RouteContext<()>) -> Result<Response
 
     let counts = note::book_page_counts(&bucket).await.unwrap_or_default();
 
-    let items: Vec<_> = books
-        .iter()
-        .map(|(path, metadata)| {
-            let title = metadata
-                .title
-                .clone()
-                .unwrap_or_else(|| crate::models::note::path_display_name(path));
-            serde_json::json!({
-                "path": path,
-                "docType": metadata.doc_type,
-                "title": title,
-                "excerpt": Option::<String>::None,
-                "updateAt": metadata.update_at,
-                "mode": metadata.mode,
-                "protected": metadata.pw.is_some(),
-                "shared": metadata.share,
-                "hasExcerpt": false,
-                "pageCount": counts.get(path).copied().unwrap_or(0),
-            })
-        })
-        .collect();
+    let mut items: Vec<_> = Vec::with_capacity(books.len());
+    for (path, metadata) in &books {
+        // list() custom_metadata may be empty on some runtimes — pull real title.
+        let mut title = metadata.title.clone();
+        if title
+            .as_deref()
+            .map(|t| t.trim().is_empty() || t == path.as_str())
+            .unwrap_or(true)
+        {
+            if let Ok(record) = note::query_note(&bucket, path).await {
+                title = record
+                    .metadata
+                    .title
+                    .clone()
+                    .filter(|t| !t.trim().is_empty())
+                    .or_else(|| crate::models::note::first_markdown_h1(&record.content));
+            }
+        }
+        let title = title.unwrap_or_else(|| crate::models::note::path_display_name(path));
+        items.push(serde_json::json!({
+            "path": path,
+            "docType": metadata.doc_type,
+            "title": title,
+            "excerpt": Option::<String>::None,
+            "updateAt": metadata.update_at,
+            "mode": metadata.mode,
+            "protected": metadata.pw.is_some(),
+            "shared": metadata.share,
+            "hasExcerpt": false,
+            "pageCount": counts.get(path.as_str()).copied().unwrap_or(0),
+        }));
+    }
 
     ok_json(serde_json::json!({
         "total": items.len(),

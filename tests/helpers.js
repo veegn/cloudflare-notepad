@@ -67,7 +67,8 @@ async function createBookPage(request, book, title, path) {
 }
 
 async function getHomeTree(request) {
-    const res = await request.get('/api/home-tree')
+    // Always bypass cache so assertions see just-created docs.
+    const res = await request.get('/api/home-tree?refresh=1')
     const json = await res.json()
     return json.data || { counts: { article: 0, book: 0 }, tree: [] }
 }

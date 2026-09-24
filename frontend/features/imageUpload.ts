@@ -77,17 +77,28 @@ export type InsertText = (text: string) => void
 
 /** Pick a file via hidden input and insert markdown after upload. */
 export function pickAndUploadImage(insert: InsertText, notePath?: string): void {
-    const input = document.createElement('input')
-    input.type = 'file'
-    input.accept = 'image/png,image/jpeg,image/webp,image/gif'
-    input.style.display = 'none'
-    document.body.appendChild(input)
-    input.addEventListener('change', () => {
-        const file = input.files?.[0]
-        input.remove()
+    // Reuse one off-screen input: display:none file inputs can be ignored
+    // by some browsers, and a fresh node each click races the user gesture.
+    let input = document.getElementById('scn-image-file-input') as HTMLInputElement | null
+    if (!input) {
+        input = document.createElement('input')
+        input.id = 'scn-image-file-input'
+        input.type = 'file'
+        input.accept = 'image/png,image/jpeg,image/webp,image/gif'
+        input.style.position = 'fixed'
+        input.style.left = '-9999px'
+        input.style.width = '1px'
+        input.style.height = '1px'
+        input.style.opacity = '0'
+        document.body.appendChild(input)
+    }
+    input.value = ''
+    input.onchange = () => {
+        const file = input?.files?.[0]
         if (!file) return
         void handleImageFile(file, insert, notePath)
-    })
+    }
+    showToast(getI18n('uploadPickFile'))
     input.click()
 }
 

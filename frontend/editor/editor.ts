@@ -310,9 +310,14 @@ function persistValue(UI: UIRefs, value: string): Promise<void> {
 function bindFormatAction(UI: UIRefs, editor: EditorAdapter): void {
     const runFormatAction = (): void => {
         try {
-            const nextValue = formatTextByMode(CONFIG.mode, editor.getValue())
+            const before = editor.getValue()
+            const nextValue = formatTextByMode(CONFIG.mode, before)
             editor.setValue(nextValue)
-            showToast(getI18n('formatApplied'))
+            if (nextValue === before) {
+                showToast(getI18n('formatNoChange'))
+            } else {
+                showToast(getI18n('formatApplied'))
+            }
         } catch (error) {
             const formattedError = buildFormatError(CONFIG.mode, error, editor.getValue())
             showToast(`${getI18n('formatFailed')} ${formattedError.message || formattedError}`)
@@ -321,7 +326,11 @@ function bindFormatAction(UI: UIRefs, editor: EditorAdapter): void {
 
     if (UI.formatTrigger) {
         UI.formatTrigger.textContent = getI18n('formatNow')
-        UI.formatTrigger.addEventListener('click', runFormatAction)
+        UI.formatTrigger.addEventListener('click', event => {
+            event.preventDefault()
+            event.stopPropagation()
+            runFormatAction()
+        })
     }
 
     document.addEventListener('keydown', event => {
@@ -400,7 +409,10 @@ function initMarkdownLayoutControls(UI: UIRefs, editor: EditorAdapter): void {
 function bindImageUpload(editor: EditorAdapter): void {
     const selector = CONFIG.mode === 'md' ? '#btn-upload-image-md, #btn-upload-image' : '#btn-upload-image'
     document.querySelectorAll<HTMLElement>(selector).forEach(btn => {
-        btn.addEventListener('click', () => {
+        btn.addEventListener('click', event => {
+            // Keep the click out of CodeMirror so it does not alter the selection.
+            event.preventDefault()
+            event.stopPropagation()
             pickAndUploadImage(text => {
                 if (editor.insertText) editor.insertText(text)
                 else editor.setValue(`${editor.getValue()}\n\n${text}\n`)

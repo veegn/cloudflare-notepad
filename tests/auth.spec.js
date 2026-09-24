@@ -45,7 +45,7 @@ test('protected raw route accepts password from url query', async ({ request }) 
 
 test('.index edit is protected by admin password while home page stays viewable', async ({ page }) => {
     await page.goto('/')
-    await expect(page.getByRole('link', { name: 'Edit Home' })).toBeVisible()
+    await expect(page.getByRole('link', { name: /Edit Home|操作文档|Operations guide/ })).toBeVisible()
 
     await page.goto('/edit/_index')
     await expect(page.getByText(/protected/i)).toBeVisible()

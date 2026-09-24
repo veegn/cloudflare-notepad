@@ -15,12 +15,14 @@ export const GITHUB_LINK = (): string => `
 export const EDIT_BUTTONS = (): string => `
   <button type="button" class="opt-button opt-pw">${CONFIG.pw ? getI18n('changePW') : getI18n('setPW')}</button>
   <button type="button" class="opt-button opt-share">${getI18n('share')}</button>
+  <button type="button" class="opt-button opt-more">${getI18n('docMore')}</button>
   <button type="button" class="opt-button opt-exit">${getI18n('exitButtonText')}</button>
 `
 
 export const VIEW_BUTTONS = (): string => `
   <button type="button" class="opt-button opt-edit">${getI18n('editButtonText')}</button>
   <button type="button" class="opt-button opt-raw">${getI18n('rawButtonText')}</button>
+  <button type="button" class="opt-button opt-more">${getI18n('docMore')}</button>
 `
 
 export const Theme = {

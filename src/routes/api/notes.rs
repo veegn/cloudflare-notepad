@@ -252,6 +252,10 @@ pub async fn patch_note(mut req: Request, ctx: RouteContext<()>) -> Result<Respo
         apply_title(&bucket, &path, &record, title.trim()).await?;
     }
 
+    if let Some(share) = body.share {
+        note::set_share(&bucket, &path, share).await?;
+    }
+
     ok_empty()
 }
 

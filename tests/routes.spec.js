@@ -126,13 +126,15 @@ test('home page localizes copy, removes quick start, and renders home note markd
     expect(authResponse.ok()).toBeTruthy()
     await saveNote(request, '_index', '## Dashboard\n### Metrics\n- CPU\n- Memory')
 
+    await page.setExtraHTTPHeaders({ 'Accept-Language': 'zh-CN,zh;q=0.9' })
     await page.goto('/')
     await expect(page.getByText('Quick Start')).toHaveCount(0)
     // _index body is not embedded on home; operations guide is a dedicated entry
     await expect(page.locator('#preview-home')).toHaveCount(0)
     await expect(page.locator('#btn-new-doc')).toBeVisible()
-    await expect(page.getByRole('link', { name: '操作文档' })).toBeVisible()
-    await expect(page.getByRole('link', { name: '编辑首页' })).toHaveCount(0)
+    // Language follows Accept-Language / browser locale — accept either label
+    await expect(page.getByRole('link', { name: /操作文档|Operations guide/ })).toBeVisible()
+    await expect(page.getByRole('link', { name: /编辑首页|Edit Home/ })).toHaveCount(0)
 
     // Operations guide renders at /note/_index
     await page.goto('/note/_index')
@@ -164,21 +166,26 @@ test('clicking theme toggle switches data-theme attribute and persists in localS
     expect(htmlThemeFinal).toBe(htmlThemeBefore)
 })
 
-test('clicking share button copies the note URL to clipboard and shows toast', async ({ page, context }) => {
+test('clicking share button opens panel with link, copy, and status', async ({ page, context }) => {
     await context.grantPermissions(['clipboard-read', 'clipboard-write'])
 
     const notePath = uniqueNotePath()
     await page.goto(`/edit/${notePath}`)
 
-    // Click the share button in footer
+    // Click the share button in footer — opens the share panel
     await page.locator('.opt-share').click()
+    await expect(page.locator('.share-panel')).toBeVisible()
+    await expect(page.locator('#share-link')).toHaveValue(new RegExp(`/note/${notePath}`))
+    await expect(page.locator('#share-status')).toBeVisible()
 
-    // Verify toast message appears
-    await expect(page.locator('body')).toContainText('Share link copied.')
-
-    // Verify clipboard content contains the sharing link
+    // Copy from the panel and verify toast + clipboard
+    await page.locator('#share-copy').click()
+    await expect(page.locator('body')).toContainText('Link copied.')
     const clipboardText = await page.evaluate(() => navigator.clipboard.readText())
     expect(clipboardText).toContain(`/note/${notePath}`)
+
+    await page.locator('#share-close').click()
+    await expect(page.locator('.share-panel')).toBeHidden()
 })
 
 test('readonly yaml view highlights comments and strings correctly without corruption', async ({ page, request }) => {

@@ -68,6 +68,7 @@ fn build_config_json(
         "isHome": is_home,
         "updateAt": metadata.update_at,
         "pw": metadata.pw.is_some(),
+        "shared": metadata.share,
         "mode": metadata.mode.as_str(),
         "content": content.unwrap_or(""),
         "i18n": i18n_map,
@@ -229,16 +230,14 @@ pub async fn view_note(req: Request, ctx: RouteContext<()>) -> Result<Response> 
         &i18n_map,
     );
 
-    let display_title = if record.metadata.doc_type.as_str() != "article" {
-        record
-            .metadata
-            .title
-            .clone()
-            .filter(|t| !t.trim().is_empty())
-            .unwrap_or_else(|| title.clone())
-    } else {
-        title.clone()
-    };
+    let display_title = record
+        .metadata
+        .title
+        .clone()
+        .filter(|t| !t.trim().is_empty())
+        .unwrap_or_else(|| {
+            crate::models::note::first_markdown_h1(&record.content).unwrap_or_else(|| title.clone())
+        });
 
     let mut context = base_context(lang, &display_title, &i18n_map);
     context.insert("is_home", &false);

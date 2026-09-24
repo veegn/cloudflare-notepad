@@ -12,6 +12,7 @@ export interface AppConfig {
     isHome: boolean
     updateAt: number | null
     pw: boolean
+    shared?: boolean
     mode: Mode
     content?: string
     i18n: I18nMap

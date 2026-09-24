@@ -30,7 +30,7 @@ pub use list::{
     ListOptions,
 };
 pub use repair::{repair_all, repair_doc, TitlePrefer};
-pub use store::{delete_note, query_note, save_note, set_mode, set_password, set_title};
+pub use store::{delete_note, query_note, save_note, set_mode, set_password, set_share, set_title};
 pub use tree::build_home_tree_with_counts;
 
 // Re-exports used by unit tests in this module.

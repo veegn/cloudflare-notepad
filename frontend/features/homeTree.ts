@@ -4,6 +4,7 @@ import { showCreateDocDialog } from './createDoc'
 import { errHandle } from '../core/ui'
 import { el, encodeNotePath, escapeHtml, input } from '../core/pathUtils'
 import { runRepairBook, runRepairAll } from './repair'
+import { showDocActionsMenu } from './docManage'
 
 const EXPAND_KEY = 'homeTreeExpand'
 
@@ -75,12 +76,26 @@ function rowMeta(node: TreeNode): string {
         .join(' · ')
 }
 
-/** Books only: keep repair entry on the home tree row. */
+/** Hover row actions: overflow menu + book repair. */
 function rowActions(node: TreeNode): string {
-    if (node.nodeType !== 'book') return ''
+    if (node.nodeType === 'dir') return ''
+    const repair =
+        node.nodeType === 'book'
+            ? `<button type="button" class="doc-tree-action-btn" data-repair="${escapeHtml(node.path)}">${getI18n('repairTreeAction')}</button>`
+            : ''
     return `<span class="doc-tree-actions">
-      <button type="button" class="doc-tree-action-btn" data-repair="${escapeHtml(node.path)}">${getI18n('repairTreeAction')}</button>
+      ${repair}
+      <button type="button" class="doc-tree-more" data-more="${escapeHtml(node.path)}" aria-label="${escapeHtml(getI18n('docMore'))}" title="${escapeHtml(getI18n('docMore'))}">⋯</button>
     </span>`
+}
+
+function findNode(nodes: TreeNode[], path: string): TreeNode | null {
+    for (const n of nodes) {
+        if (n.path === path) return n
+        const hit = findNode(n.children || [], path)
+        if (hit) return hit
+    }
+    return null
 }
 
 function toggleExpand(path: string): void {
@@ -122,12 +137,18 @@ function renderNode(node: TreeNode, level: number, host: HTMLElement): void {
 
     const icon = isDir ? '📁' : node.nodeType === 'book' ? '📖' : '📄'
     const href = isDir ? '#' : `/note/${encodeNotePath(node.path)}`
+    // Title is primary; path is a muted subtitle so slugs stay readable.
+    const displayTitle = node.title || node.path
+    const showPath = !isDir && node.path && node.path !== displayTitle
 
     row.innerHTML = `
       ${chevron}
       <span class="doc-tree-icon" aria-hidden="true">${icon}</span>
       <span class="doc-tree-badge">${typeBadge(node)}</span>
-      <a class="doc-tree-title" href="${href}">${escapeHtml(node.title)}</a>
+      <span class="doc-tree-text">
+        <a class="doc-tree-title" href="${href}">${escapeHtml(displayTitle)}</a>
+        ${showPath ? `<span class="doc-tree-path" title="${escapeHtml(node.path)}">${escapeHtml(node.path)}</span>` : ''}
+      </span>
       <span class="doc-tree-meta">${escapeHtml(rowMeta(node))}</span>
       ${rowActions(node)}
     `
@@ -291,6 +312,35 @@ export async function initHomeTree(): Promise<void> {
                 e.stopPropagation()
                 const path = repairBtn.getAttribute('data-repair')
                 if (path) void runRepairBook(path)
+                return
+            }
+            const moreBtn = target?.closest('[data-more]') as HTMLElement | null
+            if (moreBtn) {
+                e.preventDefault()
+                e.stopPropagation()
+                const path = moreBtn.getAttribute('data-more')
+                if (!path) return
+                const row = moreBtn.closest('.doc-tree-row') as HTMLElement | null
+                const node = findNode(treeData, path)
+                if (!node) return
+                showDocActionsMenu(
+                    moreBtn,
+                    {
+                        path: node.path,
+                        title: node.title || node.path,
+                        nodeType: node.nodeType,
+                        shared: node.shared,
+                        hasChildren: (node.children || []).length > 0 || row?.classList.contains('is-book') === true,
+                    },
+                    {
+                        onChanged: () => {
+                            void loadTree({ refresh: true })
+                        },
+                        onShared: () => {
+                            void loadTree({ refresh: true })
+                        },
+                    },
+                )
             }
         })
 

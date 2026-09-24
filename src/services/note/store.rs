@@ -122,6 +122,22 @@ pub async fn set_mode(bucket: &Bucket, path: &str, mode: NoteMode) -> Result<()>
     Ok(())
 }
 
+pub async fn set_share(bucket: &Bucket, path: &str, share: bool) -> Result<()> {
+    let existing = query_note(bucket, path).await?;
+    let record = NoteRecord {
+        path: path.to_string(),
+        content: non_empty_body(existing.content),
+        metadata: NoteMetadata {
+            share,
+            update_at: Some(now_unix()),
+            ..existing.metadata
+        },
+    };
+    put_note_object(bucket, path, &record).await?;
+    super::cache::invalidate_for_path(bucket, path).await;
+    Ok(())
+}
+
 pub async fn set_title(bucket: &Bucket, path: &str, title: Option<String>) -> Result<()> {
     let existing = query_note(bucket, path).await?;
     let record = NoteRecord {

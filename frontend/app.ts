@@ -3,6 +3,7 @@ import { getEditPath, getViewPath, initEditor } from './editor/editor'
 import { renderEditorPreview } from './editor/renderers'
 import { EDIT_BUTTONS, errHandle, GITHUB_LINK, showPasswordPrompt, showToast, showAlert, showConfirm, Theme, VIEW_BUTTONS } from './core/ui'
 import { showCreateDocDialog } from './features/createDoc'
+import { showDocActionsMenu, showRawViewer, showSharePanel } from './features/docManage'
 import type { Mode, UIRefs } from './core/types'
 import { initHomeTree } from './features/homeTree'
 import { initDocSidebar } from './features/bookSidebar'
@@ -82,7 +83,13 @@ export async function initApp(): Promise<void> {
     }
 
     if (UI.footerActions) {
-        UI.footerActions.innerHTML = CONFIG.isEdit ? EDIT_BUTTONS() : VIEW_BUTTONS()
+        // Home is the document library — no note-level edit/raw/share actions
+        // (those used to silently target `_index`).
+        if (CONFIG.isHome) {
+            UI.footerActions.innerHTML = ''
+        } else {
+            UI.footerActions.innerHTML = CONFIG.isEdit ? EDIT_BUTTONS() : VIEW_BUTTONS()
+        }
     }
     if (UI.githubContainer) {
         UI.githubContainer.innerHTML = GITHUB_LINK()
@@ -200,10 +207,18 @@ export async function initApp(): Promise<void> {
         const shareBtn = target.closest('.opt-share')
         const editBtn = target.closest('.opt-edit')
         const rawBtn = target.closest('.opt-raw')
+        const moreBtn = target.closest('.opt-more')
         const exitBtn = target.closest('.opt-exit')
         const themeBtn = target.closest('.theme-toggle')
         // `#btn-new-doc` is handled by homeTree; avoid double-opening the create dialog
         const newBtn = target.closest<HTMLAnchorElement>('a[href="/new"]')
+
+        const currentTarget = (): { path: string; title: string; nodeType: string; shared: boolean } => ({
+            path: CONFIG.notePath,
+            title: CONFIG.title || CONFIG.notePath,
+            nodeType: CONFIG.docType === 'book' ? 'book' : CONFIG.docType === 'page' ? 'page' : 'article',
+            shared: CONFIG.shared ?? true,
+        })
 
         if (newBtn) {
             event.preventDefault()
@@ -234,14 +249,27 @@ export async function initApp(): Promise<void> {
                 })
                 .catch(errHandle)
         } else if (shareBtn) {
-            const shareUrl = `${window.location.origin}${getViewPath()}`
-            Promise.resolve(navigator.clipboard.writeText(shareUrl))
-                .then(() => showToast(getI18n('shareCopied')))
-                .catch(errHandle)
+            event.preventDefault()
+            // Panel owns its own state/refresh — never reload the page here.
+            void showSharePanel(currentTarget())
+        } else if (moreBtn) {
+            event.preventDefault()
+            event.stopPropagation()
+            showDocActionsMenu(moreBtn as HTMLElement, currentTarget(), {
+                onChanged: () => {
+                    window.location.reload()
+                },
+                // Share keeps the page; only rename/delete need a reload.
+            })
         } else if (editBtn) {
             window.location.href = getEditPath()
         } else if (rawBtn) {
-            window.location.href = `/api/notes/${CONFIG.notePath}?raw=1`
+            event.preventDefault()
+            if (!CONFIG.notePath || CONFIG.isHome) {
+                showToast(getI18n('rawNeedDoc'))
+                return
+            }
+            void showRawViewer(CONFIG.notePath)
         } else if (exitBtn) {
             window.location.href = getViewPath()
         } else if (themeBtn) {
