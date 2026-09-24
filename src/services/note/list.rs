@@ -3,11 +3,13 @@
 //! Performance notes (production):
 //! - R2 `get(key)` transfers the whole object; calling it for every key
 //!   makes TOC/home-tree unusable on large buckets (Worker 1101/500).
-//! - Prefer a single `list()`; use list custom_metadata when present.
-//! - Fall back to path heuristics + **few** GETs (only keys that look like books).
+//! - **Never** call `custom_metadata()` on list() objects — some Workers/R2
+//!   combos throw a JS exception (HTTP 1101) instead of returning Err.
+//! - Full GET custom_metadata is safe; use it only where titles are required.
 
 use std::collections::{HashMap, HashSet};
 
+use futures::future::join_all;
 use worker::{Bucket, ListOptionsBuilder, Result};
 
 use crate::models::note::{is_system_key, path_display_name, DocType, NoteMetadata, NoteRecord};
@@ -92,6 +94,7 @@ pub async fn list_book_page_keys(bucket: &Bucket, book_path: &str) -> Result<Vec
 }
 
 /// Metadata-only GET (still downloads object from R2 — use sparingly).
+/// Full-object `custom_metadata()` is safe; list-object access is not.
 async fn meta_get(bucket: &Bucket, key: &str) -> NoteMetadata {
     match bucket.get(key).execute().await {
         Ok(Some(object)) => {
@@ -99,6 +102,31 @@ async fn meta_get(bucket: &Bucket, key: &str) -> NoteMetadata {
             meta::from_custom(&custom)
         }
         _ => NoteMetadata::default(),
+    }
+}
+
+fn merge_meta(base: &mut NoteMetadata, m: &NoteMetadata) {
+    if m.title
+        .as_deref()
+        .map(|t| !t.trim().is_empty())
+        .unwrap_or(false)
+    {
+        base.title = m.title.clone();
+    }
+    if m.doc_type != DocType::Article {
+        base.doc_type = m.doc_type;
+    }
+    if m.update_at.is_some() {
+        base.update_at = m.update_at;
+    }
+    if m.pw.is_some() {
+        base.pw = m.pw.clone();
+    }
+    if !m.share {
+        base.share = m.share;
+    }
+    if m.mode != crate::models::note::NoteMode::Plain {
+        base.mode = m.mode;
     }
 }
 
@@ -112,8 +140,39 @@ pub struct FastDoc {
     pub is_dir: bool,
 }
 
-pub async fn list_docs_fast(bucket: &Bucket) -> Result<Vec<FastDoc>> {
-    let keys = list_keys(bucket, None).await?;
+/// One-pass bucket index: docs + per-book page counts from a single list().
+pub struct BucketIndex {
+    pub docs: Vec<FastDoc>,
+    pub page_counts: HashMap<String, u32>,
+}
+
+fn page_counts_from_docs(docs: &[FastDoc]) -> HashMap<String, u32> {
+    let mut counts: HashMap<String, u32> = HashMap::new();
+    for d in docs {
+        if d.is_page {
+            if let Some(root) = d.path.split('/').next() {
+                if !root.is_empty() {
+                    *counts.entry(root.to_string()).or_insert(0) += 1;
+                }
+            }
+        }
+    }
+    counts
+}
+
+/// Build the homepage index with at most one R2 GET per document, run concurrently.
+/// Never reads list-object custom_metadata (throws 1101 on production R2).
+pub async fn index_bucket(bucket: &Bucket) -> Result<BucketIndex> {
+    let list = build_list_request(bucket, None).execute().await?;
+    let mut keys: Vec<String> = Vec::new();
+    for obj in list.objects() {
+        let key = obj.key();
+        if is_system_key(&key) {
+            continue;
+        }
+        keys.push(key);
+    }
+
     let key_set: HashSet<String> = keys.iter().cloned().collect();
 
     // All directory prefixes implied by nested keys.
@@ -135,11 +194,22 @@ pub async fn list_docs_fast(bucket: &Bucket) -> Result<Vec<FastDoc>> {
         }
     }
 
+    // Resolve real title/docType via full GET (safe). Parents/books first.
+    let mut need_get: Vec<String> = keys
+        .iter()
+        .filter(|k| !k.contains('/'))
+        .cloned()
+        .collect();
+    need_get.sort_by_key(|k| !prefixes.contains(k.as_str()));
+
+    let fetched = join_all(need_get.iter().map(|k| meta_get(bucket, k))).await;
+    let mut resolved: HashMap<String, NoteMetadata> = HashMap::new();
+    for (key, meta) in need_get.iter().zip(fetched) {
+        resolved.insert(key.clone(), meta);
+    }
+
     let mut out: Vec<FastDoc> = Vec::new();
     let mut seen: HashSet<String> = HashSet::new();
-    // Always resolve real metadata (title + docType) for documents. Leaf
-    // articles store their display title in custom_metadata; without a GET
-    // the list only shows path slugs.
     let mut top_doc_type: HashMap<String, DocType> = HashMap::new();
 
     // Virtual directories that are not themselves objects.
@@ -157,38 +227,23 @@ pub async fn list_docs_fast(bucket: &Bucket) -> Result<Vec<FastDoc>> {
         });
     }
 
-    // Classify top-level objects first (so nested keys can follow book vs article).
-    // Keys with children (likely books) are fetched first so page classification
-    // stays correct even under load.
+    // Top-level objects.
     let mut top_level: Vec<&String> = keys
         .iter()
         .filter(|k| !k.contains('/') && !seen.contains(k.as_str()))
         .collect();
-    top_level.sort_by_key(|k| !prefixes.contains(k.as_str())); // books/parents first
+    top_level.sort_by_key(|k| !prefixes.contains(k.as_str()));
 
     for key in top_level {
         seen.insert(key.clone());
-
         let mut metadata = NoteMetadata {
             title: Some(path_display_name(key)),
             ..Default::default()
         };
-
-        let m = meta_get(bucket, key).await;
-        // Respect real docType. Only `book` becomes a book — having
-        // child keys (e.g. `sub/xxx`) is NOT enough.
-        metadata.doc_type = m.doc_type;
-        if m.title
-            .as_deref()
-            .map(|t| !t.trim().is_empty())
-            .unwrap_or(false)
-        {
-            metadata.title = m.title.clone();
+        if let Some(m) = resolved.get(key) {
+            metadata.doc_type = m.doc_type;
+            merge_meta(&mut metadata, m);
         }
-        metadata.update_at = m.update_at;
-        metadata.pw = m.pw.clone();
-        metadata.share = m.share;
-        metadata.mode = m.mode;
 
         let is_book = metadata.doc_type == DocType::Book;
         top_doc_type.insert(key.clone(), metadata.doc_type);
@@ -199,6 +254,21 @@ pub async fn list_docs_fast(bucket: &Bucket) -> Result<Vec<FastDoc>> {
             is_page: false,
             is_dir: false,
         });
+    }
+
+    // Nested non-page articles that still need titles.
+    let nested_need_get: Vec<String> = keys
+        .iter()
+        .filter(|k| k.contains('/') && !seen.contains(k.as_str()))
+        .filter(|k| {
+            let root = k.split('/').next().unwrap_or(k);
+            top_doc_type.get(root) != Some(&DocType::Book)
+        })
+        .cloned()
+        .collect();
+    let nested_fetched = join_all(nested_need_get.iter().map(|k| meta_get(bucket, k))).await;
+    for (key, meta) in nested_need_get.iter().zip(nested_fetched) {
+        resolved.insert(key.clone(), meta);
     }
 
     // Nested keys: pages only when parent is a book; otherwise nested articles.
@@ -223,7 +293,6 @@ pub async fn list_docs_fast(bucket: &Bucket) -> Result<Vec<FastDoc>> {
                 is_dir: false,
             });
         } else if key_set.contains(root.as_str()) || prefixes.contains(&root) {
-            // Nested article (or child of a non-book prefix) — not a book page.
             let book_ref = if key_set.contains(root.as_str()) {
                 Some(root.clone())
             } else {
@@ -235,18 +304,9 @@ pub async fn list_docs_fast(bucket: &Bucket) -> Result<Vec<FastDoc>> {
                 title: Some(path_display_name(key)),
                 ..Default::default()
             };
-            let m = meta_get(bucket, key).await;
-            if m.title
-                .as_deref()
-                .map(|t| !t.trim().is_empty())
-                .unwrap_or(false)
-            {
-                metadata.title = m.title.clone();
+            if let Some(m) = resolved.get(key) {
+                merge_meta(&mut metadata, m);
             }
-            metadata.update_at = m.update_at;
-            metadata.pw = m.pw.clone();
-            metadata.share = m.share;
-            metadata.mode = m.mode;
             out.push(FastDoc {
                 path: key.clone(),
                 metadata,
@@ -257,11 +317,15 @@ pub async fn list_docs_fast(bucket: &Bucket) -> Result<Vec<FastDoc>> {
         }
     }
 
-    Ok(out)
+    let page_counts = page_counts_from_docs(&out);
+    Ok(BucketIndex {
+        docs: out,
+        page_counts,
+    })
 }
 
 /// Metadata list used by APIs that can afford list+optional light GETs.
-/// Does **not** download bodies. Uses list custom_metadata when available.
+/// Path heuristics only for the list pass — list custom_metadata is unsafe.
 pub async fn list_doc_metas(
     bucket: &Bucket,
     opts: &ListOptions,
@@ -277,36 +341,18 @@ pub async fn list_doc_metas(
         if is_system_key(&key) {
             continue;
         }
-        // Prefer real custom metadata when present; fall back to path shape.
-        // Some Workers/R2 combos throw on list custom_metadata (1101/500).
+        // Never call list-object custom_metadata (throws 1101 on production R2).
         let mut metadata = NoteMetadata::default();
-        let listed_meta = obj.custom_metadata().ok();
-        let mut has_real_meta = false;
-        if let Some(custom) = listed_meta.as_ref() {
-            if !custom.is_empty() {
-                metadata = meta::from_custom(custom);
-                has_real_meta = true;
+        if key.contains('/') {
+            metadata.doc_type = DocType::Page;
+            let root = key.split('/').next().unwrap_or("").to_string();
+            if !root.is_empty() {
+                metadata.book_ref = Some(root);
             }
+        } else {
+            metadata.doc_type = DocType::Article;
         }
-        if !has_real_meta {
-            if key.contains('/') {
-                metadata.doc_type = DocType::Page;
-                let root = key.split('/').next().unwrap_or("").to_string();
-                if !root.is_empty() {
-                    metadata.book_ref = Some(root);
-                }
-            } else {
-                metadata.doc_type = DocType::Article;
-            }
-            metadata.title = Some(path_display_name(&key));
-        } else if metadata
-            .title
-            .as_deref()
-            .map(|t| t.trim().is_empty())
-            .unwrap_or(true)
-        {
-            metadata.title = Some(path_display_name(&key));
-        }
+        metadata.title = Some(path_display_name(&key));
 
         if !matches_filters(&metadata, opts) {
             continue;
@@ -332,7 +378,7 @@ pub async fn list_all_docs(bucket: &Bucket, opts: &ListOptions) -> Result<Vec<No
         let content = if opts.include_body {
             match bucket.get(&path).execute().await? {
                 Some(object) => {
-                    let custom = object.custom_metadata().unwrap_or_default();
+                    let custom = object.custom_metadata().ok().unwrap_or_default();
                     if !custom.is_empty() {
                         let real = meta::from_custom(&custom);
                         if real
@@ -369,46 +415,17 @@ pub async fn list_all_docs(bucket: &Bucket, opts: &ListOptions) -> Result<Vec<No
     Ok(out)
 }
 
-/// Count pages per book using prefix keys only (no body download).
-/// Only counts nested keys whose top-level parent is a known book object.
+/// Count pages per book. Prefers the one-pass index; falls back to keys only.
 pub async fn book_page_counts(bucket: &Bucket) -> Result<HashMap<String, u32>> {
-    let mut counts: HashMap<String, u32> = HashMap::new();
-    let keys = list_keys(bucket, None).await?;
-    let mut tops: HashMap<String, DocType> = HashMap::new();
-    for key in &keys {
-        if key.contains('/') {
-            continue;
-        }
-        let mut meta = NoteMetadata::default();
-        // cheap: only GET top-level keys (few compared to full tree)
-        if let Ok(Some(object)) = bucket.get(key).execute().await {
-            let custom = object.custom_metadata().unwrap_or_default();
-            meta = super::meta::from_custom(&custom);
-        }
-        tops.insert(key.clone(), meta.doc_type);
-    }
-    for key in &keys {
-        if !key.contains('/') {
-            continue;
-        }
-        let root = key.split('/').next().unwrap_or("").to_string();
-        if root.is_empty() || is_system_key(&root) {
-            continue;
-        }
-        if tops.get(&root) != Some(&DocType::Book) {
-            continue;
-        }
-        *counts.entry(root).or_insert(0) += 1;
-    }
-    Ok(counts)
+    Ok(index_bucket(bucket).await?.page_counts)
 }
 
 /// Records visible on homepage tree (articles + books; pages and virtual dirs excluded).
 /// Virtual directories are implied by nested paths in `build_home_tree` — do not
 /// insert them as leaf nodes or they render as articles with children.
-pub async fn list_visible_docs_fast(bucket: &Bucket) -> Result<Vec<NoteRecord>> {
-    let fast = list_docs_fast(bucket).await?;
-    let docs = fast
+pub fn visible_docs_from_index(index: BucketIndex) -> Vec<NoteRecord> {
+    index
+        .docs
         .into_iter()
         .filter(|d| !d.is_page && !d.is_dir && !is_system_key(&d.path))
         .map(|d| {
@@ -426,6 +443,5 @@ pub async fn list_visible_docs_fast(bucket: &Bucket) -> Result<Vec<NoteRecord>> 
                 metadata,
             }
         })
-        .collect();
-    Ok(docs)
+        .collect()
 }

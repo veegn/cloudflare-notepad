@@ -350,7 +350,8 @@ export async function initHomeTree(): Promise<void> {
     }
 
     try {
-        await loadTree({ refresh: true })
+        // Prefer the server-side cache for first paint; mutations refresh explicitly.
+        await loadTree()
     } catch (err) {
         host.innerHTML = `<div class="doc-tree-empty"><div class="doc-tree-empty-title">${getI18n('homeError')}</div>
           <button type="button" class="welcome-button" id="home-retry">${getI18n('homeRetry')}</button></div>`

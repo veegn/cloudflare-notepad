@@ -38,6 +38,9 @@ getrandom = { version = "0.2", features = ["js"] }
 # JS interop (for Date.now() in WASM)
 js-sys = "0.3"
 
+# Concurrent R2 metadata GETs (join_all)
+futures = "0.3"
+
 # Utilities
 urlencoding = "2"
 console_error_panic_hook = "0.1"

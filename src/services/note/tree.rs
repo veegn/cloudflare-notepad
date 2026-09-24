@@ -2,13 +2,9 @@
 
 use std::collections::HashMap;
 
-use worker::{Bucket, Result};
-
 use crate::models::note::{
     is_system_key, path_display_name, DocListItem, DocType, NoteRecord, TreeNode,
 };
-
-use super::list::book_page_counts;
 
 /// Build homepage tree from records that already exclude pages (typically).
 pub fn build_home_tree(records: &[NoteRecord]) -> Vec<TreeNode> {
@@ -135,15 +131,14 @@ pub fn build_home_tree(records: &[NoteRecord]) -> Vec<TreeNode> {
     convert(roots)
 }
 
-/// Same as `build_home_tree`, then annotate book nodes with page counts.
-pub async fn build_home_tree_with_counts(
-    bucket: &Bucket,
+/// Same as `build_home_tree`, then annotate book nodes with precomputed page counts.
+pub fn build_home_tree_with_page_counts(
     records: &[NoteRecord],
-) -> Result<Vec<TreeNode>> {
-    let counts = book_page_counts(bucket).await?;
+    counts: &HashMap<String, u32>,
+) -> Vec<TreeNode> {
     let mut tree = build_home_tree(records);
-    patch_page_counts(&mut tree, &counts);
-    Ok(tree)
+    patch_page_counts(&mut tree, counts);
+    tree
 }
 
 fn patch_page_counts(nodes: &mut [TreeNode], counts: &HashMap<String, u32>) {

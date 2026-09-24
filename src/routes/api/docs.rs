@@ -181,8 +181,10 @@ pub async fn home_tree(req: Request, ctx: RouteContext<()>) -> Result<Response> 
 }
 
 pub(crate) async fn build_home_tree_payload(bucket: &worker::Bucket) -> Result<serde_json::Value> {
-    let records = note::list_visible_docs_fast(bucket).await?;
-    let tree = note::build_home_tree_with_counts(bucket, &records).await?;
+    let index = note::index_bucket(bucket).await?;
+    let counts = index.page_counts.clone();
+    let records = note::visible_docs_from_index(index);
+    let tree = note::build_home_tree_with_page_counts(&records, &counts);
 
     let mut article_count = 0u32;
     let mut book_count = 0u32;

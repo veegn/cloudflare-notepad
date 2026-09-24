@@ -26,12 +26,12 @@ pub use cache::{
 };
 pub use create::{create_doc, gen_random_path};
 pub use list::{
-    book_page_counts, list_all_docs, list_book_page_keys, list_doc_metas, list_visible_docs_fast,
-    ListOptions,
+    book_page_counts, index_bucket, list_all_docs, list_book_page_keys, list_doc_metas,
+    visible_docs_from_index, ListOptions,
 };
 pub use repair::{repair_all, repair_doc, TitlePrefer};
 pub use store::{delete_note, query_note, save_note, set_mode, set_password, set_share, set_title};
-pub use tree::build_home_tree_with_counts;
+pub use tree::build_home_tree_with_page_counts;
 
 // Re-exports used by unit tests in this module.
 #[allow(unused_imports)]
