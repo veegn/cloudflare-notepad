@@ -36,14 +36,3 @@ pub(super) fn is_edit_authorized(
 ) -> bool {
     auth::is_edit_authorized(cookie, path, &record.metadata, secret, index_pw)
 }
-
-/// Extract optional query password (`password` / `passwd` / `pw`).
-pub(super) fn query_password(url: &worker::Url) -> Option<String> {
-    url.query_pairs()
-        .find(|(k, _)| k == "password" || k == "passwd" || k == "pw")
-        .map(|(_, v)| v.to_string())
-}
-
-pub(super) fn wants_raw(url: &worker::Url) -> bool {
-    url.query_pairs().any(|(k, _)| k == "raw")
-}

@@ -5,12 +5,10 @@ use worker::*;
 use crate::error::*;
 use crate::models::api::*;
 use crate::models::note::{is_system_key, DocListItem, DocType};
+use crate::routes::{query_password, wants_raw};
 use crate::services::{auth, note};
 
-use super::util::{
-    clean_path, cookie_header, get_index_password, get_salt, is_edit_authorized, query_password,
-    wants_raw,
-};
+use super::util::{clean_path, cookie_header, get_index_password, get_salt, is_edit_authorized};
 
 // ── GET /api/notes/*path ─────────────────────────────────────────────
 
@@ -23,6 +21,7 @@ pub async fn get_note(req: Request, ctx: RouteContext<()>) -> Result<Response> {
     let salt = get_salt(&ctx.env);
     let cookie = cookie_header(&req);
     let url = req.url()?;
+    let raw = wants_raw(&url);
 
     if auth::needs_view_auth(&record.metadata) {
         let authorized = auth::is_view_authorized(
@@ -34,16 +33,15 @@ pub async fn get_note(req: Request, ctx: RouteContext<()>) -> Result<Response> {
             &secret,
         );
         if !authorized {
+            if raw {
+                return Ok(Response::ok("Authorization required")?.with_status(403));
+            }
             return err_json(ERR_UNAUTHORIZED, "Authorization required", 403);
         }
     }
 
-    if wants_raw(&url) {
-        return Ok(Response::ok(record.content)?.with_headers({
-            let mut h = Headers::new();
-            h.set("Content-Type", "text/plain; charset=utf-8")?;
-            h
-        }));
+    if raw {
+        return Response::ok(record.content);
     }
 
     ok_json(NoteResponse {

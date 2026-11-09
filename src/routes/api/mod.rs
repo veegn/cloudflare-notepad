@@ -18,7 +18,7 @@ mod repair;
 mod util;
 
 pub use assets::{get_asset, upload_image};
-pub use auth::auth_note;
+pub use auth::{auth_note, auth_note_page};
 pub use books::{adopt_book, create_book_page, get_toc, list_book_pages};
 pub use docs::{create_doc, home_tree, list_books};
 pub use notes::{delete_note, get_note, list_notes, patch_note, put_note};

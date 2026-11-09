@@ -25,32 +25,6 @@ function isSystemPath(path: string): boolean {
     )
 }
 
-export async function passwdPrompt(): Promise<void> {
-    const passwd = await showPasswordPrompt(getI18n('enterPasswordPrompt'))
-    if (!passwd) {
-        return
-    }
-
-    window.fetch(`/api/auth`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ path: CONFIG.notePath, password: passwd }),
-    })
-        .then(async res => {
-            if (!res.ok && !res.headers.get('content-type')?.includes('application/json')) {
-                throw new Error(`Server Error: ${res.status} - ${await res.text()}`)
-            }
-            return res.json() as Promise<{ code: number; message?: string }>
-        })
-        .then(res => {
-            if (res.code !== 0) {
-                return errHandle(res.message || 'Auth failed')
-            }
-            window.location.reload()
-        })
-        .catch(errHandle)
-}
-
 export async function initApp(): Promise<void> {
     if (initialized) {
         return
@@ -277,5 +251,3 @@ export async function initApp(): Promise<void> {
         }
     })
 }
-
-window.passwdPrompt = passwdPrompt

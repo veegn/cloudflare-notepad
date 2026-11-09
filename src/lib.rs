@@ -17,7 +17,9 @@ async fn fetch(req: Request, env: Env, _ctx: Context) -> Result<Response> {
         .get_async("/", routes::pages::home)
         .get_async("/new", routes::pages::create_note)
         .get_async("/note/*path", routes::pages::view_note)
+        .post_async("/note/*path", routes::api::auth_note_page)
         .get_async("/edit/*path", routes::pages::edit_note)
+        .post_async("/edit/*path", routes::api::auth_note_page)
         // ── API routes (return JSON) ─────────────────────────────
         // Collection / doc-type APIs (must register before /*path wildcards where needed)
         .get_async("/api/notes", routes::api::list_notes)

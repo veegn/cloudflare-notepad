@@ -5,6 +5,8 @@ use crate::i18n::{build_i18n_map, detect_language, get_i18n, I18nMap, LangCode};
 use crate::models::note::{NoteMetadata, INDEX_PATH};
 use crate::services::{auth, note};
 
+use super::{query_password, wants_raw};
+
 /// Build a Tera instance with all templates embedded via `include_str!`.
 pub fn build_tera() -> Tera {
     let mut tera = Tera::default();
@@ -123,7 +125,6 @@ pub async fn home(req: Request, ctx: RouteContext<()>) -> Result<Response> {
     context.insert("book_ref", &Option::<String>::None);
     context.insert("doc_title", &Option::<String>::None);
     context.insert("config_json", &config_json);
-    context.insert("show_pw_prompt", &false);
     context.insert("note_path", INDEX_PATH);
     context.insert("tips", &"");
 
@@ -157,9 +158,13 @@ pub async fn create_note(req: Request, _ctx: RouteContext<()>) -> Result<Respons
 // ── GET /note/*path ──────────────────────────────────────────────────
 
 pub async fn view_note(req: Request, ctx: RouteContext<()>) -> Result<Response> {
+    let url = req.url()?;
+    if wants_raw(&url) {
+        return super::api::get_note(req, ctx).await;
+    }
+
     let raw_path = ctx.param("path").unwrap_or(&String::new()).to_string();
     let path = clean_path(&raw_path);
-    let lang = detect_lang(&req);
 
     // Home note `_index` is opened via /note/_index (operations guide).
     // Do not redirect to `/` — homepage is the document tree, not the note body.
@@ -173,53 +178,25 @@ pub async fn view_note(req: Request, ctx: RouteContext<()>) -> Result<Response> 
     let secret = auth::required_jwt_secret(&ctx.env)?;
     let salt = get_salt(&ctx.env);
     let cookie = cookie_header(&req);
-    let i18n_map = build_i18n_map();
-    let tera = build_tera();
-
-    // Parse query password.
-    let url = req.url()?;
-    let query_pw = url
-        .query_pairs()
-        .find(|(k, _)| k == "password" || k == "passwd" || k == "pw")
-        .map(|(_, v)| v.to_string());
-
-    // Check auth for private / password-protected notes.
-    if !record.metadata.share {
-        let authorized = auth::is_view_authorized(
-            query_pw.as_deref(),
-            cookie.as_deref(),
-            &path,
-            &record.metadata,
-            &salt,
-            &secret,
-        );
-        if !authorized {
-            let tip = get_i18n(&i18n_map, lang, "tipPrivate");
-            return render_need_passwd(
-                &tera,
-                lang,
-                &title,
-                &path,
-                &tip,
-                record.metadata.pw.is_some(),
-                &i18n_map,
-            );
-        }
-    } else if record.metadata.pw.is_some() {
-        let authorized = auth::is_view_authorized(
-            query_pw.as_deref(),
-            cookie.as_deref(),
-            &path,
-            &record.metadata,
-            &salt,
-            &secret,
-        );
-        if !authorized {
-            let tip = get_i18n(&i18n_map, lang, "tipEncrypt");
-            return render_need_passwd(&tera, lang, &title, &path, &tip, true, &i18n_map);
-        }
+    if !auth::is_view_authorized(
+        query_password(&url).as_deref(),
+        cookie.as_deref(),
+        &path,
+        &record.metadata,
+        &salt,
+        &secret,
+    ) {
+        let tip = if record.metadata.share {
+            "tipEncrypt"
+        } else {
+            "tipPrivate"
+        };
+        return render_need_passwd(&req, &title, &path, tip, record.metadata.pw.is_some());
     }
 
+    let lang = detect_lang(&req);
+    let i18n_map = build_i18n_map();
+    let tera = build_tera();
     let config_json = build_config_json(
         lang,
         &path,
@@ -248,7 +225,6 @@ pub async fn view_note(req: Request, ctx: RouteContext<()>) -> Result<Response> 
     context.insert("book_ref", &record.metadata.book_ref);
     context.insert("doc_title", &record.metadata.title);
     context.insert("config_json", &config_json);
-    context.insert("show_pw_prompt", &false);
     context.insert("note_path", &path);
     context.insert("tips", &"");
 
@@ -260,7 +236,6 @@ pub async fn view_note(req: Request, ctx: RouteContext<()>) -> Result<Response> 
 pub async fn edit_note(req: Request, ctx: RouteContext<()>) -> Result<Response> {
     let raw_path = ctx.param("path").unwrap_or(&String::new()).to_string();
     let path = clean_path(&raw_path);
-    let lang = detect_lang(&req);
 
     let bucket = ctx.env.bucket("NOTES")?;
     let record = note::query_note(&bucket, &path).await?;
@@ -271,23 +246,19 @@ pub async fn edit_note(req: Request, ctx: RouteContext<()>) -> Result<Response> 
     let secret = auth::required_jwt_secret(&ctx.env)?;
     let index_pw = get_index_password(&ctx.env);
     let cookie = cookie_header(&req);
-    let i18n_map = build_i18n_map();
-    let tera = build_tera();
-
-    if auth::requires_edit_auth(&path, &record.metadata, &index_pw) {
-        let authorized = auth::is_edit_authorized(
-            cookie.as_deref(),
-            &path,
-            &record.metadata,
-            &secret,
-            &index_pw,
-        );
-        if !authorized {
-            let tip = get_i18n(&i18n_map, lang, "tipEncrypt");
-            return render_need_passwd(&tera, lang, &title, &path, &tip, true, &i18n_map);
-        }
+    if !auth::is_edit_authorized(
+        cookie.as_deref(),
+        &path,
+        &record.metadata,
+        &secret,
+        &index_pw,
+    ) {
+        return render_need_passwd(&req, &title, &path, "tipEncrypt", true);
     }
 
+    let lang = detect_lang(&req);
+    let i18n_map = build_i18n_map();
+    let tera = build_tera();
     let config_json = build_config_json(
         lang,
         &path,
@@ -314,7 +285,6 @@ pub async fn edit_note(req: Request, ctx: RouteContext<()>) -> Result<Response> 
     context.insert("book_ref", &record.metadata.book_ref);
     context.insert("doc_title", &record.metadata.title);
     context.insert("config_json", &config_json);
-    context.insert("show_pw_prompt", &false);
     context.insert("note_path", &path);
     context.insert("tips", &"");
 
@@ -338,7 +308,6 @@ pub async fn not_found(req: Request, _ctx: RouteContext<()>) -> Result<Response>
     context.insert("book_ref", &Option::<String>::None);
     context.insert("doc_title", &Option::<String>::None);
     context.insert("config_json", &"{}");
-    context.insert("show_pw_prompt", &false);
     context.insert("note_path", &"");
     context.insert("tips", &tip);
 
@@ -348,14 +317,19 @@ pub async fn not_found(req: Request, _ctx: RouteContext<()>) -> Result<Response>
 // ── Helper: password prompt page ─────────────────────────────────────
 
 fn render_need_passwd(
-    tera: &Tera,
-    lang: LangCode,
+    req: &Request,
     title: &str,
     note_path: &str,
-    tip: &str,
-    show_pw_prompt: bool,
-    i18n_map: &I18nMap,
+    tip_key: &str,
+    requires_password: bool,
 ) -> Result<Response> {
+    let lang = detect_lang(req);
+    let i18n_map = build_i18n_map();
+    let tera = build_tera();
+    let auth_failed = req
+        .url()?
+        .query_pairs()
+        .any(|(key, value)| key == "auth" && value == "failed");
     let config_json = build_config_json(
         lang,
         note_path,
@@ -363,10 +337,10 @@ fn render_need_passwd(
         false,
         &NoteMetadata::default(),
         None,
-        i18n_map,
+        &i18n_map,
     );
 
-    let mut context = base_context(lang, title, i18n_map);
+    let mut context = base_context(lang, title, &i18n_map);
     context.insert("is_home", &false);
     context.insert("is_edit", &false);
     context.insert("content", &"");
@@ -375,9 +349,10 @@ fn render_need_passwd(
     context.insert("book_ref", &Option::<String>::None);
     context.insert("doc_title", &Option::<String>::None);
     context.insert("config_json", &config_json);
-    context.insert("show_pw_prompt", &show_pw_prompt);
+    context.insert("requires_password", &requires_password);
+    context.insert("auth_failed", &auth_failed);
     context.insert("note_path", note_path);
-    context.insert("tips", tip);
+    context.insert("tips", &get_i18n(&i18n_map, lang, tip_key));
 
-    render_html(tera, "need_passwd.html", &context)
+    render_html(&tera, "need_passwd.html", &context)
 }

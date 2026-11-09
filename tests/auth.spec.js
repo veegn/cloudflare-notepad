@@ -12,8 +12,6 @@ test('protected note requires auth for view and raw, then allows access after au
     // The PATCH request above sets a cookie in the context. Send an explicit bogus cookie to simulate an unauthenticated user.
     const rawBeforeAuth = await request.get(`/api/notes/${notePath}?raw=1`, { headers: { 'Cookie': '' } })
     expect(rawBeforeAuth.status()).toBe(403)
-
-
     await page.goto(`/note/${notePath}`)
     await expect(page.getByText(/protected/i)).toBeVisible()
 
@@ -27,20 +25,60 @@ test('protected note requires auth for view and raw, then allows access after au
     await expect(rawAfterAuth.text()).resolves.toContain('secret body')
 })
 
-test('protected raw route accepts password from url query', async ({ request }) => {
+test('both raw routes return plain text for authorized and unauthorized requests', async ({ request }) => {
     const notePath = uniqueNotePath()
+    const content = '笔记原文\n<script>source</script>\n'
+    const headers = { Cookie: '' }
 
-    await saveNote(request, notePath, 'query password body')
+    await saveNote(request, notePath, content)
     await request.patch(`/api/notes/${notePath}`, {
         data: { password: 'url-pass' },
     })
 
-    const rawWithoutPassword = await request.get(`/api/notes/${notePath}?raw=1`, { headers: { 'Cookie': '' } })
-    expect(rawWithoutPassword.status()).toBe(403)
+    for (const prefix of ['/api/notes', '/note']) {
+        const url = `${prefix}/${notePath}?raw=1`
+        const denied = await request.get(url, { headers, maxRedirects: 0 })
+        expect(denied.status()).toBe(403)
+        expect(denied.headers()['content-type']).toBe('text/plain; charset=utf-8')
+        expect(await denied.text()).toBe('Authorization required')
 
-    const rawWithPassword = await request.get(`/api/notes/${notePath}?raw=1&password=url-pass`)
-    expect(rawWithPassword.status()).toBe(200)
-    await expect(rawWithPassword.text()).resolves.toContain('query password body')
+        const allowed = await request.get(`${url}&password=url-pass`, { headers })
+        expect(allowed.status()).toBe(200)
+        expect(allowed.headers()['content-type']).toBe('text/plain; charset=utf-8')
+        expect(await allowed.text()).toBe(content)
+    }
+})
+
+test.describe('password forms without JavaScript', () => {
+    test.use({ javaScriptEnabled: false })
+
+    test('can retry an incorrect password and unlock the reading and editing pages', async ({ page, request, context }) => {
+        const notePath = uniqueNotePath()
+        const content = 'password form body'
+        const password = '密码 + & %'
+        await saveNote(request, notePath, content)
+        await request.patch(`/api/notes/${notePath}`, { data: { password } })
+
+        for (const prefix of ['/note', '/edit']) {
+            const url = `${prefix}/${notePath}`
+            await context.clearCookies()
+            await page.goto(url, { waitUntil: 'domcontentloaded' })
+
+            const input = page.getByLabel('Enter the note password')
+            await input.fill('wrong password')
+            await input.press('Enter')
+            await expect(page.getByRole('alert')).toHaveText('Password authentication failed.')
+
+            await input.fill(password)
+            await input.press('Enter')
+            await expect(page).toHaveURL(new RegExp(`${url}$`))
+            await expect(input).toHaveCount(0)
+
+            const raw = await page.request.get(`/api/notes/${notePath}?raw=1`)
+            expect(raw.status()).toBe(200)
+            expect(await raw.text()).toBe(content)
+        }
+    })
 })
 
 test('.index edit is protected by admin password while home page stays viewable', async ({ page }) => {

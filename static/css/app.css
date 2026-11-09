@@ -1240,6 +1240,27 @@ textarea {
     transform: translateY(0);
 }
 
+.password-page {
+    display: block;
+    overflow: auto;
+}
+
+.password-form {
+    width: calc(100% - 32px);
+    max-width: 380px;
+    margin: 24px auto;
+    background: var(--vscode-editor);
+    animation: none;
+}
+
+.password-form .modal-title {
+    display: block;
+}
+
+.password-form .modal-input {
+    background: var(--vscode-bg);
+}
+
 /* Toasts */
 .toast-message {
     position: fixed;

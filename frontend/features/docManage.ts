@@ -216,7 +216,7 @@ export function showRawViewer(path: string): Promise<void> {
           <div class="modal-desc">${escapeHtml(path)}</div>
           <pre class="raw-body" id="raw-body">${escapeHtml(getI18n('homeLoading'))}</pre>
           <div class="modal-actions">
-            <button type="button" class="modal-btn modal-btn-secondary" id="raw-copy">${getI18n('copy')}</button>
+            <button type="button" class="modal-btn modal-btn-secondary" id="raw-copy" disabled>${getI18n('copy')}</button>
             <button type="button" class="modal-btn modal-btn-secondary" id="raw-open">${getI18n('rawOpenTab')}</button>
             <button type="button" class="modal-btn modal-btn-primary" id="raw-close">${getI18n('close')}</button>
           </div>
@@ -235,21 +235,22 @@ export function showRawViewer(path: string): Promise<void> {
             window.open(`/api/notes/${encodeNotePath(path)}?raw=1`, '_blank', 'noopener')
         })
 
+        const body = dialog.querySelector('#raw-body')
+        const copyButton = dialog.querySelector<HTMLButtonElement>('#raw-copy')
         let rawText = ''
         void (async () => {
             try {
                 const res = await fetch(`/api/notes/${encodeNotePath(path)}?raw=1`)
+                if (!res.ok) throw new Error(`HTTP ${res.status}: ${await res.text()}`)
                 rawText = await res.text()
-                const body = dialog.querySelector('#raw-body')
                 if (body) body.textContent = rawText
+                if (copyButton) copyButton.disabled = false
             } catch (err) {
-                const body = dialog.querySelector('#raw-body')
                 if (body) body.textContent = String(err)
-                errHandle(err)
             }
         })()
 
-        dialog.querySelector('#raw-copy')?.addEventListener('click', () => {
+        copyButton?.addEventListener('click', () => {
             void (async () => {
                 try {
                     await navigator.clipboard.writeText(rawText)

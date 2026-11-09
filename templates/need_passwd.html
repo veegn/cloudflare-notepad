@@ -1,7 +1,18 @@
 {% extends "base.html" %}
 
 {% block editor_content %}
-{# Empty composer — the banner tip and password prompt handle the UX #}
-<div class="composer-frame is-reading mode-plain" data-mode="plain">
+<div class="composer-frame is-reading mode-plain password-page" data-mode="plain">
+  {% if requires_password %}
+  <form class="modal-dialog password-form" method="post">
+    <label class="modal-title" for="note-password">{{ i18n[lang].enterPasswordPrompt }}</label>
+    {% if auth_failed %}
+    <p class="modal-desc" role="alert">{{ i18n[lang].authFailed }}</p>
+    {% endif %}
+    <input class="modal-input" id="note-password" name="password" type="password" autocomplete="current-password" required autofocus>
+    <div class="modal-actions">
+      <button class="modal-btn modal-btn-primary" type="submit">{{ i18n[lang].confirm }}</button>
+    </div>
+  </form>
+  {% endif %}
 </div>
 {% endblock editor_content %}
