@@ -1,4 +1,3 @@
-#!/usr/bin/env node
 /**
  * Repair metadata ↔ body inconsistencies via POST /api/repair
  *

@@ -1,4 +1,3 @@
-#!/usr/bin/env node
 /**
  * Delete e2e residual objects from a notepad R2 bucket (via HTTP API).
  *
@@ -17,16 +16,15 @@
 
 const base = process.env.BASE_URL || 'http://127.0.0.1:8799'
 const args = process.argv.slice(2)
-const dryRun = !args.includes('--force') || args.includes('--dry-run')
 const force = args.includes('--force') && !args.includes('--dry-run')
 
 const prefixes = ['e2e-', 'e2ebook-', 'e2edir-', 'e2etree-', 'e2ebook_', 'hb-demo']
 
-function isE2ePath(path) {
+function isE2ePath(path: string) {
   return prefixes.some(p => path.startsWith(p))
 }
 
-async function listPaths(prefix) {
+async function listPaths(prefix: string) {
   const url = new URL('/api/notes', base)
   url.searchParams.set('docType', 'all')
   url.searchParams.set('excludePages', '0')
@@ -38,11 +36,11 @@ async function listPaths(prefix) {
     console.log(`[cleanup] skip non-JSON prefix=${prefix || '(all)'} status=${res.status}`)
     return []
   }
-  const json = JSON.parse(text)
+  const json: { data?: { items?: { path: string }[] } } = JSON.parse(text)
   return (json?.data?.items || []).map(i => i.path).filter(Boolean)
 }
 
-async function deletePath(path) {
+async function deletePath(path: string) {
   const res = await fetch(
     new URL(`/api/notes/${path.split('/').map(encodeURIComponent).join('/')}`, base),
     { method: 'DELETE' },
@@ -52,7 +50,7 @@ async function deletePath(path) {
 
 console.log(`[cleanup] BASE_URL=${base} mode=${force ? 'DELETE' : 'dry-run'}`)
 
-const all = new Set()
+const all = new Set<string>()
 for (const p of ['', ...prefixes]) {
   const paths = await listPaths(p)
   paths.forEach(x => all.add(x))

@@ -1,5 +1,6 @@
-const { test, expect } = require('@playwright/test')
-const { saveNote, uniqueNotePath } = require('./helpers')
+import assert from 'node:assert/strict'
+import { test, expect } from '@playwright/test'
+import { saveNote, uniqueNotePath } from './helpers'
 
 test('create route redirects home to open create dialog', async ({ request }) => {
     const response = await request.get('/new', { maxRedirects: 0 })
@@ -25,8 +26,8 @@ test('public note view renders saved content', async ({ page, request }) => {
     const frameBox = await page.locator('.composer-frame').boundingBox()
     const previewBox = await page.locator('#preview').boundingBox()
 
-    expect(frameBox).not.toBeNull()
-    expect(previewBox).not.toBeNull()
+    assert.ok(frameBox)
+    assert.ok(previewBox)
     expect(previewBox.width).toBeGreaterThan(frameBox.width * 0.75)
 })
 
@@ -41,9 +42,9 @@ test('long note content does not overlap the bottom status actions', async ({ pa
     const statusbarBox = await page.locator('.statusbar').boundingBox()
     const editButtonBox = await page.getByRole('button', { name: 'Edit' }).boundingBox()
 
-    expect(editorPaneBox).not.toBeNull()
-    expect(statusbarBox).not.toBeNull()
-    expect(editButtonBox).not.toBeNull()
+    assert.ok(editorPaneBox)
+    assert.ok(statusbarBox)
+    assert.ok(editButtonBox)
     expect(statusbarBox.y).toBeGreaterThanOrEqual(editorPaneBox.y + editorPaneBox.height - 1)
     expect(editButtonBox.y).toBeGreaterThanOrEqual(statusbarBox.y)
 
@@ -74,8 +75,8 @@ test('tab bar stays visually pinned while long content scrolls', async ({ page, 
 
     const after = await tabbar.boundingBox()
 
-    expect(before).not.toBeNull()
-    expect(after).not.toBeNull()
+    assert.ok(before)
+    assert.ok(after)
     expect(Math.abs(before.y - after.y)).toBeLessThan(1)
 })
 

@@ -11,7 +11,7 @@
 
 项目基于 Cloudflare Workers、Workers R2 和 GitHub Actions，易于私有化部署。
 
-`static/js/app.js` 会在本地启动、测试和部署前自动构建，前端源码位于 `frontend/`。
+前端源码位于 `frontend/`。本地启动、测试和部署前会自动构建 `static/js/app.js`，并从锁定版本的 npm 依赖生成 `static/js/mermaid.min.js`。
 
 代码结构与 API 说明见 **[docs/ARCHITECTURE.md](./docs/ARCHITECTURE.md)**；产品文档索引见 [docs/README.md](./docs/README.md)。
 
@@ -101,7 +101,7 @@ npm start
 
 - `npm run build:frontend:dev`：构建开发版前端包。
 - `npm run build:frontend:prod`：构建生产版前端包。
-- `npm run lint`：检查前端 TypeScript 代码规范。
+- `npm run lint`：检查前端、测试和工具脚本的 TypeScript 代码规范。
 - `npm run typecheck`：执行 TypeScript 类型检查。
 - `npm run test:e2e`：运行 Playwright 端到端测试。
 - `npm run check`：执行前端检查、Rust 格式/lint/单元测试。

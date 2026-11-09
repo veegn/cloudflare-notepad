@@ -18,6 +18,7 @@ build/
 test-results/
 static/js/app.js
 static/js/app.js.map
+static/js/mermaid.min.js
 
 # Cloudflare Wrangler
 .wrangler/

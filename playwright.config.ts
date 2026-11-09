@@ -1,8 +1,8 @@
-const { defineConfig } = require('@playwright/test')
+import { defineConfig } from '@playwright/test'
 
 const PORT = Number(process.env.E2E_PORT || 8799)
 
-module.exports = defineConfig({
+export default defineConfig({
     testDir: './tests',
     timeout: 30000,
     fullyParallel: false,

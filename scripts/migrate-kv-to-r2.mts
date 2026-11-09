@@ -1,4 +1,3 @@
-#!/usr/bin/env node
 /**
  * Migrate historical Cloudflare Workers KV notes into R2 object storage.
  *
@@ -34,9 +33,31 @@ const DEFAULT_R2_BUCKET = 'cloud-notepad-notes'
 const LEGACY_INDEX = '.index'
 const INDEX_PATH = '_index'
 
+type Metadata = Record<string, unknown>
+type ConvertedRecord = {
+  key: string
+  outKey: string
+  content: string
+  metadata: Metadata
+  body: string
+  customMetadata: Record<string, string>
+}
+type KvRecord = {
+  key: string
+  value: string | Uint8Array | null
+  kvMetadata: unknown
+  preconverted?: ConvertedRecord | null
+}
+type KvIndexRow = { key: string; blob_id: string; metadata: string | null }
+type RecordFilter = { limit: number; keyFilter: Set<string> | null }
+type KvReadOptions = RecordFilter & { kvNamespaceId: string }
+type R2Location = { sqliteFile: string; blobsDir: string }
+type R2WriteFields = Pick<ConvertedRecord, 'outKey' | 'body' | 'customMetadata'>
+type WranglerKey = string | { name?: string; key?: string; metadata?: unknown }
+
 /** Flatten NoteMetadata into R2 custom_metadata string map. */
-export function flattenCustomMetadata(metadata) {
-  const custom = {}
+export function flattenCustomMetadata(metadata: Metadata | null) {
+  const custom: Record<string, string> = {}
   if (metadata && metadata.pw) custom.pw = String(metadata.pw)
   if (metadata && metadata.mode && metadata.mode !== 'plain') custom.mode = String(metadata.mode)
   if (metadata && metadata.updateAt != null) custom.updateAt = String(metadata.updateAt)
@@ -50,23 +71,23 @@ export function flattenCustomMetadata(metadata) {
   return custom
 }
 
-function parseArgs(argv) {
+function parseArgs(argv: string[]) {
   const args = {
     source: 'local',
     target: 'local',
     kvNamespaceId: DEFAULT_KV_NAMESPACE_ID,
-    kvDir: null,
+    kvDir: null as string | null,
     r2Bucket: DEFAULT_R2_BUCKET,
-    r2Dir: null,
-    r2Db: null,
+    r2Dir: null as string | null,
+    r2Db: null as string | null,
     out: path.join(projectRoot, '.temp', 'kv-dump'),
-    in: null,
+    in: null as string | null,
     dryRun: false,
     force: false,
     renameLegacyIndex: false,
     includeEmpty: false,
     limit: 0,
-    keys: null,
+    keys: null as Set<string> | null,
   }
 
   for (let i = 0; i < argv.length; i++) {
@@ -172,21 +193,21 @@ Targets:
 `)
 }
 
-function sha256Hex(buf) {
+function sha256Hex(buf: Uint8Array) {
   return crypto.createHash('sha256').update(buf).digest('hex')
 }
 
-function md5Hex(buf) {
+function md5Hex(buf: Uint8Array) {
   return crypto.createHash('md5').update(buf).digest('hex')
 }
 
-function blobIdFor(bodyBuf) {
+function blobIdFor(bodyBuf: Uint8Array) {
   const hash = sha256Hex(bodyBuf)
   const ts = BigInt(Date.now()).toString(16).padStart(16, '0')
   return `${hash}${ts}`
 }
 
-function normalizeMetadata(meta) {
+function normalizeMetadata(meta: Metadata) {
   const out = { ...(meta || {}) }
   if (out.pw === null || out.pw === undefined || out.pw === '') delete out.pw
   if (out.share === true) delete out.share
@@ -202,8 +223,8 @@ function normalizeMetadata(meta) {
  *   body             = pure note content
  *   custom_metadata  = { meta: "<NoteMetadata JSON>" }
  */
-export function convertKvRecord({ key, value, kvMetadata }) {
-  let metadata = {}
+export function convertKvRecord({ key, value, kvMetadata }: KvRecord): ConvertedRecord {
+  let metadata: Metadata = {}
   if (kvMetadata) {
     if (typeof kvMetadata === 'string') {
       try {
@@ -216,10 +237,8 @@ export function convertKvRecord({ key, value, kvMetadata }) {
     }
   }
 
-  let content = value ?? ''
-  if (typeof content !== 'string') {
-    content = Buffer.from(content).toString('utf8')
-  }
+  const source = value ?? ''
+  let content = typeof source === 'string' ? source : Buffer.from(source).toString('utf8')
 
   // Historical KV formats (migration source only — runtime no longer reads these).
   // Embedded worker-rs / TypeScript format: \0META:{json}\0\n{content}
@@ -261,11 +280,11 @@ export function convertKvRecord({ key, value, kvMetadata }) {
   }
 }
 
-function openSqlite(file) {
+function openSqlite(file: string) {
   return new DatabaseSync(file)
 }
 
-function listSqliteFiles(dir) {
+function listSqliteFiles(dir: string) {
   if (!fs.existsSync(dir)) return []
   return fs
     .readdirSync(dir)
@@ -273,7 +292,7 @@ function listSqliteFiles(dir) {
     .map((f) => path.join(dir, f))
 }
 
-function readLocalKvNamespace({ kvRoot, kvNamespaceId, limit, keyFilter }) {
+function readLocalKvNamespace({ kvRoot, kvNamespaceId, limit, keyFilter }: KvReadOptions & { kvRoot: string }) {
   const nsDir = path.join(kvRoot, kvNamespaceId)
   const blobsDir = path.join(nsDir, 'blobs')
   if (!fs.existsSync(nsDir)) {
@@ -296,7 +315,7 @@ function readLocalKvNamespace({ kvRoot, kvNamespaceId, limit, keyFilter }) {
       continue
     }
     try {
-      const rows = db.prepare('SELECT key, blob_id, metadata FROM _mf_entries').all()
+      const rows = db.prepare('SELECT key, blob_id, metadata FROM _mf_entries').all() as KvIndexRow[]
       let hit = 0
       for (const row of rows) {
         if (fs.existsSync(path.join(blobsDir, row.blob_id))) hit++
@@ -316,7 +335,7 @@ function readLocalKvNamespace({ kvRoot, kvNamespaceId, limit, keyFilter }) {
       let db
       try {
         db = openSqlite(file)
-        const rows = db.prepare('SELECT key, blob_id, metadata FROM _mf_entries').all()
+        const rows = db.prepare('SELECT key, blob_id, metadata FROM _mf_entries').all() as KvIndexRow[]
         if (!fallback || rows.length > fallback.rows.length) fallback = { file, rows, hit: 0 }
       } catch {
         /* skip */
@@ -352,7 +371,7 @@ function readLocalKvNamespace({ kvRoot, kvNamespaceId, limit, keyFilter }) {
   return { records, sqliteFile: best.file, nsDir }
 }
 
-function wranglerCmd(args, { cwd = projectRoot } = {}) {
+function wranglerCmd(args: string[], { cwd = projectRoot } = {}) {
   const wranglerJs = path.join(projectRoot, 'node_modules', 'wrangler', 'bin', 'wrangler.js')
   if (!fs.existsSync(wranglerJs)) {
     throw new Error(`wrangler not found at ${wranglerJs}; run npm install first`)
@@ -372,7 +391,7 @@ function wranglerCmd(args, { cwd = projectRoot } = {}) {
   }
 }
 
-function readRemoteKv({ kvNamespaceId, limit, keyFilter }) {
+function readRemoteKv({ kvNamespaceId, limit, keyFilter }: KvReadOptions) {
   const listRes = wranglerCmd([
     'kv',
     'key',
@@ -384,20 +403,18 @@ function readRemoteKv({ kvNamespaceId, limit, keyFilter }) {
   if (listRes.status !== 0) {
     throw new Error(`wrangler kv key list failed:\n${listRes.stderrText || listRes.stdoutText}`)
   }
-  let entries = JSON.parse(listRes.stdoutText)
-  if (!Array.isArray(entries)) entries = entries.keys || []
-  entries = entries
+  const result: WranglerKey[] | { keys?: WranglerKey[] } = JSON.parse(listRes.stdoutText)
+  const entries = (Array.isArray(result) ? result : result.keys || [])
     .map((k) =>
       typeof k === 'string'
         ? { name: k, metadata: null }
         : { name: k.name || k.key, metadata: k.metadata ?? null },
     )
-    .filter((e) => e.name)
 
   const records = []
   for (const entry of entries) {
     const key = entry.name
-    if (keyFilter && !keyFilter.has(key)) continue
+    if (!key || (keyFilter && !keyFilter.has(key))) continue
     const getRes = wranglerCmd([
       'kv',
       'key',
@@ -421,15 +438,16 @@ function readRemoteKv({ kvNamespaceId, limit, keyFilter }) {
   return { records }
 }
 
-function readDumpDir(dumpDir, { limit, keyFilter }) {
+function readDumpDir(dumpDir: string, { limit, keyFilter }: RecordFilter) {
   const objectsDir = path.join(dumpDir, 'objects')
   if (!fs.existsSync(objectsDir)) {
     throw new Error(`Dump objects dir not found: ${objectsDir}`)
   }
-  const records = []
+  const records: KvRecord[] = []
   const files = fs.readdirSync(objectsDir).filter((f) => f.endsWith('.json'))
   for (const f of files) {
-    const raw = JSON.parse(fs.readFileSync(path.join(objectsDir, f), 'utf8'))
+    const raw: Pick<ConvertedRecord, 'key' | 'content'> & Partial<ConvertedRecord> =
+      JSON.parse(fs.readFileSync(path.join(objectsDir, f), 'utf8'))
     const key = raw.key
     if (keyFilter && !keyFilter.has(key)) continue
     records.push({
@@ -453,7 +471,7 @@ function readDumpDir(dumpDir, { limit, keyFilter }) {
   return { records }
 }
 
-function discoverLocalR2({ r2Root, bucket, r2Db }) {
+function discoverLocalR2({ r2Root, bucket, r2Db }: { r2Root: string; bucket: string; r2Db: string | null }): R2Location {
   if (r2Db) {
     return { sqliteFile: r2Db, blobsDir: path.join(r2Root, bucket, 'blobs') }
   }
@@ -473,7 +491,7 @@ function discoverLocalR2({ r2Root, bucket, r2Db }) {
     let db
     try {
       db = openSqlite(file)
-      const rows = db.prepare('SELECT key, blob_id FROM _mf_objects').all()
+      const rows = db.prepare('SELECT key, blob_id FROM _mf_objects').all() as { key: string; blob_id: string }[]
       let hit = 0
       for (const row of rows) {
         if (fs.existsSync(path.join(blobsDir, row.blob_id))) hit++
@@ -492,18 +510,18 @@ function discoverLocalR2({ r2Root, bucket, r2Db }) {
   return { sqliteFile: best?.file || files[0], blobsDir }
 }
 
-function listExistingLocalR2Keys(sqliteFile) {
-  if (!fs.existsSync(sqliteFile)) return new Set()
+function listExistingLocalR2Keys(sqliteFile: string) {
+  if (!fs.existsSync(sqliteFile)) return new Set<string>()
   const db = openSqlite(sqliteFile)
   try {
-    const rows = db.prepare('SELECT key FROM _mf_objects').all()
+    const rows = db.prepare('SELECT key FROM _mf_objects').all() as { key: string }[]
     return new Set(rows.map((r) => r.key))
   } finally {
     db.close()
   }
 }
 
-function writeLocalR2Object({ sqliteFile, blobsDir, outKey, body, customMetadata }) {
+function writeLocalR2Object({ sqliteFile, blobsDir, outKey, body, customMetadata }: R2Location & R2WriteFields) {
   fs.mkdirSync(blobsDir, { recursive: true })
   const bodyBuf = Buffer.from(body, 'utf8')
   const blobId = blobIdFor(bodyBuf)
@@ -557,7 +575,7 @@ function writeLocalR2Object({ sqliteFile, blobsDir, outKey, body, customMetadata
   }
 }
 
-function writeDumpObject(outDir, converted) {
+function writeDumpObject(outDir: string, converted: ConvertedRecord) {
   const objectsDir = path.join(outDir, 'objects')
   fs.mkdirSync(objectsDir, { recursive: true })
   const safe = converted.outKey.replace(/[\\/:*?"<>|]/g, '_')
@@ -584,7 +602,7 @@ function writeDumpObject(outDir, converted) {
  * Write remote R2 object. Prefer MIGRATE_WORKER_URL (supports customMetadata);
  * fall back to wrangler CLI only when custom metadata is empty.
  */
-async function writeRemoteR2Object({ bucket, outKey, body, customMetadata }) {
+async function writeRemoteR2Object({ bucket, outKey, body, customMetadata }: R2WriteFields & { bucket: string }) {
   const migrateUrl = process.env.MIGRATE_WORKER_URL
   if (migrateUrl) {
     const res = await fetch(`${migrateUrl.replace(/\/$/, '')}/put`, {
@@ -598,7 +616,7 @@ async function writeRemoteR2Object({ bucket, outKey, body, customMetadata }) {
   }
   if (customMetadata && Object.keys(customMetadata).length > 0) {
     throw new Error(
-      'Remote R2 put needs customMetadata; set MIGRATE_WORKER_URL or run scripts/migrate-worker.js /flush',
+      'Remote R2 put needs customMetadata; set MIGRATE_WORKER_URL or call /flush on the migration Worker',
     )
   }
   const tmp = path.join(os.tmpdir(), `kv2r2-${Date.now()}-${Math.random().toString(36).slice(2)}.json`)
@@ -623,7 +641,7 @@ async function writeRemoteR2Object({ bucket, outKey, body, customMetadata }) {
   }
 }
 
-function summarizeRecord(rec, converted) {
+function summarizeRecord(rec: KvRecord, converted: ConvertedRecord) {
   const preview = (converted.content || '').replace(/\s+/g, ' ').slice(0, 40)
   return `${rec.key} -> ${converted.outKey}  meta=${JSON.stringify(converted.metadata)}  content="${preview}"`
 }
@@ -637,7 +655,7 @@ async function main() {
   console.log(`  source=${args.source}  target=${args.target}  dryRun=${args.dryRun}`)
   console.log(`  kvNamespaceId=${args.kvNamespaceId}  r2Bucket=${args.r2Bucket}`)
 
-  let rawRecords
+  let rawRecords: KvRecord[]
   if (args.source === 'local') {
     const kvDir = args.kvDir || path.join(kvRoot, args.kvNamespaceId)
     const root = path.dirname(kvDir) // .../kv
@@ -691,7 +709,7 @@ async function main() {
 
   console.log(`  converted ${convertedList.length} notes`)
 
-  let existing = new Set()
+  let existing = new Set<string>()
   if (args.target === 'local' && !args.dryRun) {
     const r2 = discoverLocalR2({
       r2Root,
@@ -753,9 +771,10 @@ async function main() {
       stats.migrated++
       manifest.push({ ...converted, status: 'migrated' })
     } catch (e) {
-      console.error(`  ✗ ${rec.key}: ${e.message}`)
+      const message = e instanceof Error ? e.message : String(e)
+      console.error(`  ✗ ${rec.key}: ${message}`)
       stats.failed++
-      manifest.push({ ...converted, status: `failed: ${e.message}` })
+      manifest.push({ ...converted, status: `failed: ${message}` })
     }
   }
 
@@ -795,8 +814,8 @@ async function main() {
 
 const isDirectRun = process.argv[1] && path.resolve(process.argv[1]) === fileURLToPath(import.meta.url)
 if (isDirectRun) {
-  main().catch((e) => {
-    console.error(e.stack || e.message || e)
+  main().catch((e: unknown) => {
+    console.error(e)
     process.exit(1)
   })
 }

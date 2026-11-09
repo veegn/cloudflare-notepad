@@ -1,5 +1,5 @@
-const { test, expect } = require('@playwright/test')
-const { uniqueNotePath, createArticle, saveNote, getHomeTree, findTreePath } = require('./helpers')
+import { test, expect } from '@playwright/test'
+import { uniqueNotePath, createArticle, saveNote, getHomeTree, findTreePath } from './helpers'
 
 test('home list shows title as primary text and path as subtitle', async ({ page, request }) => {
     const notePath = uniqueNotePath()

@@ -1,4 +1,3 @@
-#!/usr/bin/env node
 /**
  * Historical note adaptation for document types (article / book / page).
  *
@@ -29,14 +28,14 @@ const __dirname = path.dirname(fileURLToPath(import.meta.url))
 const projectRoot = path.resolve(__dirname, '..')
 const DEFAULT_R2_DIR = path.join(projectRoot, '.wrangler', 'state', 'v3', 'r2')
 
-function parseArgs(argv) {
+function parseArgs(argv: string[]) {
   const args = {
     r2Dir: DEFAULT_R2_DIR,
     dryRun: false,
-    markBook: [],
-    markPage: [],
-    bookRef: null,
-    title: null,
+    markBook: [] as string[],
+    markPage: [] as string[],
+    bookRef: null as string | null,
+    title: null as string | null,
     stampArticles: false,
   }
   for (let i = 0; i < argv.length; i++) {
@@ -71,10 +70,10 @@ function parseArgs(argv) {
   return args
 }
 
-function findR2Databases(r2Dir) {
+function findR2Databases(r2Dir: string) {
   if (!fs.existsSync(r2Dir)) return []
-  const out = []
-  const walk = dir => {
+  const out: string[] = []
+  const walk = (dir: string) => {
     for (const entry of fs.readdirSync(dir, { withFileTypes: true })) {
       const full = path.join(dir, entry.name)
       if (entry.isDirectory()) walk(full)
@@ -85,48 +84,24 @@ function findR2Databases(r2Dir) {
   return out
 }
 
-function openDb(file) {
-  return new DatabaseSync(file)
-}
-
-/** Best-effort parse of miniflare R2 sqlite blobs into key + custom_metadata. */
-function listObjects(db) {
+/** Find object keys across local miniflare R2 SQLite schemas. */
+function listObjects(db: DatabaseSync) {
   const tables = db
     .prepare(`SELECT name FROM sqlite_master WHERE type='table'`)
     .all()
-    .map(r => r.name)
+    .map(r => String(r.name))
   const table = tables.find(t => /R2Object|r2_object|objects/i.test(t)) || tables[0]
   if (!table) return []
 
-  const cols = db.prepare(`PRAGMA table_info(${table})`).all().map(c => c.name)
+  const cols = db.prepare(`PRAGMA table_info(${table})`).all().map(c => String(c.name))
   const keyCol = cols.find(c => /key/i.test(c)) || cols[0]
-  const blobCol =
-    cols.find(c => /blob|value|body|data/i.test(c)) ||
-    cols.filter(c => c !== keyCol)[0]
   if (!keyCol) return []
 
   const rows = db.prepare(`SELECT ${keyCol} AS k FROM ${table}`).all()
   return rows.map(r => String(r.k))
 }
 
-function parseMetadataFromBlob(buffer) {
-  if (!buffer || buffer.length < 2) return {}
-  const text = Buffer.from(buffer).toString('utf8')
-  const custom = {}
-  // Heuristic: look for JSON-like custom metadata or flat key patterns.
-  const docType = text.match(/"docType"\s*:\s*"(\w+)"/)
-  if (docType) custom.docType = docType[1]
-  const bookRef = text.match(/"bookRef"\s*:\s*"([^"]+)"/)
-  if (bookRef) custom.bookRef = bookRef[1]
-  const title = text.match(/"title"\s*:\s*"([^"]+)"/)
-  if (title) custom.title = title[1]
-  return custom
-}
-
-function report(keys) {
-  const legacy = []
-  const books = []
-  const pages = []
+function report(keys: string[]) {
   const articles = []
   const nestedNoType = []
 
@@ -144,13 +119,10 @@ function report(keys) {
       articles.push({ key, note: 'top-level (default article)' })
     } else if (looksLikePage) {
       nestedNoType.push({ key, bookRef: parts.slice(0, -1).join('/') })
-      pages.push({ key })
-    } else {
-      legacy.push({ key })
     }
   }
 
-  return { legacy, books, articles, pages, nestedNoType, total: keys.length }
+  return { articles, nestedNoType, total: keys.length }
 }
 
 function main() {
@@ -165,13 +137,13 @@ function main() {
   const allKeys = []
   for (const dbFile of dbs) {
     try {
-      const db = openDb(dbFile)
+      const db = new DatabaseSync(dbFile)
       const keys = listObjects(db)
       console.log(`[doctype] ${dbFile}: ${keys.length} keys`)
       allKeys.push(...keys)
       db.close()
     } catch (err) {
-      console.warn(`[doctype] skip ${dbFile}: ${err.message}`)
+      console.warn(`[doctype] skip ${dbFile}: ${err instanceof Error ? err.message : String(err)}`)
     }
   }
 

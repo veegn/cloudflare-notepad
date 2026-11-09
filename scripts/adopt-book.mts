@@ -1,4 +1,3 @@
-#!/usr/bin/env node
 /**
  * Adopt a historical note path as a book via POST /api/books/:path/adopt
  *

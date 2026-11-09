@@ -1,26 +1,40 @@
-function uniqueNotePath() {
+import assert from 'node:assert/strict'
+import type { EditorView } from '@codemirror/view'
+import type { APIRequestContext, Page } from '@playwright/test'
+import type { BookPageItem, CreateDocPayload, CreateDocResult, HomeTreeResponse, Mode, TocItem, TreeNode } from '../frontend/core/types'
+
+type CodeEditorHost = HTMLElement & { __scnView: EditorView }
+
+type CreateDialogOptions = {
+    type: CreateDocPayload['docType']
+    path?: string
+    title?: string
+    summary?: string
+}
+
+export function uniqueNotePath() {
     return `e2e-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`
 }
 
-function uniqueBookPath() {
+export function uniqueBookPath() {
     return `e2ebook-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 6)}`
 }
 
-async function switchMode(page, mode) {
+export async function switchMode(page: Page, mode: Mode) {
     await page.locator('#mode-trigger').click()
     await page.locator(`.mode-picker-option[data-mode="${mode}"]`).click()
     await page.waitForFunction(expectedMode => window.CONFIG?.mode === expectedMode, mode)
 }
 
-async function saveNote(request, notePath, content) {
+export async function saveNote(request: APIRequestContext, notePath: string, content: string) {
     return request.put(`/api/notes/${notePath}`, {
         data: { content: content },
     })
 }
 
-async function fillCodeEditor(page, content) {
+export async function fillCodeEditor(page: Page, content: string) {
     await page.locator('#cm-editor').evaluate((node, value) => {
-        const view = node.__scnView
+        const view = (node as CodeEditorHost).__scnView
         const current = view.state.doc.toString()
         view.dispatch({
             changes: { from: 0, to: current.length, insert: value },
@@ -29,18 +43,19 @@ async function fillCodeEditor(page, content) {
     }, content)
 }
 
-async function readCodeEditor(page) {
-    return page.locator('#cm-editor').evaluate(node => node.__scnView.state.doc.toString())
+export async function readCodeEditor(page: Page) {
+    return page.locator('#cm-editor').evaluate(node => (node as CodeEditorHost).__scnView.state.doc.toString())
 }
 
 /** POST /api/docs — article or book only. */
-async function createDoc(request, payload) {
+async function createDoc(request: APIRequestContext, payload: CreateDocPayload) {
     const res = await request.post('/api/docs', { data: payload })
-    const json = await res.json()
-    return { status: res.status(), json }
+    const json: CreateDocResult = await res.json()
+    assert.ok(json.data, json.message)
+    return { status: res.status(), json: { ...json, data: json.data } }
 }
 
-async function createArticle(request, path, title) {
+export async function createArticle(request: APIRequestContext, path: string, title?: string) {
     return createDoc(request, {
         docType: 'article',
         path,
@@ -48,7 +63,7 @@ async function createArticle(request, path, title) {
     })
 }
 
-async function createBook(request, path, title, summary) {
+export async function createBook(request: APIRequestContext, path: string, title?: string, summary?: string) {
     return createDoc(request, {
         docType: 'book',
         path,
@@ -58,34 +73,35 @@ async function createBook(request, path, title, summary) {
 }
 
 /** POST /api/books/{book}/pages */
-async function createBookPage(request, book, title, path) {
-    const body = { title }
+export async function createBookPage(request: APIRequestContext, book: string, title: string, path?: string) {
+    const body: { title: string; path?: string } = { title }
     if (path) body.path = path
     const res = await request.post(`/api/books/${encodeURIComponent(book)}/pages`, { data: body })
-    const json = await res.json()
-    return { status: res.status(), json }
+    const json: { code: number; message?: string; data?: { docType: string; bookRef: string; path: string } } = await res.json()
+    assert.ok(json.data, json.message)
+    return { status: res.status(), json: { ...json, data: json.data } }
 }
 
-async function getHomeTree(request) {
+export async function getHomeTree(request: APIRequestContext): Promise<HomeTreeResponse> {
     // Always bypass cache so assertions see just-created docs.
     const res = await request.get('/api/home-tree?refresh=1')
     const json = await res.json()
     return json.data || { counts: { article: 0, book: 0 }, tree: [] }
 }
 
-async function getBookToc(request, book) {
+export async function getBookToc(request: APIRequestContext, book: string): Promise<{ items: TocItem[] }> {
     const res = await request.get(`/api/toc?book=${encodeURIComponent(book)}`)
     const json = await res.json()
     return json.data || { items: [] }
 }
 
-async function getBookPages(request, book) {
+export async function getBookPages(request: APIRequestContext, book: string): Promise<{ items: BookPageItem[] }> {
     const res = await request.get(`/api/books/${encodeURIComponent(book)}/pages`)
     const json = await res.json()
     return json.data || { items: [] }
 }
 
-function flattenTree(nodes, acc = []) {
+export function flattenTree(nodes: TreeNode[], acc: TreeNode[] = []): TreeNode[] {
     for (const node of nodes || []) {
         acc.push(node)
         flattenTree(node.children || [], acc)
@@ -93,12 +109,12 @@ function flattenTree(nodes, acc = []) {
     return acc
 }
 
-function findTreePath(nodes, path) {
+export function findTreePath(nodes: TreeNode[], path: string) {
     return flattenTree(nodes).find(n => n.path === path)
 }
 
 /** Open homepage create dialog via primary CTA. */
-async function openCreateDialog(page) {
+export async function openCreateDialog(page: Page) {
     await page.goto('/')
     await page.locator('#btn-new-doc').waitFor()
     await page.locator('#doc-tree .doc-tree-row, #doc-tree .doc-tree-empty, #doc-tree .doc-tree-loading').first().waitFor()
@@ -109,7 +125,7 @@ async function openCreateDialog(page) {
 }
 
 /** Fill create dialog (article|book) and submit; waits for navigation to edit. */
-async function submitCreateDialog(page, { type, path, title, summary }) {
+export async function submitCreateDialog(page: Page, { type, path, title, summary }: CreateDialogOptions) {
     const dialog = page.locator('.modal-create-doc').first()
     await dialog.locator(`.type-segment-btn[data-type="${type}"]`).click()
     if (path) await dialog.locator('#create-doc-path').fill(path)
@@ -125,7 +141,7 @@ async function submitCreateDialog(page, { type, path, title, summary }) {
 }
 
 /** Handle book editor "New page" prompt (showPrompt → confirm). */
-async function uiCreateBookPage(page, bookPath, pageTitle) {
+export async function uiCreateBookPage(page: Page, bookPath: string, pageTitle: string) {
     await page.goto(`/edit/${bookPath}`)
     await page.locator('#btn-new-page').click()
     const promptInput = page.locator('.modal-dialog .modal-input')
@@ -141,25 +157,4 @@ async function uiCreateBookPage(page, bookPath, pageTitle) {
         // no follow-up confirm
     }
     await page.locator('.book-page-row').first().waitFor({ timeout: 10000 })
-}
-
-module.exports = {
-    fillCodeEditor,
-    readCodeEditor,
-    uniqueNotePath,
-    uniqueBookPath,
-    switchMode,
-    saveNote,
-    createDoc,
-    createArticle,
-    createBook,
-    createBookPage,
-    getHomeTree,
-    getBookToc,
-    getBookPages,
-    flattenTree,
-    findTreePath,
-    openCreateDialog,
-    submitCreateDialog,
-    uiCreateBookPage,
 }

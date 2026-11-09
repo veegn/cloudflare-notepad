@@ -1,5 +1,5 @@
 name = "cloudflare-notepad-migrate"
-main = "scripts/migrate-worker.js"
+main = "scripts/migrate-worker.ts"
 compatibility_date = "2025-01-01"
 
 # Historical production KV namespace (NOTES)

@@ -1,5 +1,5 @@
-const { test, expect } = require('@playwright/test')
-const { saveNote, uniqueNotePath } = require('./helpers')
+import { test, expect } from '@playwright/test'
+import { saveNote, uniqueNotePath } from './helpers'
 
 test('protected note requires auth for view and raw, then allows access after auth', async ({ page, request }) => {
     const notePath = uniqueNotePath()

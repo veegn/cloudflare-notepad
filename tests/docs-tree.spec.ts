@@ -1,11 +1,11 @@
-const { test, expect } = require('@playwright/test')
-const {
+import assert from 'node:assert/strict'
+import { test, expect } from '@playwright/test'
+import {
     uniqueNotePath,
     uniqueBookPath,
     createArticle,
     createBook,
     createBookPage,
-    createDoc,
     getHomeTree,
     getBookToc,
     getBookPages,
@@ -15,7 +15,7 @@ const {
     submitCreateDialog,
     uiCreateBookPage,
     saveNote,
-} = require('./helpers')
+} from './helpers'
 
 test.describe('doc type API', () => {
     test('POST /api/docs creates article and book', async ({ request }) => {
@@ -77,6 +77,7 @@ test.describe('doc type API', () => {
         const tocPaths = (toc.items || []).filter(i => i.path).map(i => i.path)
         expect(tocPaths).toContain(pagePath)
         const tocItem = toc.items.find(i => i.path === pagePath)
+        assert.ok(tocItem)
         expect(tocItem.exists).toBe(true)
         expect(tocItem.title).toBe(pageTitle)
 

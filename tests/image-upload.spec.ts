@@ -1,5 +1,5 @@
-const { test, expect } = require('@playwright/test')
-const { uniqueNotePath, saveNote } = require('./helpers')
+import { test, expect } from '@playwright/test'
+import { uniqueNotePath, saveNote } from './helpers'
 
 function tinyPng() {
   // 1x1 PNG

@@ -1,6 +1,8 @@
 import { build } from 'esbuild'
-import { rm } from 'node:fs/promises'
+import { copyFile, rm } from 'node:fs/promises'
+import { createRequire } from 'node:module'
 
+const require = createRequire(import.meta.url)
 const mode = process.argv[2] === 'dev' ? 'dev' : 'prod'
 const isProd = mode === 'prod'
 
@@ -19,3 +21,5 @@ await build({
   legalComments: 'none',
   logLevel: 'info',
 })
+
+await copyFile(require.resolve('mermaid/dist/mermaid.min.js'), 'static/js/mermaid.min.js')

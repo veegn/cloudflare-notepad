@@ -10,5 +10,5 @@
     "allowJs": false,
     "isolatedModules": true
   },
-  "include": ["frontend/**/*.ts", "frontend/**/*.d.ts"]
+  "include": ["frontend/**/*.ts", "tests/**/*.ts", "scripts/*.ts", "scripts/*.mts", "playwright.config.ts"]
 }

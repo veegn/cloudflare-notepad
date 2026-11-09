@@ -11,7 +11,7 @@ A lightweight serverless notepad for quick writing, formatting, and secure shari
 
 Built with Cloudflare Workers, Workers R2, and GitHub Actions. Easy to self-host.
 
-The frontend bundle under `static/js/app.js` is generated during local start, tests, and deploy. Source files live in `frontend/`.
+Frontend source lives in `frontend/`. The build generates `static/js/app.js` and copies `static/js/mermaid.min.js` from the pinned npm dependency before local startup, tests, and deployment.
 
 ## Highlights
 
@@ -60,7 +60,7 @@ Useful scripts:
 
 - `npm run build:frontend:dev`: development frontend bundle.
 - `npm run build:frontend:prod`: production frontend bundle.
-- `npm run lint`: lint frontend TypeScript.
+- `npm run lint`: lint frontend, test, and tooling TypeScript.
 - `npm run typecheck`: TypeScript checks.
 - `npm run test:e2e`: Playwright E2E tests.
 - `npm run check`: frontend checks, Rust format/lint/unit tests.

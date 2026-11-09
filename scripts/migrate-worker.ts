@@ -8,10 +8,18 @@
  *   NOTES_R2  — target R2 bucket
  */
 
-const LEGACY_INDEX = '.index'
-const INDEX_PATH = '_index'
+import type { KVNamespace, R2Bucket, Request } from '@cloudflare/workers-types'
 
-function normalizeMetadata(meta) {
+type Metadata = Record<string, unknown>
+type MigrationEnv = { NOTES_KV: KVNamespace; NOTES_R2: R2Bucket }
+type PutPayload = {
+  key?: string
+  body?: string | null
+  customMetadata?: Record<string, string>
+  metadata?: Metadata
+}
+
+function normalizeMetadata(meta: Metadata) {
   const out = { ...(meta || {}) }
   if (out.pw === null || out.pw === undefined || out.pw === '') delete out.pw
   if (out.share === true) delete out.share
@@ -19,8 +27,8 @@ function normalizeMetadata(meta) {
   return out
 }
 
-function flattenCustomMetadata(metadata) {
-  const custom = {}
+function flattenCustomMetadata(metadata: Metadata) {
+  const custom: Record<string, string> = {}
   if (metadata && metadata.pw) custom.pw = String(metadata.pw)
   if (metadata && metadata.mode && metadata.mode !== 'plain') custom.mode = String(metadata.mode)
   if (metadata && metadata.updateAt != null) custom.updateAt = String(metadata.updateAt)
@@ -28,7 +36,7 @@ function flattenCustomMetadata(metadata) {
   return custom
 }
 
-function parseStoredBody(value, externalMeta) {
+function parseStoredBody(value: string, externalMeta: Metadata | null) {
   let metadata = { ...(externalMeta || {}) }
   let content = value ?? ''
   if (typeof content !== 'string') content = String(content)
@@ -59,9 +67,9 @@ function parseStoredBody(value, externalMeta) {
   return { content, metadata: normalizeMetadata(metadata) }
 }
 
-async function listAllKvKeys(kv) {
-  const keys = []
-  let cursor
+async function listAllKvKeys(kv: KVNamespace) {
+  const keys: string[] = []
+  let cursor: string | undefined
   for (;;) {
     const page = await kv.list(cursor ? { cursor } : {})
     for (const k of page.keys || []) keys.push(k.name)
@@ -75,7 +83,7 @@ async function listAllKvKeys(kv) {
 }
 
 export default {
-  async fetch(req, env) {
+  async fetch(req: Request, env: MigrationEnv) {
     const url = new URL(req.url)
 
     if (req.method === 'GET' && (url.pathname === '/' || url.pathname === '/health')) {
@@ -91,7 +99,7 @@ export default {
 
       for (const key of keys) {
         try {
-          const { value, metadata: kvMeta } = await env.NOTES_KV.getWithMetadata(key, 'text')
+          const { value, metadata: kvMeta } = await env.NOTES_KV.getWithMetadata<Metadata>(key, 'text')
           if (value == null) {
             skipped++
             results.push({ key, status: 'missing-value' })
@@ -120,7 +128,7 @@ export default {
           })
         } catch (e) {
           failed++
-          results.push({ key, status: `failed: ${e && e.message ? e.message : e}` })
+          results.push({ key, status: `failed: ${e instanceof Error ? e.message : String(e)}` })
         }
       }
 
@@ -134,12 +142,11 @@ export default {
     }
 
     if (url.pathname === '/put' && req.method === 'POST') {
-      const payload = await req.json()
-      const { bucket, key, body, customMetadata, metadata } = payload || {}
+      const payload = await req.json<PutPayload | null>()
+      const { key, body, customMetadata, metadata } = payload || {}
       if (!key || body == null) {
         return Response.json({ error: 'key and body are required' }, { status: 400 })
       }
-      void bucket
       const cm = customMetadata || flattenCustomMetadata(metadata || {})
       await env.NOTES_R2.put(key, body, {
         httpMetadata: { contentType: 'text/plain; charset=utf-8' },

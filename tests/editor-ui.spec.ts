@@ -1,5 +1,6 @@
-const { test, expect } = require('@playwright/test')
-const { fillCodeEditor, readCodeEditor, switchMode, uniqueNotePath } = require('./helpers')
+import assert from 'node:assert/strict'
+import { test, expect } from '@playwright/test'
+import { fillCodeEditor, readCodeEditor, switchMode, uniqueNotePath } from './helpers'
 
 test('plain editor mounts CodeMirror and highlights keywords while typing', async ({ page }) => {
     const notePath = uniqueNotePath()
@@ -68,9 +69,9 @@ test('markdown editor keeps editor and preview columns aligned in split view', a
     const previewPaneBox = await page.locator('.composer-preview-pane').boundingBox()
     const previewHeadingBox = await preview.locator('h1').boundingBox()
 
-    expect(editorPaneBox).not.toBeNull()
-    expect(previewPaneBox).not.toBeNull()
-    expect(previewHeadingBox).not.toBeNull()
+    assert.ok(editorPaneBox)
+    assert.ok(previewPaneBox)
+    assert.ok(previewHeadingBox)
     expect(editorPaneBox.width).toBeGreaterThan(200)
     expect(previewPaneBox.width).toBeGreaterThan(200)
     expect(previewHeadingBox.x).toBeGreaterThanOrEqual(previewPaneBox.x)
