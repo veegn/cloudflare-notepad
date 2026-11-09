@@ -195,11 +195,7 @@ pub async fn index_bucket(bucket: &Bucket) -> Result<BucketIndex> {
     }
 
     // Resolve real title/docType via full GET (safe). Parents/books first.
-    let mut need_get: Vec<String> = keys
-        .iter()
-        .filter(|k| !k.contains('/'))
-        .cloned()
-        .collect();
+    let mut need_get: Vec<String> = keys.iter().filter(|k| !k.contains('/')).cloned().collect();
     need_get.sort_by_key(|k| !prefixes.contains(k.as_str()));
 
     let fetched = join_all(need_get.iter().map(|k| meta_get(bucket, k))).await;
