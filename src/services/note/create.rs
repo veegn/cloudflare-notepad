@@ -47,7 +47,7 @@ pub async fn create_doc(
 pub fn gen_random_path() -> String {
     const CHARSET: &[u8] = b"2345679abcdefghjkmnpqrstwxyz";
     let mut bytes = [0u8; 5];
-    getrandom::getrandom(&mut bytes).expect("getrandom failed");
+    getrandom::fill(&mut bytes).expect("getrandom failed");
     bytes
         .iter()
         .map(|&b| CHARSET[b as usize % CHARSET.len()] as char)

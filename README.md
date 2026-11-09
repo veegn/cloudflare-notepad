@@ -91,6 +91,8 @@ SCN_INDEX_PASSWD   # 可选：保护 /.index/edit 的管理员密码
 
 ## 本地开发
 
+使用 Node.js 22.13 及以上的 22.x 版本，或 Node.js 24 及以上版本。
+
 ```bash
 npm install
 copy .dev.vars.example .dev.vars
@@ -122,7 +124,8 @@ npm start
 ### 2. 配置 GitHub Actions
 1. Fork 本仓库。
 2. 在 GitHub 仓库的 `Settings -> Secrets and variables -> Actions` 中配置：
-   - `CLOUDFLARE_API_TOKEN`: 刚才创建的 Cloudflare API 令牌。
+   - **Secrets** 中添加 `CLOUDFLARE_API_TOKEN`，填入刚才创建的 Cloudflare API 令牌。
+   - **Variables** 中添加 `CLOUDFLARE_ACCOUNT_ID`，填入目标 Worker 所属的 Cloudflare 账号 ID。也可以使用同名 Secret。[查找 Cloudflare 账号 ID](https://developers.cloudflare.com/fundamentals/account/find-account-and-zone-ids/#find-account-id-in-workers--pages)
 
 ### 3. 执行部署
 1. 在 Actions 页面运行 `Deploy cloud-notepad` 工作流。

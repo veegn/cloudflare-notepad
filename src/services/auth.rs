@@ -1,5 +1,5 @@
 use base64::{engine::general_purpose::URL_SAFE_NO_PAD, Engine};
-use hmac::{Hmac, Mac};
+use hmac::{Hmac, KeyInit, Mac};
 use md5::{Digest, Md5};
 use pbkdf2::pbkdf2_hmac;
 use serde::{Deserialize, Serialize};
@@ -47,7 +47,7 @@ fn validate_jwt_secret(secret: String) -> worker::Result<String> {
 /// Compatible with the TypeScript worker's `saltPw()` function.
 pub fn hash_password(password: &str) -> Result<String, worker::Error> {
     let mut salt = [0u8; 16];
-    getrandom::getrandom(&mut salt)
+    getrandom::fill(&mut salt)
         .map_err(|e| worker::Error::RustError(format!("getrandom failed: {e}")))?;
     let salt_hex = hex::encode(salt);
 
@@ -97,9 +97,9 @@ fn verify_pbkdf2(password: &str, stored: &str) -> bool {
 }
 
 fn verify_legacy_md5(password: &str, stored: &str, legacy_salt: &str) -> bool {
-    let hash_pw = format!("{:x}", Md5::digest(password.as_bytes()));
+    let hash_pw = hex::encode(Md5::digest(password.as_bytes()));
     let salted = format!("{hash_pw}+{legacy_salt}");
-    let result = format!("{:x}", Md5::digest(salted.as_bytes()));
+    let result = hex::encode(Md5::digest(salted.as_bytes()));
     result == stored
 }
 
@@ -302,6 +302,11 @@ mod tests {
 
         // Correct password
         assert!(verify_password(password, &hash, ""));
+        let stored = concat!(
+            "pbkdf2$10000$000102030405060708090a0b0c0d0e0f$",
+            "557b2f8d6697027f446a9a5127151815af6decf54b29a0aa3372bad760c17b77"
+        );
+        assert!(verify_password(password, stored, ""));
 
         // Incorrect password
         assert!(!verify_password("wrong_password", &hash, ""));
@@ -309,15 +314,12 @@ mod tests {
 
     #[test]
     fn test_legacy_md5_verify() {
-        use md5::{Digest, Md5};
         let password = "my_legacy_password";
         let legacy_salt = "somesalt";
-        let hash_pw = format!("{:x}", Md5::digest(password.as_bytes()));
-        let salted = format!("{}+{}", hash_pw, legacy_salt);
-        let stored = format!("{:x}", Md5::digest(salted.as_bytes()));
+        let stored = "2fac998d0c5d29d66438ccdaed92bc10";
 
-        assert!(verify_password(password, &stored, legacy_salt));
-        assert!(!verify_password("wrong", &stored, legacy_salt));
+        assert!(verify_password(password, stored, legacy_salt));
+        assert!(!verify_password("wrong", stored, legacy_salt));
     }
 
     #[test]

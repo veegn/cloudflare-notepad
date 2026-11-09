@@ -38,7 +38,7 @@ fn ext_for_content_type(content_type: &str) -> &'static str {
 
 fn random_id() -> String {
     let mut bytes = [0u8; 8];
-    getrandom::getrandom(&mut bytes).unwrap_or_default();
+    getrandom::fill(&mut bytes).unwrap_or_default();
     bytes.iter().map(|b| format!("{b:02x}")).collect()
 }
 
@@ -216,7 +216,7 @@ pub async fn get_asset(_req: Request, ctx: RouteContext<()>) -> Result<Response>
     };
 
     Ok(Response::from_bytes(bytes)?.with_headers({
-        let mut h = Headers::new();
+        let h = Headers::new();
         h.set("Content-Type", &content_type)?;
         h.set("Cache-Control", "public, max-age=31536000, immutable")?;
         h.set("X-Content-Type-Options", "nosniff")?;

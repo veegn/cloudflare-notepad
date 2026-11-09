@@ -1,5 +1,6 @@
 import assert from 'node:assert/strict'
 import { test, expect } from '@playwright/test'
+import { formatTextByMode } from '../frontend/editor/formatters'
 import { fillCodeEditor, readCodeEditor, switchMode, uniqueNotePath } from './helpers'
 
 test('plain editor mounts CodeMirror and highlights keywords while typing', async ({ page }) => {
@@ -199,6 +200,13 @@ test('format now prettifies yaml content in place', async ({ page }) => {
     await page.locator('#format-trigger').click()
 
     await expect.poll(() => readCodeEditor(page)).toBe('name: cloud\nenabled: true\nitems:\n  - 1\n  - 2\n')
+})
+
+test('yaml formatting resolves merges and preserves legacy numeric scalars', () => {
+    expect(formatTextByMode('yaml', '# comment\n')).toBe('null\n')
+    expect(formatTextByMode('yaml', 'binary: 0b1010\nthousands: 1_000\n')).toBe('binary: 10\nthousands: 1_000\n')
+    const yaml = 'defaults: &defaults\n  enabled: true\nnote:\n  <<: *defaults\n  title: test\n'
+    expect(formatTextByMode('yaml', yaml)).toBe('defaults:\n  enabled: true\nnote:\n  enabled: true\n  title: test\n')
 })
 
 test('format shortcut prettifies yaml content in place', async ({ page }) => {

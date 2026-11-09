@@ -50,6 +50,8 @@ SCN_INDEX_PASSWD   # optional: protect /.index/edit with admin password
 
 ## Local development
 
+Use Node.js 22.13 or later in the 22.x series, or Node.js 24 or later.
+
 ```bash
 npm install
 copy .dev.vars.example .dev.vars
@@ -78,7 +80,8 @@ Useful scripts:
 ### 2. Configure GitHub Actions
 1. Fork this repository.
 2. In your repository `Settings -> Secrets and variables -> Actions`, add:
-   - `CLOUDFLARE_API_TOKEN`: The token you just created.
+   - Add `CLOUDFLARE_API_TOKEN` under **Secrets** and use the API token you created.
+   - Add `CLOUDFLARE_ACCOUNT_ID` under **Variables** and use the account ID that owns the target Worker. A secret with the same name also works. [Find your Cloudflare account ID](https://developers.cloudflare.com/fundamentals/account/find-account-and-zone-ids/#find-account-id-in-workers--pages)
 
 ### 3. Run Deployment
 1. Go to the **Actions** tab and run the `Deploy cloud-notepad` workflow.
