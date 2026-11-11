@@ -3,7 +3,7 @@
 {% block editor_content %}
 {% if metadata.mode == "md" %}
 {# Markdown edit mode: split pane with editor + preview #}
-<div class="composer-frame is-editing mode-md" data-mode="md">
+<div class="composer-frame is-editing mode-md md-layout-edit" data-mode="md">
   <div class="composer-split-pane">
     <div class="composer-editor-pane">
       <div class="composer-editor-toolbar">
@@ -12,7 +12,7 @@
         <span class="composer-editor-hint">{{ i18n[lang].uploadImageHint | default(value='Paste or drop images to upload') }}</span>
       </div>
       <div id="cm-editor" class="cm-editor-host"
-        data-placeholder="{{ i18n[lang].emptyPH | default(value='') }}">{{ content | default(value="") }}</div>
+        data-placeholder="{{ i18n[lang].emptyPH | default(value='') }}"><pre class="document-source"><code>{{ content }}</code></pre></div>
     </div>
     <div class="composer-preview-pane">
       <div class="composer-preview-scroll" id="preview-scroll">
@@ -25,7 +25,7 @@
 {# Plain / JSON / YAML edit mode: code editor only #}
 <div class="composer-frame is-editing mode-{{ metadata.mode | default(value='plain') }}" data-mode="{{ metadata.mode | default(value='plain') }}">
   <div id="cm-editor" class="cm-editor-host"
-    data-placeholder="{{ i18n[lang].emptyPH | default(value='') }}">{{ content | default(value="") }}</div>
+    data-placeholder="{{ i18n[lang].emptyPH | default(value='') }}"><pre class="document-source"><code>{{ content }}</code></pre></div>
 </div>
 {% endif %}
 {% endblock editor_content %}

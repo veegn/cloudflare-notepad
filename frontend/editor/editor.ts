@@ -1,4 +1,5 @@
 import { KEYWORD_PATTERN, CONFIG, getI18n } from '../core/config'
+import { readPreference, writePreference } from '../core/preferences'
 import { buildFormatError, formatTextByMode } from './formatters'
 import { renderEditorPreview } from './renderers'
 import { errHandle, showToast } from '../core/ui'
@@ -178,8 +179,8 @@ function createEditorTheme(mode: Mode): Extension {
 
 function createCodeMirrorAdapter(host: HTMLElement, mode: Mode, callbacks: EditorCallbacks = {}): EditorAdapter {
     const editorHost = host as CodeEditorHost
-    const initialDoc = editorHost.textContent || ''
-    editorHost.textContent = ''
+    const source = editorHost.querySelector('.document-source')
+    const initialDoc = source?.textContent ?? editorHost.textContent ?? ''
 
     const state = EditorState.create({
         doc: initialDoc,
@@ -253,6 +254,7 @@ function createCodeMirrorAdapter(host: HTMLElement, mode: Mode, callbacks: Edito
         state,
         parent: editorHost,
     })
+    source?.remove()
     editorHost.__scnView = view
 
     view.scrollDOM.addEventListener('scroll', () => {
@@ -346,7 +348,7 @@ function bindFormatAction(UI: UIRefs, editor: EditorAdapter): void {
 }
 
 function getMarkdownLayout(): MarkdownLayout {
-    const stored = window.localStorage.getItem(MARKDOWN_LAYOUT_KEY)
+    const stored = readPreference(MARKDOWN_LAYOUT_KEY)
     if (stored === 'edit' || stored === 'preview' || stored === 'split') {
         return stored
     }
@@ -356,7 +358,7 @@ function getMarkdownLayout(): MarkdownLayout {
 function applyMarkdownLayout(UI: UIRefs, layout: MarkdownLayout): void {
     UI.composer?.classList.remove('md-layout-edit', 'md-layout-split', 'md-layout-preview')
     UI.composer?.classList.add(`md-layout-${layout}`)
-    window.localStorage.setItem(MARKDOWN_LAYOUT_KEY, layout)
+    writePreference(MARKDOWN_LAYOUT_KEY, layout)
 }
 
 function initMarkdownLayoutControls(UI: UIRefs, editor: EditorAdapter): void {

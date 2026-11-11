@@ -99,8 +99,39 @@ fn render_html(tera: &Tera, template: &str, ctx: &tera::Context) -> Result<Respo
 
 // ── GET / ────────────────────────────────────────────────────────────
 
+#[derive(serde::Serialize)]
+struct HomeLink {
+    title: String,
+    href: String,
+}
+
+fn collect_home_links(nodes: &[serde_json::Value], links: &mut Vec<HomeLink>) {
+    for node in nodes {
+        if node["nodeType"] != "dir" {
+            if let Some(path) = node["path"].as_str() {
+                let encoded = path
+                    .split('/')
+                    .map(|segment| urlencoding::encode(segment).into_owned())
+                    .collect::<Vec<_>>()
+                    .join("/");
+                links.push(HomeLink {
+                    title: node["title"].as_str().unwrap_or(path).to_owned(),
+                    href: format!("/note/{encoded}"),
+                });
+            }
+        }
+        if let Some(children) = node["children"].as_array() {
+            collect_home_links(children, links);
+        }
+    }
+}
+
 pub async fn home(req: Request, ctx: RouteContext<()>) -> Result<Response> {
     let lang = detect_lang(&req);
+    let basic_home = req
+        .url()?
+        .query_pairs()
+        .any(|(key, value)| key == "view" && value == "basic");
     let bucket = ctx.env.bucket("NOTES")?;
     let record = note::query_note(&bucket, INDEX_PATH).await?;
     let i18n_map = build_i18n_map();
@@ -127,6 +158,21 @@ pub async fn home(req: Request, ctx: RouteContext<()>) -> Result<Response> {
     context.insert("config_json", &config_json);
     context.insert("note_path", INDEX_PATH);
     context.insert("tips", &"");
+    context.insert("basic_home", &basic_home);
+
+    if basic_home {
+        let payload = super::api::load_home_tree_payload(&bucket, false).await;
+        let tree = payload
+            .as_ref()
+            .ok()
+            .and_then(|value| value["tree"].as_array());
+        let mut links = Vec::new();
+        if let Some(nodes) = tree {
+            collect_home_links(nodes, &mut links);
+        }
+        context.insert("basic_links", &links);
+        context.insert("basic_error", &tree.is_none());
+    }
 
     render_html(&tera, "home.html", &context)
 }

@@ -8,12 +8,29 @@
       <p class="home-copy">{{ i18n[lang].homeCopy | default(value="") }}</p>
     </div>
     <div class="home-header-actions">
+      {% if not basic_home %}
       <button type="button" class="welcome-button primary" id="btn-new-doc">{{ i18n[lang].homeNewDoc | default(value="New Document") }}</button>
+      {% endif %}
       <a class="welcome-button ghost" href="/note/_index">{{ i18n[lang].homeOpsDoc | default(value="Guide") }}</a>
     </div>
   </header>
 
-  <section class="home-docs" id="home-docs">
+  <section class="home-docs{% if basic_home %} home-docs-basic{% endif %}" id="home-docs">
+    {% if basic_home %}
+    <h2 class="home-section-title">{{ i18n[lang].homeDocsTitle }}</h2>
+    {% if basic_error %}
+    <p role="alert">{{ i18n[lang].homeError }}</p>
+    <a class="welcome-button" href="/?view=basic">{{ i18n[lang].homeRetry }}</a>
+    {% elif basic_links | length > 0 %}
+    <ul class="home-basic-list">
+      {% for link in basic_links %}
+      <li><a class="doc-tree-title" href="{{ link.href }}">{{ link.title }}</a></li>
+      {% endfor %}
+    </ul>
+    {% else %}
+    <p>{{ i18n[lang].homeEmptyAll }}</p>
+    {% endif %}
+    {% else %}
     <div class="home-docs-head">
       <div class="home-docs-head-left">
         <h2 class="home-section-title">{{ i18n[lang].homeDocsTitle | default(value="Documents") }}</h2>
@@ -38,8 +55,11 @@
     </div>
 
     <div class="doc-tree" id="doc-tree" role="tree" aria-label="Documents">
-      <div class="doc-tree-loading">{{ i18n[lang].homeLoading | default(value="Loading…") }}</div>
+      <div class="doc-tree-loading">
+        <a class="welcome-button" href="/?view=basic">{{ i18n[lang].homeBasicList }}</a>
+      </div>
     </div>
+    {% endif %}
   </section>
 </div>
 {% endblock editor_content %}

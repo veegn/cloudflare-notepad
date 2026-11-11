@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict'
 import { test, expect } from '@playwright/test'
 import { formatTextByMode } from '../frontend/editor/formatters'
-import { fillCodeEditor, readCodeEditor, switchMode, uniqueNotePath } from './helpers'
+import { fillCodeEditor, readCodeEditor, saveNote, switchMode, uniqueNotePath } from './helpers'
 
 test('plain editor mounts CodeMirror and highlights keywords while typing', async ({ page }) => {
     const notePath = uniqueNotePath()
@@ -33,6 +33,63 @@ test('format picker switches to json mode and mounts CodeMirror', async ({ page 
     await expect(editor).toContainText('"enabled"')
     await expect(editor).toContainText('"cloud"')
     await expect(editor).toContainText('true')
+})
+
+test('small-screen status bar fits all actions and keeps the format menu above it', async ({ page, request }) => {
+    const path = uniqueNotePath()
+    const password = 'small-screen-test'
+    await saveNote(request, path, '# Small screen')
+    await request.patch(`/api/notes/${path}`, { data: { mode: 'md' } })
+    await request.patch(`/api/notes/${path}`, { data: { password } })
+    await page.request.post('/api/auth', { data: { path, password } })
+
+    await page.setViewportSize({ width: 320, height: 568 })
+    await page.goto(`/edit/${path}`)
+    const bar = page.locator('.statusbar')
+    const trigger = bar.locator('#mode-trigger')
+    await expect(trigger).toHaveText('Format: Markdown')
+    await expect(bar.getByRole('button', { name: 'Change Password' })).toBeVisible()
+    await expect(bar.getByRole('button', { name: 'Exit' })).toBeVisible()
+    await expect(bar.locator('#btn-upload-image')).toBeVisible()
+
+    const layout = await bar.evaluate(element => {
+        const bounds = element.getBoundingClientRect()
+        const editor = document.querySelector('.editor-pane')!.getBoundingClientRect()
+        const clipped = Array.from(element.querySelectorAll<HTMLElement>('button, a'))
+            .filter(control => control.getClientRects().length > 0)
+            .filter(control => {
+                const box = control.getBoundingClientRect()
+                return box.width < 44 || box.height < 44 || box.left < 0 || box.right > innerWidth ||
+                    box.top < bounds.top || box.bottom > bounds.bottom
+            })
+            .map(control => control.textContent?.trim() || control.title)
+        return {
+            overflow: element.scrollWidth > element.clientWidth,
+            editorOverlaps: editor.bottom > bounds.top + 1,
+            clipped,
+        }
+    })
+    expect(layout).toEqual({ overflow: false, editorOverlaps: false, clipped: [] })
+
+    await trigger.click()
+    await expect(trigger).toHaveAttribute('aria-expanded', 'true')
+    const menu = page.locator('#mode-menu')
+    await expect(menu).toBeVisible()
+    for (const viewport of [{ width: 320, height: 568 }, { width: 568, height: 320 }, { width: 736, height: 414 }]) {
+        await page.setViewportSize(viewport)
+        const barBox = await bar.boundingBox()
+        const menuBox = await menu.boundingBox()
+        assert.ok(barBox && menuBox)
+        expect(barBox.width).toBeLessThanOrEqual(viewport.width)
+        expect(menuBox.y).toBeGreaterThanOrEqual(0)
+        expect(menuBox.x + menuBox.width).toBeLessThanOrEqual(viewport.width)
+        expect(menuBox.y + menuBox.height).toBeLessThan(barBox.y)
+    }
+
+    await menu.getByRole('button', { name: /^YAML/ }).click()
+    await expect(trigger).toHaveText('Format: YAML')
+    await bar.getByRole('button', { name: 'Exit' }).click()
+    await expect(page).toHaveURL(`/note/${path}`)
 })
 
 test('markdown editor renders in split view with live preview', async ({ page }) => {
@@ -255,7 +312,6 @@ test('markdown editor renders mermaid diagrams', async ({ page }) => {
 
     const mermaidDiv = page.locator('.composer-preview-pane .mermaid')
     await expect(mermaidDiv).toBeVisible()
-    // Wait for the SVG to be rendered by Mermaid
-    const svg = mermaidDiv.locator('svg')
-    await expect(svg).toBeVisible({ timeout: 15000 })
+    await expect(mermaidDiv.locator('svg .node')).toHaveCount(2, { timeout: 15000 })
+    await expect(mermaidDiv).not.toHaveClass(/mermaid-source/)
 })

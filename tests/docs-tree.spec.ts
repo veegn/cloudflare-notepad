@@ -17,6 +17,25 @@ import {
     saveNote,
 } from './helpers'
 
+test.describe('basic homepage', () => {
+    test.use({ javaScriptEnabled: false })
+
+    test('links to documents when the frontend cannot run', async ({ page, request }) => {
+        const path = `${uniqueNotePath()}/legacy-note`
+        const title = `Legacy list <example> & ${path}`
+        expect((await createArticle(request, path, title)).status).toBe(200)
+
+        await page.goto('/')
+        await page.getByRole('link', { name: 'Open basic document list' }).click()
+        await expect(page).toHaveURL('/?view=basic')
+        const link = page.locator('.home-basic-list').getByRole('link', { name: title, exact: true })
+        await expect(link).toBeVisible()
+        await link.click()
+        await expect(page).toHaveURL(`/note/${path}`)
+        await expect(page.locator('.document-source')).toContainText(title)
+    })
+})
+
 test.describe('doc type API', () => {
     test('POST /api/docs creates article and book', async ({ request }) => {
         const articlePath = uniqueNotePath()
@@ -126,6 +145,59 @@ test.describe('doc type API', () => {
 })
 
 test.describe('homepage document tree UI', () => {
+    test('browsing and editing work without modern methods or access to storage', async ({ page, request }) => {
+        await page.addInitScript(() => {
+            Object.defineProperty(window, 'localStorage', {
+                get() { throw new DOMException('Storage unavailable', 'SecurityError') },
+            })
+            Object.defineProperty(Element.prototype, 'replaceChildren', { value: undefined })
+            Object.defineProperty(String.prototype, 'replaceAll', { value: undefined })
+            Object.defineProperty(Object, 'hasOwn', { value: undefined })
+        })
+        const dir = uniqueNotePath()
+        const path = `${dir}/article`
+        const title = `Legacy article ${dir}`
+        expect((await createArticle(request, path, title)).status).toBe(200)
+
+        await page.goto('/')
+        const row = page.locator(`#doc-tree [data-path="${dir}"]`)
+        await row.locator('.doc-tree-chevron').click()
+        const html = page.locator('html')
+        const initialTheme = await html.getAttribute('data-theme')
+        await page.locator('.theme-toggle').click()
+        await expect(html).not.toHaveAttribute('data-theme', initialTheme ?? '')
+        await page.locator('.theme-toggle').click()
+        await expect(html).toHaveAttribute('data-theme', initialTheme ?? '')
+
+        await page.getByRole('link', { name: title, exact: true }).click()
+        await expect(page.locator('#preview h1')).toHaveText(title)
+        await page.getByRole('button', { name: 'Edit', exact: true }).click()
+        await expect(page.locator('.cm-editor')).toBeVisible()
+        await page.locator('.md-layout-button[data-layout="preview"]').click()
+        await expect(page.locator('.composer-frame')).toHaveClass(/md-layout-preview/)
+    })
+
+    test('retries a failed home tree request with a fresh response', async ({ page, request }) => {
+        const path = uniqueNotePath()
+        await createArticle(request, path, 'Article after retry')
+        await page.route('**/api/home-tree', route => route.fulfill({
+            status: 503,
+            contentType: 'text/html',
+            body: '<h1>Service unavailable</h1>',
+        }))
+
+        await page.goto('/')
+        await expect(page.getByRole('alert')).toHaveText('Failed to load list')
+
+        const retry = page.waitForResponse('**/api/home-tree?refresh=1')
+        await page.getByRole('button', { name: 'Retry' }).click()
+        expect((await retry).ok()).toBe(true)
+        const article = page.locator(`#doc-tree [data-path="${path}"] .doc-tree-title`)
+        await expect(article).toHaveText('Article after retry')
+        await expect(article).toHaveAttribute('href', `/note/${path}`)
+        await expect(page.getByRole('alert')).toHaveCount(0)
+    })
+
     test('shows book/article badges and does not list book pages', async ({ page, request }) => {
         const bookPath = uniqueBookPath()
         const articlePath = uniqueNotePath()
@@ -183,6 +255,11 @@ test.describe('homepage document tree UI', () => {
         const childPath = `${dir}/leaf`
         await createArticle(request, childPath, 'Leaf Under Dir')
 
+        const treeRequests: string[] = []
+        page.on('request', request => {
+            const url = new URL(request.url())
+            if (url.pathname === '/api/home-tree') treeRequests.push(url.search)
+        })
         await page.goto('/')
         // clear expand state so dir starts collapsed
         await page.evaluate(() => localStorage.removeItem('homeTreeExpand'))
@@ -195,6 +272,7 @@ test.describe('homepage document tree UI', () => {
         await dirRow.locator('.doc-tree-title').click()
         await expect(page.locator(`#doc-tree .doc-tree-row[data-path="${childPath}"]`)).toBeVisible()
         await expect(dirRow).toHaveAttribute('aria-expanded', 'true')
+        expect(treeRequests).toEqual([''])
     })
 
     test('filter by books hides articles', async ({ page, request }) => {
@@ -211,6 +289,28 @@ test.describe('homepage document tree UI', () => {
         await page.locator('.home-chip[data-filter="article"]').click()
         await expect(page.locator(`#doc-tree .doc-tree-row[data-path="${articlePath}"]`)).toBeVisible()
         await expect(page.locator(`#doc-tree .doc-tree-row[data-path="${bookPath}"]`)).toHaveCount(0)
+    })
+
+    test('shows nested documents under an article when expanding or searching', async ({ page, request }) => {
+        const parentPath = uniqueNotePath()
+        const childPath = `${parentPath}/child`
+        const childTitle = `Child of ${parentPath}`
+        await createArticle(request, parentPath, 'Parent article')
+        await createArticle(request, childPath, childTitle)
+
+        await page.goto('/')
+        const tree = page.locator('#doc-tree')
+        const parent = tree.locator(`.doc-tree-row[data-path="${parentPath}"]`)
+        const child = tree.getByRole('link', { name: childTitle, exact: true })
+        await expect(parent).toHaveAttribute('aria-expanded', 'false')
+        await page.locator('#home-expand-all').click()
+        await expect(child).toBeVisible()
+
+        await page.locator('#home-collapse-all').click()
+        await expect(child).toHaveCount(0)
+        await page.locator('#home-search').fill(childTitle)
+        await expect(parent).toHaveAttribute('aria-expanded', 'true')
+        await expect(child).toHaveAttribute('href', `/note/${childPath}`)
     })
 
     test('search filters tree rows', async ({ page, request }) => {

@@ -308,115 +308,117 @@ textarea {
 
 .mode-md {
     grid-template-columns: minmax(0, 1fr);
+}
+.mode-md .composer-preview-scroll {
+    padding: 18px 20px 32px;
+}
+.mode-md .composer-preview {
+    max-width: 720px;
+    margin: 0 auto;
+    padding-bottom: 32px;
+    font-family: 'IBM Plex Sans', -apple-system, BlinkMacSystemFont, 'Segoe UI',
+        'PingFang SC', 'Hiragino Sans GB', 'Microsoft YaHei', sans-serif;
+    font-size: 16px;
+    line-height: 1.45;
+    letter-spacing: 0.01em;
+    color: var(--vscode-text);
+    text-wrap: pretty;
+    white-space: normal;
+    word-break: normal;
+    overflow-wrap: break-word;
+    line-break: strict;
+}
 
-    .composer-preview-scroll {
-        padding: 18px 20px 32px;
-    }
-
-    .composer-preview {
-        max-width: 720px;
-        margin: 0 auto;
-        padding-bottom: 32px;
-        font-family: 'IBM Plex Sans', -apple-system, BlinkMacSystemFont, 'Segoe UI',
-            'PingFang SC', 'Hiragino Sans GB', 'Microsoft YaHei', sans-serif;
-        font-size: 16px;
-        line-height: 1.75;
-        letter-spacing: 0.01em;
+@supports (color: color-mix(in srgb, black, white)) {
+    .mode-md .composer-preview {
         color: color-mix(in srgb, var(--vscode-text) 96%, transparent);
-        text-wrap: pretty;
-        white-space: normal;
-        word-break: normal;
-        overflow-wrap: break-word;
-        line-break: strict;
-
-        /* replaced nested children */
-
-        :is(h1, h2, h3, h4, h5, h6) {
-            margin-top: 1.6em;
-            margin-bottom: 0.55em;
-            color: var(--vscode-text);
-            font-weight: 650;
-            line-height: 1.35;
-            /* CJK-safe: avoid tight negative tracking used on Latin display type */
-            letter-spacing: 0;
-            text-wrap: balance;
-        }
-
-        h1 {
-            font-size: 1.75em;
-            padding-bottom: 0.35em;
-            border-bottom: 1px solid var(--vscode-border);
-        }
-
-        h2 {
-            font-size: 1.4em;
-            padding-bottom: 0.25em;
-            border-bottom: 1px solid color-mix(in srgb, var(--vscode-border) 60%, transparent);
-        }
-
-        h3 {
-            font-size: 1.2em;
-        }
-
-        :is(p, ul, ol, blockquote, pre, table, hr) {
-            margin: 0.85em 0;
-        }
-
-        li {
-            margin: 0.35em 0;
-            line-height: 1.7;
-        }
-
-        blockquote {
-            margin-inline: 0;
-            padding: 0.5em 1em;
-            border-left: 4px solid var(--vscode-accent);
-            border-radius: 0 var(--radius-m) var(--radius-m) 0;
-            color: var(--vscode-text-muted);
-            background: var(--vscode-accent-soft);
-        }
-
-        :not(pre) > code {
-            padding: 0.2em 0.4em;
-            border: 1px solid var(--vscode-border);
-            border-radius: var(--radius-s);
-            background: rgba(255, 255, 255, 0.04);
-            font-size: 0.9em;
-        }
-
-        pre {
-            padding: 1em;
-            border: 1px solid var(--vscode-border);
-            border-radius: var(--radius-m);
-            background: rgba(0, 0, 0, 0.16);
-            font-size: 0.9em;
-
-            code { padding: 0; background: transparent; }
-        }
-
-        img {
-            display: block;
-            max-width: 100%;
-            height: auto;
-            margin: 1.5em auto;
-            border-radius: var(--radius-m);
-        }
     }
+}
+.mode-md .composer-preview :is(h1, h2, h3, h4, h5, h6) {
+    margin-top: 0.5em;
+    margin-bottom: 0.1em;
+    color: var(--vscode-text);
+    font-weight: 650;
+    line-height: 1.35;
+    /* Keep CJK heading spacing neutral. */
+    letter-spacing: 0;
+    text-wrap: balance;
+}
+.mode-md .composer-preview h1 {
+    font-size: 1.75em;
+    padding-bottom: 0.35em;
+    border-bottom: 1px solid var(--vscode-border);
+}
+.mode-md .composer-preview h2 {
+    font-size: 1.4em;
+    padding-bottom: 0.25em;
+    border-bottom: 1px solid var(--vscode-border);
+}
+
+@supports (color: color-mix(in srgb, black, white)) {
+    .mode-md .composer-preview h2 {
+        border-bottom: 1px solid color-mix(in srgb, var(--vscode-border) 60%, transparent);
+    }
+}
+.mode-md .composer-preview h3 {
+    font-size: 1.2em;
+}
+.mode-md .composer-preview :is(p, ul, ol, blockquote, pre, table, hr) {
+    margin: 0.3em 0;
+}
+.mode-md .composer-preview li {
+    margin: 0.35em 0;
+    line-height: 1.7;
+}
+.mode-md .composer-preview blockquote {
+    margin-inline: 0;
+    padding: 0.5em 1em;
+    border-left: 4px solid var(--vscode-accent);
+    border-radius: 0 var(--radius-m) var(--radius-m) 0;
+    color: var(--vscode-text-muted);
+    background: var(--vscode-accent-soft);
+}
+.mode-md .composer-preview :not(pre) > code {
+    padding: 0.2em 0.4em;
+    border: 1px solid var(--vscode-border);
+    border-radius: var(--radius-s);
+    background: rgba(255, 255, 255, 0.04);
+    font-size: 0.9em;
+}
+.mode-md .composer-preview pre {
+    padding: 1em;
+    border: 1px solid var(--vscode-border);
+    border-radius: var(--radius-m);
+    background: rgba(0, 0, 0, 0.16);
+    font-size: 0.9em;
+}
+.mode-md .composer-preview pre code {
+    padding: 0;
+    background: transparent;
+}
+.mode-md .composer-preview img {
+    display: block;
+    max-width: 100%;
+    height: auto;
+    margin: 1.5em auto;
+    border-radius: var(--radius-m);
 }
 
 .mode-md .composer-preview > *:first-child { margin-top: 0; }
 .mode-md .composer-preview > *:last-child { margin-bottom: 0; }
 
 
-.mode-plain, .mode-json, .mode-yaml {
-    .composer-preview-scroll {
-        padding-right: 28px;
-    }
-    .composer-preview {
-        font-family: 'IBM Plex Mono', Consolas, monospace;
-        font-size: 14px;
-        line-height: 1.6;
-    }
+.mode-plain .composer-preview-scroll,
+.mode-json .composer-preview-scroll,
+.mode-yaml .composer-preview-scroll {
+    padding-right: 28px;
+}
+.mode-plain .composer-preview,
+.mode-json .composer-preview,
+.mode-yaml .composer-preview {
+    font-family: 'IBM Plex Mono', Consolas, monospace;
+    font-size: 14px;
+    line-height: 1.6;
 }
 
 .composer-frame.is-reading.mode-json .composer-preview-scroll,
@@ -434,45 +436,51 @@ textarea {
     grid-template-columns: minmax(0, 1fr);
 }
 
-.mode-md {
-    .composer-split-pane {
-        display: grid;
-        grid-template-columns: 1fr 1fr;
-        height: 100%;
-        min-height: 0;
-    }
+.mode-md .composer-split-pane {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    height: 100%;
+    min-height: 0;
+}
 
-    .composer-editor-pane,
-    .composer-preview-pane {
-        position: relative;
-        overflow: hidden;
-    }
+.mode-md .composer-editor-pane,
+.mode-md .composer-preview-pane {
+    position: relative;
+    overflow: hidden;
+}
 
-    .composer-editor-pane {
-        border-right: 1px solid var(--vscode-border);
-        background: var(--vscode-editor);
-
-        .cm-editor-host, .cm-editor, .cm-scroller { height: 100%; }
-        .cm-content { padding: 28px 0 72px; }
-        .cm-line {
-            max-width: 1024px;
-            margin: 0 auto;
-            padding: 0 20px;
-            font-size: 16px;
-            line-height: 1.6;
-        }
-        .cm-activeLine {
-            background: var(--vscode-accent-soft);
-            border-radius: var(--radius-m);
-        }
-        .cm-gutters { display: none; }
-    }
-
-    .composer-preview-pane {
-        background: var(--vscode-editor);
-        .composer-preview-scroll { position: relative; height: 100%; }
-    }
-
+.mode-md .composer-editor-pane {
+    border-right: 1px solid var(--vscode-border);
+    background: var(--vscode-editor);
+}
+.mode-md .composer-editor-pane .cm-editor-host,
+.mode-md .composer-editor-pane .cm-editor,
+.mode-md .composer-editor-pane .cm-scroller {
+    height: 100%;
+}
+.mode-md .composer-editor-pane .cm-content {
+    padding: 28px 0 72px;
+}
+.mode-md .composer-editor-pane .cm-line {
+    max-width: 1024px;
+    margin: 0 auto;
+    padding: 0 20px;
+    font-size: 16px;
+    line-height: 1.6;
+}
+.mode-md .composer-editor-pane .cm-activeLine {
+    background: var(--vscode-accent-soft);
+    border-radius: var(--radius-m);
+}
+.mode-md .composer-editor-pane .cm-gutters {
+    display: none;
+}
+.mode-md .composer-preview-pane {
+    background: var(--vscode-editor);
+}
+.mode-md .composer-preview-pane .composer-preview-scroll {
+    position: relative;
+    height: 100%;
 }
 
 .mode-md.md-layout-edit .composer-split-pane { grid-template-columns: 1fr; }
@@ -576,7 +584,13 @@ textarea {
     justify-content: space-between;
     gap: 10px 16px;
     padding: 14px 16px 10px;
-    border-bottom: 1px solid color-mix(in srgb, var(--vscode-border) 70%, transparent);
+    border-bottom: 1px solid var(--vscode-border);
+}
+
+@supports (color: color-mix(in srgb, black, white)) {
+    .home-docs-head {
+        border-bottom: 1px solid color-mix(in srgb, var(--vscode-border) 70%, transparent);
+    }
 }
 
 .home-docs-head-left {
@@ -592,8 +606,15 @@ textarea {
     justify-content: space-between;
     gap: 8px 12px;
     padding: 10px 12px;
-    border-bottom: 1px solid color-mix(in srgb, var(--vscode-border) 55%, transparent);
-    background: color-mix(in srgb, var(--vscode-tab) 55%, transparent);
+    border-bottom: 1px solid var(--vscode-border);
+    background: var(--vscode-tab);
+}
+
+@supports (color: color-mix(in srgb, black, white)) {
+    .home-docs-filters {
+        border-bottom: 1px solid color-mix(in srgb, var(--vscode-border) 55%, transparent);
+        background: color-mix(in srgb, var(--vscode-tab) 55%, transparent);
+    }
 }
 
 .home-docs-tools {
@@ -636,38 +657,51 @@ textarea {
     box-shadow: none;
 }
 
+.home-docs-basic {
+    padding: 16px;
+}
+
+.home-basic-list {
+    margin: 8px 0 0;
+    padding-left: 20px;
+}
+
+.home-basic-list a {
+    display: inline-block;
+    padding: 8px 0;
+    white-space: normal;
+    overflow-wrap: break-word;
+}
+
 .welcome-hero {
     max-width: 820px;
-
-    .welcome-kicker {
-        display: inline-flex;
-        align-items: center;
-        height: 24px;
-        padding: 0 10px;
-        border: 1px solid rgba(55, 148, 255, 0.25);
-        border-radius: 999px;
-        background: var(--vscode-accent-soft);
-        color: var(--vscode-accent);
-        font-size: 12px;
-        font-weight: 600;
-    }
-
-    .welcome-title {
-        margin: 16px 0 10px;
-        max-width: 720px;
-        font-size: clamp(28px, 4vw, 44px);
-        line-height: 1.2;
-        letter-spacing: 0;
-        font-weight: 650;
-    }
-
-    .welcome-copy {
-        max-width: 700px;
-        margin: 0;
-        color: var(--vscode-text-muted);
-        font-size: 16px;
-        line-height: 1.7;
-    }
+}
+.welcome-hero .welcome-kicker {
+    display: inline-flex;
+    align-items: center;
+    height: 24px;
+    padding: 0 10px;
+    border: 1px solid rgba(55, 148, 255, 0.25);
+    border-radius: 999px;
+    background: var(--vscode-accent-soft);
+    color: var(--vscode-accent);
+    font-size: 12px;
+    font-weight: 600;
+}
+.welcome-hero .welcome-title {
+    margin: 16px 0 10px;
+    max-width: 720px;
+    font-size: clamp(28px, 4vw, 44px);
+    line-height: 1.2;
+    letter-spacing: 0;
+    font-weight: 650;
+}
+.welcome-hero .welcome-copy {
+    max-width: 700px;
+    margin: 0;
+    color: var(--vscode-text-muted);
+    font-size: 16px;
+    line-height: 1.7;
 }
 
 .welcome-actions {
@@ -727,7 +761,13 @@ textarea {
     white-space: normal;
     word-break: normal;
     overflow-wrap: break-word;
-    color: color-mix(in srgb, var(--vscode-text) 96%, transparent);
+    color: var(--vscode-text);
+}
+
+@supports (color: color-mix(in srgb, black, white)) {
+    .welcome-note-preview {
+        color: color-mix(in srgb, var(--vscode-text) 96%, transparent);
+    }
 }
 
 .welcome-note-preview.composer-preview {
@@ -828,41 +868,37 @@ textarea {
     border: 1px solid var(--vscode-border);
     border-radius: var(--radius-m);
     background: rgba(255, 255, 255, 0.02);
-
-    .mode-tab {
-        position: relative;
-        z-index: 1;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        min-width: 62px;
-        height: 26px;
-        padding: 0 10px;
-        border-radius: 5px;
-        color: var(--vscode-text-muted);
-        font-size: 11px;
-        font-weight: 600;
-        cursor: pointer;
-    }
-
-    .mode-tab.active {
-        color: var(--vscode-text);
-    }
-
-    .tab-indicator {
-        position: absolute;
-        top: 3px;
-        left: 3px;
-        height: 26px;
-        border-radius: 5px;
-        background: var(--vscode-accent-soft);
-        box-shadow: inset 0 0 0 1px rgba(55, 148, 255, 0.15);
-        transition: left var(--transition), width var(--transition);
-    }
+}
+.mode-tabs .mode-tab {
+    position: relative;
+    z-index: 1;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    min-width: 62px;
+    height: 26px;
+    padding: 0 10px;
+    border-radius: 5px;
+    color: var(--vscode-text-muted);
+    font-size: 11px;
+    font-weight: 600;
+    cursor: pointer;
+}
+.mode-tabs .mode-tab.active {
+    color: var(--vscode-text);
+}
+.mode-tabs .tab-indicator {
+    position: absolute;
+    top: 3px;
+    left: 3px;
+    height: 26px;
+    border-radius: 5px;
+    background: var(--vscode-accent-soft);
+    box-shadow: inset 0 0 0 1px rgba(55, 148, 255, 0.15);
+    transition: left var(--transition), width var(--transition);
 }
 
 .mode-picker {
-    position: relative;
     display: inline-flex;
     align-items: center;
 }
@@ -875,7 +911,9 @@ textarea {
 }
 
 .mode-picker-menu {
-    position: fixed;
+    position: absolute;
+    right: 10px;
+    bottom: calc(100% + 8px);
     display: flex;
     flex-direction: column;
     gap: 4px;
@@ -885,13 +923,6 @@ textarea {
     z-index: 2000;
 }
 
-@media (min-width: 681px) {
-    .mode-picker-menu {
-        right: 10px;
-        bottom: 44px;
-    }
-}
-
 .mode-picker-option {
     display: flex;
     align-items: center;
@@ -899,7 +930,9 @@ textarea {
     gap: 12px;
     min-height: 30px;
     padding: 0 10px;
+    border: 0;
     border-radius: 6px;
+    background: transparent;
     color: var(--vscode-text);
     font-size: 12px;
     cursor: pointer;
@@ -986,6 +1019,26 @@ textarea {
 
 [data-theme="light"] .composer-preview code {
     background: rgba(0, 0, 0, 0.05);
+}
+
+.document-source,
+.mermaid-source {
+    font-family: 'IBM Plex Mono', Consolas, monospace;
+    white-space: pre-wrap;
+    overflow-wrap: break-word;
+}
+
+.composer-preview .document-source > code {
+    padding: 0;
+    background: none;
+    font: inherit;
+}
+
+.cm-editor-host > .document-source {
+    max-height: 100%;
+    margin: 0;
+    padding: 24px;
+    overflow: auto;
 }
 
 .composer-preview blockquote {
@@ -1151,12 +1204,19 @@ textarea {
     width: min(calc(100vw - 48px), 380px);
     padding: 24px;
     border-radius: var(--radius-l);
-    background: color-mix(in srgb, var(--vscode-editor) 88%, transparent);
+    background: var(--vscode-editor);
     border: 1px solid var(--vscode-border);
     box-shadow: var(--shadow-popup);
     animation: modal-slide-up 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
-    
-    @media (max-width: 680px) {
+}
+
+@supports (color: color-mix(in srgb, black, white)) {
+    .modal-dialog {
+        background: color-mix(in srgb, var(--vscode-editor) 88%, transparent);
+    }
+}
+@media (max-width: 680px) {
+    .modal-dialog {
         margin-bottom: env(safe-area-inset-bottom);
     }
 }
@@ -1186,11 +1246,17 @@ textarea {
     padding: 0 14px;
     border: 1px solid var(--vscode-border);
     border-radius: var(--radius-m);
-    background: color-mix(in srgb, var(--vscode-bg) 60%, transparent);
+    background: var(--vscode-bg);
     color: var(--vscode-text);
     font-size: 16px;
     outline: none;
     transition: all var(--transition);
+}
+
+@supports (color: color-mix(in srgb, black, white)) {
+    .modal-input {
+        background: color-mix(in srgb, var(--vscode-bg) 60%, transparent);
+    }
 }
 
 .modal-input:focus {
@@ -1269,7 +1335,7 @@ textarea {
     transform: translateX(-50%);
     padding: 12px 20px;
     border-radius: 999px;
-    background: color-mix(in srgb, var(--vscode-editor) 90%, transparent);
+    background: var(--vscode-editor);
     backdrop-filter: blur(12px);
     border: 1px solid var(--vscode-border);
     color: var(--vscode-text);
@@ -1278,6 +1344,12 @@ textarea {
     z-index: 10000;
     box-shadow: var(--shadow-popup);
     animation: toast-slide-down 0.4s cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+
+@supports (color: color-mix(in srgb, black, white)) {
+    .toast-message {
+        background: color-mix(in srgb, var(--vscode-editor) 90%, transparent);
+    }
 }
 
 .toast-message.is-exiting {
@@ -1316,10 +1388,13 @@ textarea {
 }
 
 .statusbar {
+    position: relative;
     display: flex;
+    flex-wrap: wrap;
     align-items: center;
     justify-content: space-between;
-    gap: 12px;
+    gap: 2px 12px;
+    min-width: 0;
     min-height: 24px;
     padding: 0 10px;
     background: var(--vscode-statusbar);
@@ -1333,6 +1408,8 @@ textarea {
 .statusbar .status-actions {
     display: flex;
     align-items: center;
+    min-width: 0;
+    max-width: 100%;
     gap: 8px;
 }
 
@@ -1454,71 +1531,92 @@ textarea {
         padding-inline: 16px;
     }
 
-    .mode-md {
-        .composer-preview { max-width: 100%; font-size: 16px; line-height: 1.75; letter-spacing: 0.01em; }
-        .welcome-note-preview { font-size: 16px; line-height: 1.75; padding: 16px; }
-        .composer-split-pane,
-        &.md-layout-split .composer-split-pane {
-            grid-template-columns: 1fr;
-        }
-        .composer-editor-pane {
-            border-right: 0;
-            border-bottom: 1px solid var(--vscode-border);
-        }
+    .mode-md .composer-preview {
+        max-width: 100%;
+        font-size: 16px;
+        line-height: 1.75;
+        letter-spacing: 0.01em;
+    }
+    .mode-md .welcome-note-preview {
+        font-size: 16px;
+        line-height: 1.75;
+        padding: 16px;
+    }
+    .mode-md .composer-editor-pane {
+        border-right: 0;
+        border-bottom: 1px solid var(--vscode-border);
     }
 
-    .cm-editor-host {
-        .cm-line { padding-inline: 16px; }
-        .cm-gutterElement { min-width: 42px; }
+    .mode-md .composer-split-pane,
+    .mode-md.md-layout-split .composer-split-pane {
+        grid-template-columns: 1fr;
     }
 
-    .opt-button, .theme-toggle, .mode-picker-option {
+    .cm-editor-host .cm-line {
+        padding-inline: 16px;
+    }
+    .cm-editor-host .cm-gutterElement {
+        min-width: 42px;
+    }
+
+    .opt-button {
         min-height: 44px;
     }
-
-    .statusbar {
-        position: fixed;
-        bottom: 0;
-        left: 0;
-        right: 0;
-        z-index: 1000;
-        height: calc(44px + env(safe-area-inset-bottom));
-        padding: 0 10px env(safe-area-inset-bottom);
-        display: flex;
-        align-items: center;
-        gap: 12px;
-        overflow-x: auto;
-        scrollbar-width: none;
-        -webkit-overflow-scrolling: touch;
-        mask-image: linear-gradient(to right, black calc(100% - 24px), transparent 100%);
-    }
-
-    .statusbar::-webkit-scrollbar { display: none; }
-
-    .statusbar-left, .statusbar-right, .statusbar .status-actions {
-        flex-shrink: 0;
-        gap: 8px;
-    }
-
-    .statusbar-right { padding-right: 8px; }
-
-    .workbench {
-        padding-bottom: calc(44px + env(safe-area-inset-bottom));
-    }
-
-    #last-modified-container { display: none; }
 
     .mode-tabs {
         width: 100%;
         justify-content: space-between;
+    }
+    .mode-tabs .mode-tab {
+        flex: 1;
+        min-width: 0;
+    }
+}
 
-        .mode-tab { flex: 1; min-width: 0; }
+@media (max-width: 760px) {
+    .statusbar {
+        gap: 2px 8px;
+        padding: 2px 8px;
+        padding-bottom: calc(2px + env(safe-area-inset-bottom));
+        padding-left: max(8px, env(safe-area-inset-left));
+        padding-right: max(8px, env(safe-area-inset-right));
     }
 
+    .statusbar-left, .statusbar-right, .statusbar .status-actions { gap: 4px; }
+
+    .statusbar-left { flex-grow: 1; }
+    .statusbar-right { margin-left: auto; }
+    .statusbar-sep { display: none; }
+
+    .statusbar .opt-button {
+        min-width: 44px;
+        min-height: 44px;
+        height: auto;
+        padding: 4px 6px;
+        line-height: 1.15;
+        overflow-wrap: break-word;
+        overflow-wrap: anywhere;
+    }
+
+    .statusbar .mode-picker { min-width: 0; }
+    .statusbar .status-indicator { flex-shrink: 0; }
+
+    .statusbar .github-link {
+        justify-content: center;
+        width: 44px;
+        height: 44px;
+        font-size: 16px;
+    }
+
+    #last-modified-container { display: none; }
+
+    .mode-picker-option { min-height: 44px; }
+
     .mode-picker-menu {
-        bottom: calc(44px + env(safe-area-inset-bottom) + 8px);
-        inset-inline: 10px;
-        width: auto;
+        inset-inline: 8px;
+        max-height: calc(100vh - 100% - 16px);
+        max-height: calc(100dvh - 100% - 16px);
+        overflow-y: auto;
     }
 }
 
@@ -1690,8 +1788,14 @@ textarea {
     column-gap: 8px;
     min-height: 44px;
     padding: 6px 14px 6px calc(12px + var(--tree-level, 0) * 18px);
-    border-bottom: 1px solid color-mix(in srgb, var(--vscode-border) 35%, transparent);
+    border-bottom: 1px solid var(--vscode-border);
     color: var(--vscode-text);
+}
+
+@supports (color: color-mix(in srgb, black, white)) {
+    .doc-tree-row {
+        border-bottom: 1px solid color-mix(in srgb, var(--vscode-border) 35%, transparent);
+    }
 }
 
 .doc-tree-row:last-child {
@@ -1919,7 +2023,13 @@ textarea {
 
 .doc-sidebar-body::-webkit-scrollbar-thumb {
     border-radius: 8px;
-    background: color-mix(in srgb, var(--vscode-text-subtle) 35%, transparent);
+    background: var(--vscode-text-subtle);
+}
+
+@supports (color: color-mix(in srgb, black, white)) {
+    .doc-sidebar-body::-webkit-scrollbar-thumb {
+        background: color-mix(in srgb, var(--vscode-text-subtle) 35%, transparent);
+    }
 }
 
 .doc-main {
@@ -1932,7 +2042,6 @@ textarea {
 
 /* Homepage document tree must scroll inside the workbench pane.
    Body/html stay fixed; only the home main column becomes scrollable. */
-.doc-main:has(> .welcome-view),
 body[data-is-home="true"] .doc-main {
     overflow-y: auto;
     overflow-x: hidden;
@@ -1940,7 +2049,6 @@ body[data-is-home="true"] .doc-main {
     overscroll-behavior: contain;
 }
 
-.doc-main:has(> .welcome-view) .welcome-view,
 body[data-is-home="true"] .welcome-view {
     min-height: auto;
     flex: 0 0 auto;
@@ -2213,8 +2321,14 @@ body[data-is-home="true"] .welcome-view {
   min-height: 36px;
   padding: 4px 10px;
   border-bottom: 1px solid var(--vscode-border);
-  background: color-mix(in srgb, var(--vscode-tab) 70%, transparent);
+  background: var(--vscode-tab);
   flex-shrink: 0;
+}
+
+@supports (color: color-mix(in srgb, black, white)) {
+    .composer-editor-toolbar {
+      background: color-mix(in srgb, var(--vscode-tab) 70%, transparent);
+    }
 }
 .composer-editor-hint {
   font-size: 11px;
@@ -2398,6 +2512,8 @@ body[data-is-home="true"] .welcome-view {
     line-height: 1.5;
     white-space: pre-wrap;
     word-break: break-word;
+    -webkit-user-select: text;
+    user-select: text;
 }
 
 @media (max-width: 720px) {

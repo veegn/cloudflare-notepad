@@ -3,7 +3,7 @@ declare global {
         CONFIG?: import('./types').AppConfig
         mermaid?: {
             initialize: (config: Record<string, unknown>) => void
-            run: (config: Record<string, unknown>) => void
+            run: (config: { nodes: HTMLElement[] }) => Promise<void>
         }
     }
 }

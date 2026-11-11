@@ -1,4 +1,4 @@
-/** Path helpers shared by home tree and book sidebar. */
+/** Shared path and DOM helpers. */
 
 /** Encode each path segment but keep `/` so Worker wildcard routes work. */
 export function encodeNotePath(path: string): string {
@@ -6,14 +6,6 @@ export function encodeNotePath(path: string): string {
         .split('/')
         .map(seg => encodeURIComponent(seg))
         .join('/')
-}
-
-export function escapeHtml(input: string): string {
-    return input
-        .replace(/&/g, '&amp;')
-        .replace(/</g, '&lt;')
-        .replace(/>/g, '&gt;')
-        .replace(/"/g, '&quot;')
 }
 
 /** Element helper that returns HTMLElement (for dataset etc.). */

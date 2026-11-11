@@ -92,8 +92,8 @@
         {% endif %}
         <button class="opt-button opt-format" id="format-trigger" type="button">Format Now</button>
         <div class="mode-picker" id="mode-picker">
-          <button class="opt-button mode-picker-trigger" id="mode-trigger" type="button">Format</button>
-          <div class="mode-picker-menu hide" id="mode-menu"></div>
+          <button class="opt-button mode-picker-trigger" id="mode-trigger" type="button" aria-controls="mode-menu" aria-expanded="false">Format</button>
+          <div class="mode-picker-menu glass-panel hide" id="mode-menu"></div>
         </div>
         <span class="statusbar-sep" aria-hidden="true"></span>
         {% endif %}

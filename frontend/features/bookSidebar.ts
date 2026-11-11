@@ -1,7 +1,8 @@
 import { getI18n } from '../core/config'
 import type { BookPageItem, TocItem } from '../core/types'
 import { showPrompt, showConfirm, showToast, errHandle } from '../core/ui'
-import { anchor, el, encodeNotePath, escapeHtml } from '../core/pathUtils'
+import { escapeHtml } from '../core/html'
+import { anchor, el, encodeNotePath } from '../core/pathUtils'
 
 function bookPathFromSidebar(node: HTMLElement): string {
     if (node.dataset.docType === 'book') return node.dataset.notePath || ''

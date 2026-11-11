@@ -1,12 +1,14 @@
-import { CONFIG, $, $$, getI18n } from './core/config'
+import './core/polyfills'
+import { CONFIG, $, getI18n } from './core/config'
 import { getEditPath, getViewPath, initEditor } from './editor/editor'
 import { renderEditorPreview } from './editor/renderers'
 import { EDIT_BUTTONS, errHandle, GITHUB_LINK, showPasswordPrompt, showToast, showAlert, showConfirm, Theme, VIEW_BUTTONS } from './core/ui'
 import { showCreateDocDialog } from './features/createDoc'
 import { showDocActionsMenu, showRawViewer, showSharePanel } from './features/docManage'
-import type { Mode, UIRefs } from './core/types'
+import type { UIRefs } from './core/types'
 import { initHomeTree } from './features/homeTree'
 import { initDocSidebar } from './features/bookSidebar'
+import { initModePicker } from './features/modePicker'
 import dayjs from 'dayjs'
 import relativeTime from 'dayjs/plugin/relativeTime'
 
@@ -69,84 +71,13 @@ export async function initApp(): Promise<void> {
         UI.githubContainer.innerHTML = GITHUB_LINK()
     }
 
-    const initModePicker = (): void => {
-        if (!UI.modeMenu || !UI.modeTrigger || !CONFIG.isEdit || CONFIG.isHome) {
-            return
-        }
-
-        // Move menu to body to avoid overflow clipping from statusbar parent chain
-        if (UI.modeMenu.parentElement !== document.body) {
-            document.body.appendChild(UI.modeMenu)
-        }
-
-        const modes: Array<{ id: Mode; label: string }> = [
-            { id: 'plain', label: 'Txt' },
-            { id: 'md', label: 'Markdown' },
-            { id: 'json', label: 'JSON' },
-            { id: 'yaml', label: 'YAML' },
-        ]
-
-        UI.modeTrigger.textContent = `${getI18n('formatMode')}: ${modes.find(mode => mode.id === CONFIG.mode)?.label || 'Txt'}`
-        UI.modeMenu.innerHTML = modes.map(mode => `
-            <div class="mode-picker-option ${CONFIG.mode === mode.id ? 'active' : ''}" data-mode="${mode.id}">
-                <span>${mode.label}</span>
-                <span>${mode.id}</span>
-            </div>
-        `).join('')
-
-        const closeModeMenu = (): void => {
-            UI.modeMenu?.classList.add('hide')
-        }
-
-        UI.modeTrigger.onclick = event => {
-            event.stopPropagation()
-            UI.modeMenu?.classList.toggle('hide')
-        }
-
-        $$<HTMLElement>('.mode-picker-option', UI.modeMenu).forEach(option => {
-            option.onclick = (): void => {
-                const mode = option.dataset.mode as Mode | undefined
-                if (!mode || mode === CONFIG.mode) {
-                    closeModeMenu()
-                    return
-                }
-
-                window.fetch(`/api/notes/${CONFIG.notePath}`, {
-                    method: 'PATCH',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ mode }),
-                })
-                    .then(async res => {
-                        if (!res.ok && !res.headers.get('content-type')?.includes('application/json')) {
-                            throw new Error(`Server Error: ${res.status} - ${await res.text()}`)
-                        }
-                        return res.json() as Promise<{ code: number; message?: string }>
-                    })
-                    .then(res => {
-                        if (res.code !== 0) {
-                            return errHandle(res.message || 'Failed to update mode')
-                        }
-                        window.location.reload()
-                    })
-                    .catch(errHandle)
-            }
-        })
-
-        document.addEventListener('click', event => {
-            const target = event.target
-            if (!(target instanceof Node) || !UI.modePicker?.contains(target)) {
-                closeModeMenu()
-            }
-        })
-    }
-
     const updateLastModified = (): void => {
         if (UI.lastMod && CONFIG.updateAt) {
             UI.lastMod.innerHTML = `<span class="last-modified">${getI18n('lastModified')} ${dayjs.unix(CONFIG.updateAt).fromNow()}</span>`
         }
     }
 
-    initModePicker()
+    initModePicker(UI)
     Theme.init()
     dayjs.extend(relativeTime)
 

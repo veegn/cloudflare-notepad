@@ -1,5 +1,6 @@
 import { CONFIG, getI18n } from '../core/config'
-import { encodeNotePath, escapeHtml } from '../core/pathUtils'
+import { escapeHtml } from '../core/html'
+import { encodeNotePath } from '../core/pathUtils'
 import { errHandle, showConfirm, showPrompt, showToast } from '../core/ui'
 
 export type DocManageTarget = {
@@ -256,7 +257,8 @@ export function showRawViewer(path: string): Promise<void> {
                     await navigator.clipboard.writeText(rawText)
                     showToast(getI18n('copied'))
                 } catch {
-                    showToast(getI18n('copyFailed'))
+                    if (body) window.getSelection()?.selectAllChildren(body)
+                    showToast(getI18n('copyRawManual'))
                 }
             })()
         })

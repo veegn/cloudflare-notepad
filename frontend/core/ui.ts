@@ -1,4 +1,5 @@
 import { CONFIG, getI18n } from './config'
+import { readPreference, writePreference } from './preferences'
 
 const GITHUB_ICON = (): string => `
 <svg viewBox="64 64 896 896" focusable="false" data-icon="github" width="1em" height="1em" fill="currentColor" aria-hidden="true">
@@ -27,7 +28,7 @@ export const VIEW_BUTTONS = (): string => `
 
 export const Theme = {
     getCurrentTheme(): string {
-        const savedTheme = localStorage.getItem('theme')
+        const savedTheme = readPreference('theme')
         if (savedTheme) {
             return savedTheme
         }
@@ -38,7 +39,7 @@ export const Theme = {
     },
     applyTheme(theme: string): void {
         document.documentElement.setAttribute('data-theme', theme)
-        localStorage.setItem('theme', theme)
+        writePreference('theme', theme)
     },
     toggleTheme(): void {
         const currentTheme = Theme.getCurrentTheme()

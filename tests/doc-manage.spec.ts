@@ -55,6 +55,20 @@ test('raw opens in-app modal instead of navigating to bare API', async ({ page, 
     await expect(page.locator('.raw-viewer')).toBeHidden()
 })
 
+test('Raw selects source text when clipboard access is unavailable', async ({ page, request }) => {
+    const path = uniqueNotePath()
+    const source = 'Raw source\nwith more than one line'
+    await saveNote(request, path, source)
+    await page.addInitScript(() => Object.defineProperty(navigator, 'clipboard', { value: undefined }))
+
+    await page.goto(`/note/${path}`)
+    await page.locator('.opt-raw').click()
+    await page.locator('#raw-copy').click()
+
+    await expect(page.locator('.toast-message')).toHaveText('Copy the source text manually')
+    expect(await page.evaluate(() => window.getSelection()?.toString())).toBe(source)
+})
+
 test('home footer does not expose edit/raw that would hit _index', async ({ page }) => {
     await page.goto('/')
     await expect(page.locator('.opt-raw')).toHaveCount(0)

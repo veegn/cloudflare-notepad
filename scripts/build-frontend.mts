@@ -15,7 +15,7 @@ await build({
   outfile: 'static/js/app.js',
   bundle: true,
   format: 'esm',
-  target: 'es2022',
+  target: ['chrome80', 'edge80', 'firefox78', 'ios14.5', 'safari14.1'],
   sourcemap: isProd ? false : 'external',
   minify: isProd,
   legalComments: 'none',

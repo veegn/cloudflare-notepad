@@ -169,15 +169,22 @@ pub async fn home_tree(req: Request, ctx: RouteContext<()>) -> Result<Response> 
         .query_pairs()
         .any(|(k, v)| (k == "refresh" || k == "nocache") && v != "0" && v != "false");
 
+    ok_json(load_home_tree_payload(&bucket, skip_cache).await?)
+}
+
+pub(crate) async fn load_home_tree_payload(
+    bucket: &Bucket,
+    skip_cache: bool,
+) -> Result<serde_json::Value> {
     if !skip_cache {
-        if let Some(cached) = note::read_json_cache(&bucket, note::HOME_TREE_CACHE_KEY).await {
-            return ok_json(cached);
+        if let Some(cached) = note::read_json_cache(bucket, note::HOME_TREE_CACHE_KEY).await {
+            return Ok(cached);
         }
     }
 
-    let payload = build_home_tree_payload(&bucket).await?;
-    note::write_json_cache(&bucket, note::HOME_TREE_CACHE_KEY, &payload).await;
-    ok_json(payload)
+    let payload = build_home_tree_payload(bucket).await?;
+    note::write_json_cache(bucket, note::HOME_TREE_CACHE_KEY, &payload).await;
+    Ok(payload)
 }
 
 pub(crate) async fn build_home_tree_payload(bucket: &worker::Bucket) -> Result<serde_json::Value> {

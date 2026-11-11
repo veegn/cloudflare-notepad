@@ -31,6 +31,52 @@ test('public note view renders saved content', async ({ page, request }) => {
     expect(previewBox.width).toBeGreaterThan(frameBox.width * 0.75)
 })
 
+test('note and edit pages show escaped source if the app script cannot load', async ({ page, request }) => {
+    const notePath = uniqueNotePath()
+    const content = '\n# Source\n  <script>throw new Error("note content")</script>\n& text\n' +
+        'More source text\n'.repeat(300)
+    await saveNote(request, notePath, content)
+    await request.patch(`/api/notes/${notePath}`, { data: { mode: 'md' } })
+    await page.route('**/js/app.js', route => route.abort())
+
+    for (const prefix of ['/note', '/edit']) {
+        await page.goto(`${prefix}/${notePath}`)
+        const source = page.locator('.document-source')
+        await expect(source).toBeVisible()
+        await expect(source).toHaveJSProperty('textContent', content)
+        await expect(source.locator('script')).toHaveCount(0)
+        const scroll = prefix === '/edit' ? source : page.locator('#preview-scroll')
+        expect(await scroll.evaluate(node => {
+            node.scrollTop = node.scrollHeight
+            return node.scrollTop > 0 && node.scrollTop + node.clientHeight >= node.scrollHeight - 1
+        })).toBe(true)
+    }
+})
+
+test('Markdown keeps Mermaid source when a diagram cannot render', async ({ page, request }) => {
+    const notePath = uniqueNotePath()
+    const source = 'graph TD\nA[TODO & text] --> B'
+    await saveNote(request, notePath, '# Diagram\n\n' + '```mermaid\n' + source + '\n```')
+    await request.patch(`/api/notes/${notePath}`, { data: { mode: 'md' } })
+    await page.route('**/js/mermaid.min.js', route => route.fulfill({
+        contentType: 'text/javascript',
+        body: `window.mermaid = {
+            initialize() {},
+            async run({ nodes }) {
+                nodes[0].setAttribute('data-render-attempted', 'true');
+                nodes[0].innerHTML = '<svg></svg>';
+                throw new Error('Diagram render failed');
+            },
+        }`,
+    }))
+
+    await page.goto(`/note/${notePath}`)
+    await expect(page.locator('#preview h1')).toHaveText('Diagram')
+    const fallback = page.locator('.mermaid-source[data-render-attempted="true"]')
+    await expect(fallback).toHaveJSProperty('textContent', source)
+    await expect(page.locator('.mermaid svg')).toHaveCount(0)
+})
+
 test('long note content does not overlap the bottom status actions', async ({ page, request }) => {
     const notePath = uniqueNotePath()
     const longContent = Array.from({ length: 120 }, (_, index) => `line ${index + 1}`).join('\n')
@@ -193,7 +239,7 @@ test('readonly yaml view highlights comments and strings correctly without corru
     const notePath = uniqueNotePath()
 
     // Save note with a YAML string containing a hash (#), unquoted keys, and quoted inline keys
-    const yamlContent = 'fallback: ["https://example.com/dns-query #h3=true"] # comment here\nproxies:\n  - {"name": "us", "server": "cloud"}'
+    const yamlContent = 'fallback: ["https://example.com/dns-query #h3=true"] # comment here\nproxies:\n  - {"name": "us", "server": "cloud"}\n  - {first: 1, second  : 2}'
     await saveNote(request, notePath, yamlContent)
 
     // Patch mode to yaml
@@ -218,6 +264,9 @@ test('readonly yaml view highlights comments and strings correctly without corru
     await expect(keys.nth(1)).toHaveText('proxies')
     await expect(keys.nth(2)).toHaveText('"name"')
     await expect(keys.nth(3)).toHaveText('"server"')
+    await expect(keys.nth(4)).toHaveText('first')
+    await expect(keys.nth(5)).toHaveText('second')
+    await expect(page.locator('.code-viewer-line').last()).toHaveJSProperty('textContent', '  - {first: 1, second  : 2}')
 
     // Verify there is no raw marker leakage
     const bodyText = await page.locator('.code-viewer').textContent()

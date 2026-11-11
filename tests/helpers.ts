@@ -148,13 +148,10 @@ export async function uiCreateBookPage(page: Page, bookPath: string, pageTitle: 
     await promptInput.waitFor()
     await promptInput.fill(pageTitle)
     await page.locator('.modal-dialog .modal-btn-primary').click()
-    // optional "edit now?" confirm — dismiss with cancel to stay on book editor
-    const confirmBtn = page.locator('.modal-dialog .modal-btn-secondary')
-    try {
-        await confirmBtn.waitFor({ timeout: 2000 })
-        await confirmBtn.click()
-    } catch {
-        // no follow-up confirm
-    }
+    // Wait for the follow-up dialog before locating Cancel; the prompt dialog
+    // briefly remains in the DOM while its exit animation runs.
+    const editConfirm = page.locator('.modal-dialog').filter({ hasText: 'Edit this page now?' })
+    await editConfirm.waitFor({ state: 'visible', timeout: 5000 })
+    await editConfirm.getByRole('button', { name: 'Cancel' }).click()
     await page.locator('.book-page-row').first().waitFor({ timeout: 10000 })
 }

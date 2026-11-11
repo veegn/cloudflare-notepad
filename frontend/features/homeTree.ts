@@ -1,23 +1,24 @@
 import { CONFIG, getI18n } from '../core/config'
+import { readPreference, writePreference } from '../core/preferences'
 import type { HomeTreeResponse, TreeNode } from '../core/types'
 import { showCreateDocDialog } from './createDoc'
-import { errHandle } from '../core/ui'
-import { el, encodeNotePath, escapeHtml, input } from '../core/pathUtils'
+import { showToast } from '../core/ui'
+import { escapeHtml } from '../core/html'
+import { el, encodeNotePath, input } from '../core/pathUtils'
 import { runRepairBook, runRepairAll } from './repair'
 import { showDocActionsMenu } from './docManage'
 
 const EXPAND_KEY = 'homeTreeExpand'
 
-let treeData: TreeNode[] = []
-let counts = { article: 0, book: 0 }
+let treeData: TreeNode[] | undefined
 let expand = loadExpand()
 let filter = 'all'
 let query = ''
-let rerender: (() => void) | null = null
+let loadSequence = 0
 
 function loadExpand(): Set<string> {
     try {
-        const raw = localStorage.getItem(EXPAND_KEY)
+        const raw = readPreference(EXPAND_KEY)
         if (!raw) return new Set()
         return new Set(JSON.parse(raw) as string[])
     } catch {
@@ -26,7 +27,7 @@ function loadExpand(): Set<string> {
 }
 
 function saveExpand(set: Set<string>): void {
-    localStorage.setItem(EXPAND_KEY, JSON.stringify(Array.from(set)))
+    writePreference(EXPAND_KEY, JSON.stringify(Array.from(set)))
 }
 
 function filterTree(nodes: TreeNode[], activeFilter: string, search: string): TreeNode[] {
@@ -40,13 +41,8 @@ function filterTree(nodes: TreeNode[], activeFilter: string, search: string): Tr
             node.path.toLowerCase().includes(q) ||
             (node.excerpt || '').toLowerCase().includes(q)
 
-        if (node.nodeType === 'dir') {
-            if (kids.length > 0) out.push({ ...node, children: kids })
-            continue
-        }
-        if ((activeFilter === 'all' || node.nodeType === activeFilter) && queryOk) {
-            out.push({ ...node, children: [] })
-        } else if (kids.length > 0) {
+        const matchesFilter = activeFilter === 'all' || node.nodeType === activeFilter
+        if (kids.length > 0 || (node.nodeType !== 'dir' && matchesFilter && queryOk)) {
             out.push({ ...node, children: kids })
         }
     }
@@ -102,19 +98,19 @@ function toggleExpand(path: string): void {
     if (expand.has(path)) expand.delete(path)
     else expand.add(path)
     saveExpand(expand)
-    rerender?.()
+    renderTree()
 }
 
 function ensureAncestorsExpanded(nodes: TreeNode[]): void {
     for (const n of nodes) {
-        if (n.nodeType === 'dir') {
+        if (n.children?.length) {
             expand.add(n.path)
-            ensureAncestorsExpanded(n.children || [])
+            ensureAncestorsExpanded(n.children)
         }
     }
 }
 
-function renderNode(node: TreeNode, level: number, host: HTMLElement): void {
+function renderNode(node: TreeNode, level: number, host: DocumentFragment): void {
     const row = document.createElement('div')
     row.className = `doc-tree-row is-${node.nodeType}`
     row.style.setProperty('--tree-level', String(level))
@@ -177,7 +173,7 @@ function renderNode(node: TreeNode, level: number, host: HTMLElement): void {
     }
 }
 
-function renderEmpty(host: HTMLElement, hasAnyData: boolean): void {
+function renderEmpty(host: DocumentFragment, hasAnyData: boolean): void {
     const empty = document.createElement('div')
     empty.className = 'doc-tree-empty'
     empty.innerHTML = hasAnyData
@@ -195,7 +191,7 @@ function renderEmpty(host: HTMLElement, hasAnyData: boolean): void {
         query = ''
         const search = input('#home-search')
         if (search) search.value = ''
-        rerender?.()
+        renderTree()
     })
     empty.querySelectorAll<HTMLButtonElement>('[data-create]').forEach(btn => {
         btn.addEventListener('click', () => {
@@ -204,35 +200,29 @@ function renderEmpty(host: HTMLElement, hasAnyData: boolean): void {
     })
 }
 
-function renderTree(): void {
+function renderTree(nodes = treeData): void {
     const host = el('#doc-tree')
-    if (!host) return
+    if (!host || !nodes) return
 
-    const filtered = filterTree(treeData, filter, query)
-    host.innerHTML = ''
+    const filtered = filterTree(nodes, filter, query)
+    const fragment = document.createDocumentFragment()
 
     if (filtered.length === 0) {
-        renderEmpty(host, treeData.length > 0)
-        return
+        renderEmpty(fragment, nodes.length > 0)
+    } else {
+        if (query.trim()) {
+            ensureAncestorsExpanded(filtered)
+        }
+        for (const node of filtered) {
+            renderNode(node, 0, fragment)
+        }
     }
-    if (query.trim()) {
-        ensureAncestorsExpanded(filtered)
-    }
-    for (const node of filtered) {
-        renderNode(node, 0, host)
-    }
+    host.textContent = ''
+    host.appendChild(fragment)
 }
 
 function expandAll(): void {
-    const walk = (nodes: TreeNode[]): void => {
-        for (const n of nodes) {
-            if (n.nodeType === 'dir') {
-                expand.add(n.path)
-                walk(n.children || [])
-            }
-        }
-    }
-    walk(treeData)
+    ensureAncestorsExpanded(treeData ?? [])
     saveExpand(expand)
     renderTree()
 }
@@ -244,23 +234,49 @@ function collapseAll(): void {
 }
 
 async function loadTree(opts: { refresh?: boolean } = {}): Promise<void> {
-    const qs = opts.refresh ? '?refresh=1' : ''
-    const res = await fetch(`/api/home-tree${qs}`, { cache: opts.refresh ? 'no-store' : 'default' })
-    const json = (await res.json()) as {
-        code: number
-        message?: string
-        data?: HomeTreeResponse
+    const host = el('#doc-tree')
+    if (!host) return
+
+    const sequence = ++loadSequence
+    try {
+        const qs = opts.refresh ? '?refresh=1' : ''
+        const res = await fetch(`/api/home-tree${qs}`, { cache: opts.refresh ? 'no-store' : 'default' })
+        if (!res.ok) throw new Error(`Home tree request failed (HTTP ${res.status})`)
+
+        const json = (await res.json()) as {
+            code: number
+            message?: string
+            data?: HomeTreeResponse
+        }
+        if (json.code !== 0 || !Array.isArray(json.data?.tree)) {
+            throw new Error(json.message || 'Invalid home tree response')
+        }
+        if (sequence !== loadSequence) return
+
+        renderTree(json.data.tree)
+        treeData = json.data.tree
+        const counts = json.data.counts ?? { article: 0, book: 0 }
+        const countsEl = el('#home-counts')
+        if (countsEl) {
+            countsEl.textContent = `${getI18n('homeArticles')} ${counts.article} · ${getI18n('homeBooks')} ${counts.book}`
+        }
+    } catch (error) {
+        if (sequence !== loadSequence) return
+        console.error('Failed to load home tree', error)
+        if (treeData) {
+            showToast(getI18n('homeError'))
+            return
+        }
+
+        host.innerHTML = `<div class="doc-tree-empty"><div class="doc-tree-empty-title" role="alert">${getI18n('homeError')}</div>
+          <button type="button" class="welcome-button" id="home-retry">${getI18n('homeRetry')}</button>
+          <a class="welcome-button" href="/?view=basic">${getI18n('homeBasicList')}</a></div>`
+        const retry = host.querySelector<HTMLButtonElement>('#home-retry')
+        retry?.addEventListener('click', () => {
+            retry.disabled = true
+            void loadTree({ refresh: true })
+        })
     }
-    if (json.code !== 0 || !json.data) {
-        throw new Error(json.message || 'Failed to load tree')
-    }
-    treeData = json.data.tree || []
-    counts = json.data.counts || { article: 0, book: 0 }
-    const countsEl = el('#home-counts')
-    if (countsEl) {
-        countsEl.textContent = `${getI18n('homeArticles')} ${counts.article} · ${getI18n('homeBooks')} ${counts.book}`
-    }
-    renderTree()
 }
 
 let toolbarBound = false
@@ -268,8 +284,6 @@ let toolbarBound = false
 export async function initHomeTree(): Promise<void> {
     const host = el('#doc-tree')
     if (!host) return
-
-    rerender = () => void loadTree({ refresh: true })
 
     if (!toolbarBound) {
         toolbarBound = true
@@ -321,7 +335,7 @@ export async function initHomeTree(): Promise<void> {
                 const path = moreBtn.getAttribute('data-more')
                 if (!path) return
                 const row = moreBtn.closest('.doc-tree-row') as HTMLElement | null
-                const node = findNode(treeData, path)
+                const node = findNode(treeData ?? [], path)
                 if (!node) return
                 showDocActionsMenu(
                     moreBtn,
@@ -349,17 +363,8 @@ export async function initHomeTree(): Promise<void> {
         })
     }
 
-    try {
-        // Prefer the server-side cache for first paint; mutations refresh explicitly.
-        await loadTree()
-    } catch (err) {
-        host.innerHTML = `<div class="doc-tree-empty"><div class="doc-tree-empty-title">${getI18n('homeError')}</div>
-          <button type="button" class="welcome-button" id="home-retry">${getI18n('homeRetry')}</button></div>`
-        el('#home-retry')?.addEventListener('click', () => {
-            void initHomeTree()
-        })
-        errHandle(err)
-    }
+    // Prefer the server-side cache for first paint; mutations refresh explicitly.
+    await loadTree()
 }
 
 export function refreshHomeTree(): void {
