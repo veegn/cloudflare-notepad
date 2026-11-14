@@ -1574,6 +1574,10 @@ textarea {
 }
 
 @media (max-width: 760px) {
+    body[data-is-reading="true"] .statusbar {
+        display: none;
+    }
+
     .statusbar {
         gap: 2px 8px;
         padding: 2px 8px;

@@ -150,6 +150,7 @@ pub async fn home(req: Request, ctx: RouteContext<()>) -> Result<Response> {
     let mut context = base_context(lang, "Cloud Notepad", &i18n_map);
     context.insert("is_home", &true);
     context.insert("is_edit", &false);
+    context.insert("is_reading", &false);
     context.insert("content", &record.content);
     context.insert("metadata", &record.metadata);
     context.insert("doc_type", "article");
@@ -265,6 +266,7 @@ pub async fn view_note(req: Request, ctx: RouteContext<()>) -> Result<Response> 
     let mut context = base_context(lang, &display_title, &i18n_map);
     context.insert("is_home", &false);
     context.insert("is_edit", &false);
+    context.insert("is_reading", &true);
     context.insert("content", &record.content);
     context.insert("metadata", &record.metadata);
     context.insert("doc_type", record.metadata.doc_type.as_str());
@@ -325,6 +327,7 @@ pub async fn edit_note(req: Request, ctx: RouteContext<()>) -> Result<Response> 
     let mut context = base_context(lang, &display_title, &i18n_map);
     context.insert("is_home", &false);
     context.insert("is_edit", &true);
+    context.insert("is_reading", &false);
     context.insert("content", &record.content);
     context.insert("metadata", &record.metadata);
     context.insert("doc_type", record.metadata.doc_type.as_str());
@@ -348,6 +351,7 @@ pub async fn not_found(req: Request, _ctx: RouteContext<()>) -> Result<Response>
     let mut context = base_context(lang, "404", &i18n_map);
     context.insert("is_home", &false);
     context.insert("is_edit", &false);
+    context.insert("is_reading", &false);
     context.insert("content", &"");
     context.insert("metadata", &NoteMetadata::default());
     context.insert("doc_type", "article");
@@ -389,6 +393,7 @@ fn render_need_passwd(
     let mut context = base_context(lang, title, &i18n_map);
     context.insert("is_home", &false);
     context.insert("is_edit", &false);
+    context.insert("is_reading", &false);
     context.insert("content", &"");
     context.insert("metadata", &NoteMetadata::default());
     context.insert("doc_type", "article");

@@ -15,7 +15,8 @@
   <link href="/css/app.css" rel="stylesheet" media="screen" />
 </head>
 
-<body data-is-home="{% if is_home %}true{% else %}false{% endif %}">
+<body data-is-home="{% if is_home %}true{% else %}false{% endif %}"
+      data-is-reading="{% if is_reading %}true{% else %}false{% endif %}">
   <div class="app-shell">
     {# ── Workbench ── #}
     <main class="workbench">
