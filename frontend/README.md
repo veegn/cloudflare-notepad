@@ -23,6 +23,7 @@ frontend/
     modePicker.ts        # editor format selector and mode updates
     createDoc.ts         # article|book create dialog
     repair.ts            # metadata repair API client
+    readingControls.ts   # mobile reading-mode status bar toggle
 ```
 
 Import rule: same-folder modules use `./x`; `core`/`editor`/`features` cross-import via `../core/...` etc.

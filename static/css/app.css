@@ -1574,7 +1574,9 @@ textarea {
 }
 
 @media (max-width: 760px) {
-    body[data-is-reading="true"] .statusbar {
+    body[data-is-reading="true"]
+    .app-shell.reading-controls-auto-hide:not(.reading-controls-visible)
+    .statusbar {
         display: none;
     }
 

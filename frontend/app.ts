@@ -9,6 +9,7 @@ import type { UIRefs } from './core/types'
 import { initHomeTree } from './features/homeTree'
 import { initDocSidebar } from './features/bookSidebar'
 import { initModePicker } from './features/modePicker'
+import { initReadingControls } from './features/readingControls'
 import dayjs from 'dayjs'
 import relativeTime from 'dayjs/plugin/relativeTime'
 
@@ -78,6 +79,7 @@ export async function initApp(): Promise<void> {
     }
 
     initModePicker(UI)
+    initReadingControls()
     Theme.init()
     dayjs.extend(relativeTime)
 
