@@ -11,7 +11,10 @@ use super::util::clean_path;
 
 // ── POST /api/docs ───────────────────────────────────────────────────
 
-pub async fn create_doc(mut req: Request, ctx: RouteContext<()>) -> Result<Response> {
+pub async fn create_doc(
+    mut req: Request,
+    ctx: RouteContext<crate::RequestState>,
+) -> Result<Response> {
     let body: CreateDocRequest = match req.json().await {
         Ok(b) => b,
         Err(_) => return err_json(40005, "Invalid JSON", 400),
@@ -61,7 +64,16 @@ pub async fn create_doc(mut req: Request, ctx: RouteContext<()>) -> Result<Respo
     }
 
     let bucket = ctx.env.bucket("NOTES")?;
-    match note::create_doc(&bucket, &path, doc_type, body.title, body.summary).await {
+    match note::create_doc(
+        &bucket,
+        &ctx.data.origin,
+        &path,
+        doc_type,
+        body.title,
+        body.summary,
+    )
+    .await
+    {
         Ok(record) => {
             let edit_url = format!("/edit/{}", urlencoding::encode(&record.path));
             let view_url = format!("/note/{}", urlencoding::encode(&record.path));
@@ -105,54 +117,39 @@ fn validate_doc_path(path: &str) -> std::result::Result<(), String> {
 
 // ── GET /api/books ───────────────────────────────────────────────────
 
-pub async fn list_books(_req: Request, ctx: RouteContext<()>) -> Result<Response> {
+pub async fn list_books(_req: Request, ctx: RouteContext<crate::RequestState>) -> Result<Response> {
     let bucket = ctx.env.bucket("NOTES")?;
-    let books = note::list_doc_metas(
-        &bucket,
-        &note::ListOptions {
-            doc_type: Some(DocType::Book),
-            exclude_pages: false,
-            limit: 200,
-            include_body: false,
-            ..Default::default()
-        },
-    )
-    .await?;
-
-    let counts = note::book_page_counts(&bucket).await.unwrap_or_default();
-
-    let mut items: Vec<_> = Vec::with_capacity(books.len());
-    for (path, metadata) in &books {
-        // list() custom_metadata may be empty on some runtimes — pull real title.
-        let mut title = metadata.title.clone();
-        if title
-            .as_deref()
-            .map(|t| t.trim().is_empty() || t == path.as_str())
-            .unwrap_or(true)
-        {
-            if let Ok(record) = note::query_note(&bucket, path).await {
-                title = record
-                    .metadata
-                    .title
-                    .clone()
-                    .filter(|t| !t.trim().is_empty())
-                    .or_else(|| crate::models::note::first_markdown_h1(&record.content));
-            }
-        }
-        let title = title.unwrap_or_else(|| crate::models::note::path_display_name(path));
-        items.push(serde_json::json!({
-            "path": path,
-            "docType": metadata.doc_type,
-            "title": title,
-            "excerpt": Option::<String>::None,
-            "updateAt": metadata.update_at,
-            "mode": metadata.mode,
-            "protected": metadata.pw.is_some(),
-            "shared": metadata.share,
-            "hasExcerpt": false,
-            "pageCount": counts.get(path.as_str()).copied().unwrap_or(0),
-        }));
-    }
+    let index = note::index_bucket(&bucket).await?;
+    let counts = index.page_counts.clone();
+    let mut books: Vec<_> = note::visible_docs_from_index(index)
+        .into_iter()
+        .filter(|record| record.metadata.doc_type == DocType::Book)
+        .collect();
+    books.sort_by(|a, b| {
+        b.metadata
+            .update_at
+            .cmp(&a.metadata.update_at)
+            .then_with(|| a.path.cmp(&b.path))
+    });
+    let items: Vec<_> = books
+        .into_iter()
+        .take(200)
+        .map(|record| {
+            let item = crate::models::note::DocListItem::from_record(&record, false);
+            serde_json::json!({
+                "path": item.path,
+                "docType": item.doc_type,
+                "title": item.title,
+                "excerpt": item.excerpt,
+                "updateAt": item.update_at,
+                "mode": item.mode,
+                "protected": item.protected,
+                "shared": item.shared,
+                "hasExcerpt": item.has_excerpt,
+                "pageCount": counts.get(&record.path).copied().unwrap_or(0),
+            })
+        })
+        .collect();
 
     ok_json(serde_json::json!({
         "total": items.len(),
@@ -162,28 +159,30 @@ pub async fn list_books(_req: Request, ctx: RouteContext<()>) -> Result<Response
 
 // ── GET /api/home-tree ───────────────────────────────────────────────
 
-pub async fn home_tree(req: Request, ctx: RouteContext<()>) -> Result<Response> {
+pub async fn home_tree(req: Request, ctx: RouteContext<crate::RequestState>) -> Result<Response> {
     let bucket = ctx.env.bucket("NOTES")?;
     let url = req.url()?;
     let skip_cache = url
         .query_pairs()
         .any(|(k, v)| (k == "refresh" || k == "nocache") && v != "0" && v != "false");
 
-    ok_json(load_home_tree_payload(&bucket, skip_cache).await?)
+    ok_json(load_home_tree_payload(&bucket, &ctx.data, skip_cache).await?)
 }
 
 pub(crate) async fn load_home_tree_payload(
     bucket: &Bucket,
+    state: &crate::RequestState,
     skip_cache: bool,
 ) -> Result<serde_json::Value> {
-    if !skip_cache {
-        if let Some(cached) = note::read_json_cache(bucket, note::HOME_TREE_CACHE_KEY).await {
-            return Ok(cached);
-        }
+    let key = note::HOME_TREE_CACHE_KEY;
+    let mut read =
+        note::read_json_cache(&state.context, bucket, &state.origin, key, skip_cache).await;
+    if let Some(payload) = read.payload.take() {
+        return Ok(payload);
     }
-
+    let etag = note::reserve_cache_fill(bucket, key, read).await;
     let payload = build_home_tree_payload(bucket).await?;
-    note::write_json_cache(bucket, note::HOME_TREE_CACHE_KEY, &payload).await;
+    note::schedule_cache_fill(&state.context, bucket, &state.origin, key, etag, &payload);
     Ok(payload)
 }
 

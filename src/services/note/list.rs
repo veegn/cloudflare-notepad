@@ -1,16 +1,9 @@
-//! List/filter notes from R2.
-//!
-//! Performance notes (production):
-//! - R2 `get(key)` transfers the whole object; calling it for every key
-//!   makes TOC/home-tree unusable on large buckets (Worker 1101/500).
-//! - **Never** call `custom_metadata()` on list() objects — some Workers/R2
-//!   combos throw a JS exception (HTTP 1101) instead of returning Err.
-//! - Full GET custom_metadata is safe; use it only where titles are required.
+//! List and filter notes without reading document bodies unless requested.
 
 use std::collections::{HashMap, HashSet};
 
-use futures::future::join_all;
-use worker::{Bucket, ListOptionsBuilder, Result};
+use futures::{stream, StreamExt, TryStreamExt};
+use worker::{Bucket, Include, Object, Result};
 
 use crate::models::note::{is_system_key, path_display_name, DocType, NoteMetadata, NoteRecord};
 
@@ -57,31 +50,53 @@ fn matches_filters(metadata: &NoteMetadata, opts: &ListOptions) -> bool {
     true
 }
 
-fn build_list_request<'a>(bucket: &'a Bucket, prefix: Option<&str>) -> ListOptionsBuilder<'a> {
-    let mut list = bucket.list().limit(1000);
-    if let Some(p) = prefix {
-        if !p.is_empty() {
-            list = list.prefix(p);
+const LIST_PAGE_SIZE: u32 = 1000;
+const R2_CONCURRENCY: usize = 6;
+
+/// Do not assume a full page: R2 may truncate before the requested limit.
+async fn list_all_objects(
+    bucket: &Bucket,
+    prefix: Option<&str>,
+    include_metadata: bool,
+) -> Result<Vec<Object>> {
+    let mut all = Vec::new();
+    let mut cursor = None;
+    let mut seen = HashSet::new();
+    loop {
+        let mut request = bucket.list().limit(LIST_PAGE_SIZE);
+        if include_metadata {
+            request = request.include(vec![Include::CustomMetadata]);
         }
+        if let Some(prefix) = prefix.filter(|p| !p.is_empty()) {
+            request = request.prefix(prefix);
+        }
+        if let Some(cursor) = cursor.take() {
+            request = request.cursor(cursor);
+        }
+        let page = request.execute().await?;
+        all.extend(page.objects());
+        if !page.truncated() {
+            return Ok(all);
+        }
+        cursor = Some(
+            page.cursor()
+                .filter(|next| !next.is_empty() && seen.insert(next.clone()))
+                .ok_or_else(|| {
+                    worker::Error::RustError(
+                        "R2 listing returned an invalid continuation cursor".into(),
+                    )
+                })?,
+        );
     }
-    list
 }
 
-/// Collect keys from one R2 list (no per-key GET).
 pub async fn list_keys(bucket: &Bucket, prefix: Option<&str>) -> Result<Vec<String>> {
-    let mut keys = Vec::new();
-    let objects = build_list_request(bucket, prefix)
-        .execute()
+    Ok(list_all_objects(bucket, prefix, false)
         .await?
-        .objects();
-    for obj in objects {
-        let key = obj.key();
-        if is_system_key(&key) {
-            continue;
-        }
-        keys.push(key);
-    }
-    Ok(keys)
+        .iter()
+        .map(Object::key)
+        .filter(|key| !is_system_key(key))
+        .collect())
 }
 
 pub async fn list_keys_with_prefix(bucket: &Bucket, prefix: &str) -> Result<Vec<String>> {
@@ -93,16 +108,17 @@ pub async fn list_book_page_keys(bucket: &Bucket, book_path: &str) -> Result<Vec
     list_keys_with_prefix(bucket, &prefix).await
 }
 
-/// Metadata-only GET (still downloads object from R2 — use sparingly).
-/// Full-object `custom_metadata()` is safe; list-object access is not.
-async fn meta_get(bucket: &Bucket, key: &str) -> NoteMetadata {
-    match bucket.get(key).execute().await {
-        Ok(Some(object)) => {
-            let custom = object.custom_metadata().ok().unwrap_or_default();
-            meta::from_custom(&custom)
-        }
-        _ => NoteMetadata::default(),
-    }
+/// Metadata-only HEAD. LIST objects are not used for custom metadata.
+async fn meta_get(bucket: &Bucket, key: &str) -> Result<Option<NoteMetadata>> {
+    bucket
+        .head(key)
+        .await?
+        .map(|object| {
+            object
+                .custom_metadata()
+                .map(|custom| meta::from_custom(&custom))
+        })
+        .transpose()
 }
 
 fn merge_meta(base: &mut NoteMetadata, m: &NoteMetadata) {
@@ -140,7 +156,7 @@ pub struct FastDoc {
     pub is_dir: bool,
 }
 
-/// One-pass bucket index: docs + per-book page counts from a single list().
+/// One-pass bucket index: docs + per-book page counts from a paginated listing.
 pub struct BucketIndex {
     pub docs: Vec<FastDoc>,
     pub page_counts: HashMap<String, u32>,
@@ -150,10 +166,13 @@ fn page_counts_from_docs(docs: &[FastDoc]) -> HashMap<String, u32> {
     let mut counts: HashMap<String, u32> = HashMap::new();
     for d in docs {
         if d.is_page {
-            if let Some(root) = d.path.split('/').next() {
-                if !root.is_empty() {
-                    *counts.entry(root.to_string()).or_insert(0) += 1;
-                }
+            if let Some(book) = d
+                .metadata
+                .book_ref
+                .as_deref()
+                .filter(|path| !path.is_empty())
+            {
+                *counts.entry(book.to_string()).or_insert(0) += 1;
             }
         }
     }
@@ -169,10 +188,41 @@ fn directory_prefixes(keys: &[String]) -> HashSet<&str> {
 async fn fetch_index_metadata<'a>(
     bucket: &Bucket,
     keys: impl IntoIterator<Item = &'a String>,
-) -> HashMap<String, NoteMetadata> {
-    let keys: Vec<_> = keys.into_iter().collect();
-    let metadata = join_all(keys.iter().map(|key| meta_get(bucket, key))).await;
-    keys.into_iter().cloned().zip(metadata).collect()
+) -> Result<HashMap<String, NoteMetadata>> {
+    stream::iter(
+        keys.into_iter().map(|key| async move {
+            Ok(meta_get(bucket, key).await?.map(|meta| (key.clone(), meta)))
+        }),
+    )
+    .buffer_unordered(R2_CONCURRENCY)
+    .try_filter_map(|entry| async { Ok(entry) })
+    .try_collect()
+    .await
+}
+
+/// On the supported compatibility date, explicitly requesting metadata
+/// keeps large indexes within the per-invocation R2 subrequest budget.
+pub(crate) async fn list_metadata(
+    bucket: &Bucket,
+    prefix: Option<&str>,
+) -> Result<HashMap<String, NoteMetadata>> {
+    let objects = list_all_objects(bucket, prefix, true).await?;
+    let mut metadata = HashMap::new();
+    let mut fallback = Vec::new();
+    for object in objects {
+        let key = object.key();
+        if is_system_key(&key) {
+            continue;
+        }
+        match object.custom_metadata() {
+            Ok(custom) => {
+                metadata.insert(key, meta::from_custom(&custom));
+            }
+            Err(_) => fallback.push(key),
+        }
+    }
+    metadata.extend(fetch_index_metadata(bucket, &fallback).await?);
+    Ok(metadata)
 }
 
 fn top_level_doc(key: &str, stored: Option<&NoteMetadata>) -> FastDoc {
@@ -186,8 +236,8 @@ fn top_level_doc(key: &str, stored: Option<&NoteMetadata>) -> FastDoc {
     FastDoc {
         path: key.to_string(),
         is_book: metadata.doc_type == DocType::Book,
+        is_page: metadata.doc_type == DocType::Page,
         metadata,
-        is_page: false,
         is_dir: false,
     }
 }
@@ -198,7 +248,9 @@ fn nested_doc(
     parent: Option<&NoteMetadata>,
     stored: Option<&NoteMetadata>,
 ) -> FastDoc {
-    let is_page = parent.is_some_and(|metadata| metadata.doc_type == DocType::Book);
+    let doc_type = stored.map_or(DocType::Article, |metadata| metadata.doc_type);
+    let parent_is_book = parent.is_some_and(|metadata| metadata.doc_type == DocType::Book);
+    let is_page = doc_type == DocType::Page || (doc_type == DocType::Article && parent_is_book);
     let mut metadata = NoteMetadata {
         doc_type: if is_page {
             DocType::Page
@@ -209,44 +261,32 @@ fn nested_doc(
         title: Some(path_display_name(key)),
         ..Default::default()
     };
-    if !is_page {
-        if let Some(stored) = stored {
+    if let Some(stored) = stored {
+        if let Some(book_ref) = &stored.book_ref {
+            metadata.book_ref = Some(book_ref.clone());
+        }
+        if !is_page {
             merge_meta(&mut metadata, stored);
         }
     }
     FastDoc {
         path: key.to_string(),
+        is_book: metadata.doc_type == DocType::Book,
         metadata,
-        is_book: false,
         is_page,
         is_dir: false,
     }
 }
 
-/// Build the homepage index with at most one R2 GET per document, run concurrently.
-/// Never reads list-object custom_metadata (throws 1101 on production R2).
+/// Build the homepage index from a metadata-inclusive paginated listing.
 pub async fn index_bucket(bucket: &Bucket) -> Result<BucketIndex> {
-    let keys = list_keys(bucket, None).await?;
+    let resolved = list_metadata(bucket, None).await?;
+    let mut keys: Vec<_> = resolved.keys().cloned().collect();
+    keys.sort_unstable();
     let key_set: HashSet<_> = keys.iter().map(String::as_str).collect();
     let prefixes = directory_prefixes(&keys);
     let mut top_level: Vec<_> = keys.iter().filter(|key| !key.contains('/')).collect();
     top_level.sort_by_key(|key| !prefixes.contains(key.as_str()));
-    let parents = fetch_index_metadata(bucket, top_level.iter().copied()).await;
-
-    let nested: Vec<_> = keys
-        .iter()
-        .filter_map(|key| key.split_once('/').map(|(root, _)| (key, root)))
-        .collect();
-    let articles = fetch_index_metadata(
-        bucket,
-        nested.iter().filter_map(|&(key, root)| {
-            let parent_is_book = parents
-                .get(root)
-                .is_some_and(|m| m.doc_type == DocType::Book);
-            (!parent_is_book).then_some(key)
-        }),
-    )
-    .await;
 
     let mut docs: Vec<_> = prefixes
         .difference(&key_set)
@@ -261,54 +301,27 @@ pub async fn index_bucket(bucket: &Bucket) -> Result<BucketIndex> {
     docs.extend(
         top_level
             .into_iter()
-            .map(|key| top_level_doc(key, parents.get(key))),
+            .map(|key| top_level_doc(key, resolved.get(key))),
     );
-    docs.extend(
-        nested
-            .into_iter()
-            .map(|(key, root)| nested_doc(key, root, parents.get(root), articles.get(key))),
-    );
+    docs.extend(keys.iter().filter_map(|key| {
+        let (root, _) = key.split_once('/')?;
+        Some(nested_doc(key, root, resolved.get(root), resolved.get(key)))
+    }));
 
     let page_counts = page_counts_from_docs(&docs);
     Ok(BucketIndex { docs, page_counts })
 }
 
-/// Metadata list used by APIs that can afford list+optional light GETs.
-/// Path heuristics only for the list pass — list custom_metadata is unsafe.
+/// Resolve metadata before filtering, including legacy objects with default metadata.
 pub async fn list_doc_metas(
     bucket: &Bucket,
     opts: &ListOptions,
 ) -> Result<Vec<(String, NoteMetadata)>> {
-    let mut out = Vec::new();
-    let objects = build_list_request(bucket, opts.prefix.as_deref())
-        .execute()
-        .await?
-        .objects();
-
-    for obj in objects {
-        let key = obj.key();
-        if is_system_key(&key) {
-            continue;
-        }
-        // Never call list-object custom_metadata (throws 1101 on production R2).
-        let mut metadata = NoteMetadata::default();
-        if key.contains('/') {
-            metadata.doc_type = DocType::Page;
-            let root = key.split('/').next().unwrap_or("").to_string();
-            if !root.is_empty() {
-                metadata.book_ref = Some(root);
-            }
-        } else {
-            metadata.doc_type = DocType::Article;
-        }
-        metadata.title = Some(path_display_name(&key));
-
-        if !matches_filters(&metadata, opts) {
-            continue;
-        }
-        out.push((key, metadata));
-    }
-
+    let resolved = list_metadata(bucket, opts.prefix.as_deref()).await?;
+    let mut out: Vec<_> = resolved
+        .into_iter()
+        .filter(|(_, metadata)| matches_filters(metadata, opts))
+        .collect();
     out.sort_by(|a, b| {
         b.1.update_at
             .unwrap_or(0)
@@ -319,54 +332,35 @@ pub async fn list_doc_metas(
     Ok(out)
 }
 
-/// Full records with bodies — only for APIs that truly need content (search/adopt).
+/// Full records with bodies, keeping the metadata sort order.
 pub async fn list_all_docs(bucket: &Bucket, opts: &ListOptions) -> Result<Vec<NoteRecord>> {
     let metas = list_doc_metas(bucket, opts).await?;
-    let mut out = Vec::with_capacity(metas.len());
-    for (path, mut metadata) in metas {
-        let content = if opts.include_body {
-            match bucket.get(&path).execute().await? {
-                Some(object) => {
-                    let custom = object.custom_metadata().ok().unwrap_or_default();
-                    if !custom.is_empty() {
-                        let real = meta::from_custom(&custom);
-                        if real
-                            .title
-                            .as_deref()
-                            .map(|t| !t.trim().is_empty())
-                            .unwrap_or(false)
-                        {
-                            metadata.title = real.title.clone();
-                        }
-                        metadata.doc_type = real.doc_type;
-                        metadata.update_at = real.update_at;
-                        metadata.pw = real.pw.clone();
-                        metadata.share = real.share;
-                        metadata.mode = real.mode;
-                        metadata.book_ref = real.book_ref.clone();
-                    }
-                    match object.body() {
-                        Some(b) => b.text().await.unwrap_or_default(),
-                        None => String::new(),
-                    }
-                }
-                None => String::new(),
-            }
-        } else {
-            String::new()
-        };
-        out.push(NoteRecord {
-            path,
-            content,
-            metadata,
-        });
+    if !opts.include_body {
+        return Ok(metas
+            .into_iter()
+            .map(|(path, metadata)| NoteRecord {
+                path,
+                metadata,
+                content: String::new(),
+            })
+            .collect());
     }
-    Ok(out)
-}
-
-/// Count pages per book. Prefers the one-pass index; falls back to keys only.
-pub async fn book_page_counts(bucket: &Bucket) -> Result<HashMap<String, u32>> {
-    Ok(index_bucket(bucket).await?.page_counts)
+    let mut records: Vec<_> = stream::iter(metas.into_iter().enumerate().map(
+        |(index, (path, _))| async move {
+            let record = super::store::get_note(bucket, &path).await?;
+            Ok::<_, worker::Error>(
+                record
+                    .filter(|r| matches_filters(&r.metadata, opts))
+                    .map(|record| (index, record)),
+            )
+        },
+    ))
+    .buffer_unordered(R2_CONCURRENCY)
+    .try_filter_map(|entry| async { Ok(entry) })
+    .try_collect()
+    .await?;
+    records.sort_unstable_by_key(|(index, _)| *index);
+    Ok(records.into_iter().map(|(_, record)| record).collect())
 }
 
 /// Records visible on homepage tree (articles + books; pages and virtual dirs excluded).

@@ -16,24 +16,20 @@ async fn book_page_existence(
     bucket: &worker::Bucket,
     book_path: &str,
 ) -> Result<std::collections::HashMap<String, crate::models::note::NoteMetadata>> {
-    let keys = note::list_book_page_keys(bucket, book_path).await?;
-    let mut map = std::collections::HashMap::new();
-    for key in keys {
-        map.insert(
-            key,
-            crate::models::note::NoteMetadata {
-                doc_type: DocType::Page,
-                book_ref: Some(book_path.to_string()),
-                ..Default::default()
-            },
-        );
+    let prefix = format!("{}/", book_path.trim_matches('/'));
+    let mut map = note::list_metadata(bucket, Some(&prefix)).await?;
+    for metadata in map.values_mut() {
+        metadata.doc_type = DocType::Page;
+        metadata
+            .book_ref
+            .get_or_insert_with(|| book_path.to_string());
     }
     Ok(map)
 }
 
 // ── GET /api/toc?book= ───────────────────────────────────────────────
 
-pub async fn get_toc(req: Request, ctx: RouteContext<()>) -> Result<Response> {
+pub async fn get_toc(req: Request, ctx: RouteContext<crate::RequestState>) -> Result<Response> {
     let url = req.url()?;
     let Some(book_path) = url
         .query_pairs()
@@ -45,17 +41,33 @@ pub async fn get_toc(req: Request, ctx: RouteContext<()>) -> Result<Response> {
     };
 
     let bucket = ctx.env.bucket("NOTES")?;
-    let url = req.url()?;
     let skip_cache = url
         .query_pairs()
         .any(|(k, v)| (k == "refresh" || k == "nocache") && v != "0" && v != "false");
     let cache_key = note::toc_cache_key(&book_path);
-    if !skip_cache {
-        if let Some(cached) = note::read_json_cache(&bucket, &cache_key).await {
-            return ok_json(cached);
-        }
+    let state = &ctx.data;
+    let mut read = note::read_json_cache(
+        &state.context,
+        &bucket,
+        &state.origin,
+        &cache_key,
+        skip_cache,
+    )
+    .await;
+    if let Some(payload) = read.payload.take() {
+        return ok_json(payload);
     }
-
+    // Validate before creating a reservation for a user-supplied book key.
+    if note::head_note(&bucket, &book_path)
+        .await?
+        .record
+        .metadata
+        .doc_type
+        != DocType::Book
+    {
+        return err_json(ERR_BAD_BOOK, "not a book", 400);
+    }
+    let etag = note::reserve_cache_fill(&bucket, &cache_key, read).await;
     let book = note::query_note(&bucket, &book_path).await?;
     if book.metadata.doc_type != DocType::Book {
         return err_json(ERR_BAD_BOOK, "not a book", 400);
@@ -72,13 +84,23 @@ pub async fn get_toc(req: Request, ctx: RouteContext<()>) -> Result<Response> {
         },
         "items": items,
     });
-    note::write_json_cache(&bucket, &cache_key, &payload).await;
+    note::schedule_cache_fill(
+        &state.context,
+        &bucket,
+        &state.origin,
+        &cache_key,
+        etag,
+        &payload,
+    );
     ok_json(payload)
 }
 
 // ── GET /api/books/{book}/pages ──────────────────────────────────────
 
-pub async fn list_book_pages(_req: Request, ctx: RouteContext<()>) -> Result<Response> {
+pub async fn list_book_pages(
+    _req: Request,
+    ctx: RouteContext<crate::RequestState>,
+) -> Result<Response> {
     let book_path = clean_path(ctx.param("book").unwrap_or(&String::new()));
     let bucket = ctx.env.bucket("NOTES")?;
     let book = note::query_note(&bucket, &book_path).await?;
@@ -114,10 +136,13 @@ pub async fn list_book_pages(_req: Request, ctx: RouteContext<()>) -> Result<Res
 
 // ── POST /api/books/{book}/pages ─────────────────────────────────────
 
-pub async fn create_book_page(mut req: Request, ctx: RouteContext<()>) -> Result<Response> {
+pub async fn create_book_page(
+    mut req: Request,
+    ctx: RouteContext<crate::RequestState>,
+) -> Result<Response> {
     let book_path = clean_path(ctx.param("book").unwrap_or(&String::new()));
     let bucket = ctx.env.bucket("NOTES")?;
-    let book = note::query_note(&bucket, &book_path).await?;
+    let book = note::head_note(&bucket, &book_path).await?.record;
 
     let secret = auth::required_jwt_secret(&ctx.env)?;
     let index_pw = get_index_password(&ctx.env);
@@ -149,7 +174,7 @@ pub async fn create_book_page(mut req: Request, ctx: RouteContext<()>) -> Result
         return err_json(40007, &e, 400);
     }
 
-    match note::create_book_page(&bucket, &book_path, &page_path, &title).await {
+    match note::create_book_page(&bucket, &ctx.data.origin, &book_path, &page_path, &title).await {
         Ok(page) => ok_json(serde_json::json!({
             "path": page.path,
             "title": page.metadata.title.unwrap_or_else(|| path_display_name(&page.path)),
@@ -162,6 +187,7 @@ pub async fn create_book_page(mut req: Request, ctx: RouteContext<()>) -> Result
         Err(worker::Error::RustError(msg)) if msg.contains("already exists") => {
             err_json(40900, "path already exists", 409)
         }
+        Err(error) if note::is_write_conflict(&error) => err_json(40901, note::WRITE_CONFLICT, 409),
         Err(worker::Error::RustError(msg)) => err_json(40009, &msg, 400),
         Err(e) => Err(e),
     }
@@ -169,14 +195,17 @@ pub async fn create_book_page(mut req: Request, ctx: RouteContext<()>) -> Result
 
 // ── POST /api/books/{book}/adopt ─────────────────────────────────────
 /// Adopt a historical path prefix as a book; stamp child keys as pages.
-pub async fn adopt_book(req: Request, ctx: RouteContext<()>) -> Result<Response> {
+pub async fn adopt_book(req: Request, ctx: RouteContext<crate::RequestState>) -> Result<Response> {
     let book_path = clean_path(ctx.param("book").unwrap_or(&String::new()));
     if book_path.is_empty() {
         return err_json(40012, "book path is required", 400);
     }
 
+    if crate::models::note::is_system_key(&book_path) {
+        return err_json(40007, "Reserved storage path", 400);
+    }
     let bucket = ctx.env.bucket("NOTES")?;
-    let existing = note::query_note(&bucket, &book_path).await?;
+    let existing = note::head_note(&bucket, &book_path).await?.record;
 
     let secret = auth::required_jwt_secret(&ctx.env)?;
     let index_pw = get_index_password(&ctx.env);
@@ -196,13 +225,14 @@ pub async fn adopt_book(req: Request, ctx: RouteContext<()>) -> Result<Response>
         })
         .filter(|t| !t.trim().is_empty());
 
-    match note::adopt_book(&bucket, &book_path, title.as_deref()).await {
+    match note::adopt_book(&bucket, &ctx.data.origin, &book_path, title.as_deref()).await {
         Ok(result) => ok_json(serde_json::json!({
             "bookPath": result.book_path,
             "title": result.title,
             "pagesAdopted": result.pages_adopted,
             "pagesTotal": result.pages_total,
         })),
+        Err(error) if note::is_write_conflict(&error) => err_json(40901, note::WRITE_CONFLICT, 409),
         Err(worker::Error::RustError(msg)) => err_json(40020, &msg, 400),
         Err(e) => Err(e),
     }
@@ -211,6 +241,9 @@ pub async fn adopt_book(req: Request, ctx: RouteContext<()>) -> Result<Response>
 fn validate_page_path(page_path: &str, book_path: &str) -> std::result::Result<(), String> {
     if page_path == book_path {
         return Err("page path conflicts with book path".into());
+    }
+    if crate::models::note::is_system_key(page_path) {
+        return Err("reserved storage path".into());
     }
     if page_path.contains("..") {
         return Err("path must not contain ..".into());

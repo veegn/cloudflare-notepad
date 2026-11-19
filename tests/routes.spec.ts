@@ -8,6 +8,23 @@ test('create route redirects home to open create dialog', async ({ request }) =>
     expect(response.headers().location).toBe('/')
 })
 
+test('concurrent body and metadata writes preserve independent changes', async ({ request }) => {
+    const path = uniqueNotePath()
+    expect((await saveNote(request, path, 'Original body')).ok()).toBe(true)
+    const url = `/api/notes/${path}`
+    const responses = await Promise.all([
+        request.patch(url, { data: { title: 'New title' } }),
+        request.patch(url, { data: { mode: 'md' } }),
+        saveNote(request, path, '# Updated body'),
+    ])
+    expect(responses.map(response => response.status())).toEqual([200, 200, 200])
+    const note = await (await request.get(url)).json()
+    expect(note.data).toMatchObject({
+        content: '# Updated body',
+        metadata: { title: 'New title', mode: 'md' },
+    })
+})
+
 test('create route with type=article redirects to random edit path', async ({ request }) => {
     const response = await request.get('/new?type=article', { maxRedirects: 0 })
     expect(response.status()).toBe(302)

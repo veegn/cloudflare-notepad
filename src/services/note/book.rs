@@ -8,7 +8,8 @@ use crate::models::note::{
     path_display_name, DocType, NoteMetadata, NoteMode, NoteRecord, TocItem,
 };
 
-use super::store::{get_note, now_unix, put_note_object};
+use super::cache::invalidate_for_paths;
+use super::store::{get_snapshot, is_write_conflict, now_unix, put_note_object, WRITE_CONFLICT};
 
 const TOC_HEADING_ZH: &str = "## \u{76ee}\u{5f55}"; // ## 目录
 const TOC_HEADING_EN: &str = "## TOC";
@@ -17,18 +18,16 @@ const TOC_HEADING_EN_ALT: &str = "## Contents";
 /// Create a page under `book_path` and append a TOC link in the book body.
 pub async fn create_book_page(
     bucket: &Bucket,
+    origin: &str,
     book_path: &str,
     page_path: &str,
     title: &str,
 ) -> Result<NoteRecord> {
-    let Some(book) = get_note(bucket, book_path).await? else {
+    let Some(book) = bucket.head(book_path).await? else {
         return Err(worker::Error::RustError("book not found".into()));
     };
-    if book.metadata.doc_type != DocType::Book {
+    if super::meta::from_custom(&book.custom_metadata()?).doc_type != DocType::Book {
         return Err(worker::Error::RustError("target is not a book".into()));
-    }
-    if get_note(bucket, page_path).await?.is_some() {
-        return Err(worker::Error::RustError("path already exists".into()));
     }
 
     let title = title.trim();
@@ -48,46 +47,88 @@ pub async fn create_book_page(
             ..Default::default()
         },
     };
-    put_note_object(bucket, page_path, &page).await?;
-    append_toc_link(bucket, &book, page_path, title).await?;
-    super::cache::invalidate_for_path(bucket, page_path).await;
-    super::cache::invalidate_for_path(bucket, book_path).await;
+    if let Err(error) = put_note_object(bucket, &page, None).await {
+        return if is_write_conflict(&error) {
+            Err(worker::Error::RustError("path already exists".into()))
+        } else {
+            Err(error)
+        };
+    }
+    let updated = update_book_content(bucket, book_path, |body| {
+        append_toc_link(body, page_path, title)
+    })
+    .await;
+    invalidate_for_paths(bucket, origin, &[page_path, book_path]).await;
+    updated?;
     Ok(page)
 }
 
-/// Delete a page; when `sync_book` is true, remove its TOC link from the parent book.
-pub async fn delete_book_page(bucket: &Bucket, page_path: &str, sync_book: bool) -> Result<()> {
-    let Some(page) = get_note(bucket, page_path).await? else {
-        bucket.delete(page_path).await?;
-        super::cache::invalidate_for_path(bucket, page_path).await;
-        return Ok(());
-    };
+/// Delete a page and remove its TOC link from the parent book.
+pub async fn delete_book_page(
+    bucket: &Bucket,
+    origin: &str,
+    page_path: &str,
+    sync_book: bool,
+) -> Result<()> {
+    let page = super::store::head_note(bucket, page_path).await?;
+    let book_path = page.record.metadata.book_ref.as_deref();
+    if let Some(book_path) = book_path.filter(|_| sync_book) {
+        update_book_content(bucket, book_path, |body| strip_toc_link(body, page_path)).await?;
+    }
+    let deleted = bucket.delete(page_path).await;
+    invalidate_for_paths(bucket, origin, &[page_path, book_path.unwrap_or("")]).await;
+    deleted
+}
 
-    if sync_book {
-        if let Some(book_path) = page.metadata.book_ref.clone() {
-            if let Some(book) = get_note(bucket, &book_path).await? {
-                let new_content = strip_toc_link(&book.content, page_path);
-                if new_content != book.content {
-                    let book_record = NoteRecord {
-                        path: book_path,
-                        content: new_content,
-                        metadata: NoteMetadata {
-                            update_at: Some(now_unix()),
-                            ..book.metadata
-                        },
-                    };
-                    put_note_object(bucket, &book_record.path, &book_record).await?;
-                }
-            }
+async fn update_book_content(
+    bucket: &Bucket,
+    path: &str,
+    edit: impl Fn(&str) -> String,
+) -> Result<()> {
+    for _ in 0..4 {
+        let Some(mut current) = get_snapshot(bucket, path).await? else {
+            return Ok(());
+        };
+        let content = edit(&current.record.content);
+        if content == current.record.content {
+            return Ok(());
+        }
+        current.record.content = content;
+        current.record.metadata.update_at = Some(now_unix());
+        match put_note_object(bucket, &current.record, current.uploaded_at).await {
+            Err(error) if is_write_conflict(&error) => continue,
+            result => return result,
         }
     }
+    Err(worker::Error::RustError(WRITE_CONFLICT.into()))
+}
 
-    bucket.delete(page_path).await?;
-    super::cache::invalidate_for_path(bucket, page_path).await;
-    if let Some(book_path) = page.metadata.book_ref.as_deref() {
-        super::cache::invalidate_for_path(bucket, book_path).await;
-    }
-    Ok(())
+pub(super) async fn rename_toc_link(
+    bucket: &Bucket,
+    book_path: &str,
+    page_path: &str,
+    title: &str,
+) -> Result<()> {
+    let needle = format!("]({page_path})");
+    update_book_content(bucket, book_path, |body| {
+        let mut content = body
+            .lines()
+            .map(|line| {
+                if line.trim_start().starts_with("- [") && line.contains(&needle) {
+                    let indent = &line[..line.len() - line.trim_start().len()];
+                    format!("{indent}- [{title}]({page_path})")
+                } else {
+                    line.to_string()
+                }
+            })
+            .collect::<Vec<_>>()
+            .join("\n");
+        if body.ends_with('\n') {
+            content.push('\n');
+        }
+        content
+    })
+    .await
 }
 
 /// Remove markdown list links that point at `page_path`.
@@ -192,18 +233,13 @@ fn normalize_toc_path(book_path: &str, raw: &str) -> String {
     format!("{book_path}/{raw}")
 }
 
-async fn append_toc_link(
-    bucket: &Bucket,
-    book: &NoteRecord,
-    page_path: &str,
-    title: &str,
-) -> Result<()> {
+fn append_toc_link(body: &str, page_path: &str, title: &str) -> String {
     let link_line = format!("- [{title}]({page_path})");
-    if book.content.contains(&format!("]({page_path})")) {
-        return Ok(());
+    if body.contains(&format!("]({page_path})")) {
+        return body.to_string();
     }
 
-    let mut content = book.content.clone();
+    let mut content = body.to_string();
     if let Some(pos) = find_toc_section_end(&content) {
         content.insert_str(pos, &format!("{link_line}\n"));
     } else {
@@ -213,16 +249,7 @@ async fn append_toc_link(
         content.push_str("\n## TOC\n\n");
         content.push_str(&format!("{link_line}\n"));
     }
-
-    let book_record = NoteRecord {
-        path: book.path.clone(),
-        content,
-        metadata: NoteMetadata {
-            update_at: Some(now_unix()),
-            ..book.metadata.clone()
-        },
-    };
-    put_note_object(bucket, &book_record.path, &book_record).await
+    content
 }
 
 /// Byte offset where a new TOC link should be inserted.
@@ -268,6 +295,7 @@ pub struct AdoptBookResult {
 /// Rebuilds the book TOC markdown from adopted pages (sorted by path).
 pub async fn adopt_book(
     bucket: &Bucket,
+    origin: &str,
     book_path: &str,
     title: Option<&str>,
 ) -> Result<AdoptBookResult> {
@@ -279,22 +307,16 @@ pub async fn adopt_book(
     let prefix = format!("{book_path}/");
     // Only scan keys under this book prefix (not the whole bucket).
     let children_keys = super::list::list_keys_with_prefix(bucket, &prefix).await?;
-    let mut children: Vec<NoteRecord> = Vec::new();
+    let mut children = Vec::new();
     for key in children_keys {
-        if let Some(rec) = get_note(bucket, &key).await? {
+        if let Some(rec) = get_snapshot(bucket, &key).await? {
             children.push(rec);
         }
     }
-    children.sort_by(|a, b| a.path.cmp(&b.path));
+    children.sort_by(|a, b| a.record.path.cmp(&b.record.path));
 
-    let book = get_note(bucket, &book_path)
-        .await?
-        .unwrap_or_else(|| NoteRecord {
-            path: book_path.clone(),
-            content: String::new(),
-            metadata: NoteMetadata::default(),
-        });
-
+    let snapshot = super::store::read_note_for_update(bucket, &book_path).await?;
+    let book = snapshot.record;
     let title = title
         .map(str::trim)
         .filter(|title| !title.is_empty())
@@ -310,7 +332,8 @@ pub async fn adopt_book(
 
     // Stamp each child as a page of this book.
     let mut adopted = 0u32;
-    for child in &children {
+    for snapshot in &children {
+        let child = &snapshot.record;
         let page_title = child.display_title();
         let mode = if child.content.trim_start().starts_with('#') {
             NoteMode::Md
@@ -329,13 +352,20 @@ pub async fn adopt_book(
                 ..child.metadata.clone()
             },
         };
-        put_note_object(bucket, &record.path, &record).await?;
+        if let Err(error) = put_note_object(bucket, &record, snapshot.uploaded_at).await {
+            invalidate_for_paths(bucket, origin, &[&book_path]).await;
+            return Err(error);
+        }
         adopted += 1;
     }
 
     let book_record = NoteRecord {
         path: book_path.clone(),
-        content: render_adopted_book(&book.content, &title, &children),
+        content: render_adopted_book(
+            &book.content,
+            &title,
+            children.iter().map(|child| &child.record),
+        ),
         metadata: NoteMetadata {
             doc_type: DocType::Book,
             title: Some(title.clone()),
@@ -344,8 +374,9 @@ pub async fn adopt_book(
             ..book.metadata
         },
     };
-    put_note_object(bucket, &book_path, &book_record).await?;
-    super::cache::invalidate_for_path(bucket, &book_path).await;
+    let saved = put_note_object(bucket, &book_record, snapshot.uploaded_at).await;
+    invalidate_for_paths(bucket, origin, &[&book_path]).await;
+    saved?;
 
     Ok(AdoptBookResult {
         book_path,
@@ -355,7 +386,12 @@ pub async fn adopt_book(
     })
 }
 
-fn render_adopted_book(previous_body: &str, title: &str, children: &[NoteRecord]) -> String {
+fn render_adopted_book<'a>(
+    previous_body: &str,
+    title: &str,
+    children: impl Iterator<Item = &'a NoteRecord>,
+) -> String {
+    let mut children = children.peekable();
     // Rebuild book body: keep non-TOC preamble if any, then a clean TOC.
     let preamble = extract_preamble(previous_body, title);
     let mut content = format!("# {title}\n\n");
@@ -366,7 +402,7 @@ fn render_adopted_book(previous_body: &str, title: &str, children: &[NoteRecord]
         content.push_str("> Historical notes adopted as a book.\n\n");
     }
     content.push_str("## TOC\n\n");
-    if children.is_empty() {
+    if children.peek().is_none() {
         content.push_str("<!-- No pages under this prefix yet. -->\n");
     } else {
         for child in children {

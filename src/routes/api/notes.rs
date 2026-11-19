@@ -4,7 +4,7 @@ use worker::*;
 
 use crate::error::*;
 use crate::models::api::*;
-use crate::models::note::{is_system_key, DocListItem, DocType};
+use crate::models::note::{is_index_path, is_system_key, DocListItem, DocType};
 use crate::routes::{query_password, wants_raw};
 use crate::services::{auth, note};
 
@@ -12,7 +12,7 @@ use super::util::{clean_path, cookie_header, get_index_password, get_salt, is_ed
 
 // ── GET /api/notes/*path ─────────────────────────────────────────────
 
-pub async fn get_note(req: Request, ctx: RouteContext<()>) -> Result<Response> {
+pub async fn get_note(req: Request, ctx: RouteContext<crate::RequestState>) -> Result<Response> {
     let path = clean_path(ctx.param("path").unwrap_or(&String::new()));
     let bucket = ctx.env.bucket("NOTES")?;
     let record = note::query_note(&bucket, &path).await?;
@@ -127,7 +127,7 @@ fn item_matches_query(item: &DocListItem, needle: &str) -> bool {
     hay.contains(needle)
 }
 
-pub async fn list_notes(req: Request, ctx: RouteContext<()>) -> Result<Response> {
+pub async fn list_notes(req: Request, ctx: RouteContext<crate::RequestState>) -> Result<Response> {
     let bucket = ctx.env.bucket("NOTES")?;
     let url = req.url()?;
     let query = parse_list_query(&url);
@@ -172,29 +172,59 @@ pub async fn list_notes(req: Request, ctx: RouteContext<()>) -> Result<Response>
 
 // ── PUT /api/notes/*path ─────────────────────────────────────────────
 
-pub async fn put_note(mut req: Request, ctx: RouteContext<()>) -> Result<Response> {
+pub async fn put_note(
+    mut req: Request,
+    ctx: RouteContext<crate::RequestState>,
+) -> Result<Response> {
     let path = clean_path(ctx.param("path").unwrap_or(&String::new()));
+    if is_system_key(&path) && !is_index_path(&path) {
+        return err_json(40007, "Reserved storage path", 400);
+    }
     let bucket = ctx.env.bucket("NOTES")?;
-    let record = note::query_note(&bucket, &path).await?;
-
     let secret = auth::required_jwt_secret(&ctx.env)?;
     let index_pw = get_index_password(&ctx.env);
     let cookie = cookie_header(&req);
-    if !is_edit_authorized(cookie.as_deref(), &path, &record, &secret, &index_pw) {
+    let mut snapshot = note::head_note(&bucket, &path).await?;
+    if !is_edit_authorized(
+        cookie.as_deref(),
+        &path,
+        &snapshot.record,
+        &secret,
+        &index_pw,
+    ) {
         return err_json(ERR_AUTH_FAILED, "Password auth failed", 401);
     }
-
     let body: SaveNoteRequest = req.json().await?;
-    note::save_note(&bucket, &path, &body.content).await?;
-    ok_empty()
+    for _ in 0..4 {
+        if !is_edit_authorized(
+            cookie.as_deref(),
+            &path,
+            &snapshot.record,
+            &secret,
+            &index_pw,
+        ) {
+            return err_json(ERR_AUTH_FAILED, "Password auth failed", 401);
+        }
+        match note::save_note(&bucket, &ctx.data.origin, snapshot, body.content.clone()).await {
+            Ok(()) => return ok_empty(),
+            Err(error) if note::is_write_conflict(&error) => {
+                snapshot = note::head_note(&bucket, &path).await?
+            }
+            Err(error) => return Err(error),
+        }
+    }
+    err_json(40901, note::WRITE_CONFLICT, 409)
 }
 
 // ── DELETE /api/notes/*path ──────────────────────────────────────────
 
-pub async fn delete_note(req: Request, ctx: RouteContext<()>) -> Result<Response> {
+pub async fn delete_note(req: Request, ctx: RouteContext<crate::RequestState>) -> Result<Response> {
     let path = clean_path(ctx.param("path").unwrap_or(&String::new()));
+    if is_system_key(&path) && !is_index_path(&path) {
+        return err_json(40007, "Reserved storage path", 400);
+    }
     let bucket = ctx.env.bucket("NOTES")?;
-    let record = note::query_note(&bucket, &path).await?;
+    let record = note::head_note(&bucket, &path).await?.record;
 
     let secret = auth::required_jwt_secret(&ctx.env)?;
     let index_pw = get_index_password(&ctx.env);
@@ -209,10 +239,10 @@ pub async fn delete_note(req: Request, ctx: RouteContext<()>) -> Result<Response
         .any(|(k, v)| (k == "syncBook" || k == "sync") && v != "0" && v != "false");
 
     if record.metadata.doc_type == DocType::Page {
-        note::delete_book_page(&bucket, &path, true).await?;
+        note::delete_book_page(&bucket, &ctx.data.origin, &path, true).await?;
         let _ = sync_book; // pages always sync TOC
     } else {
-        note::delete_note(&bucket, &path).await?;
+        note::delete_note(&bucket, &ctx.data.origin, &path).await?;
     }
 
     ok_empty()
@@ -220,109 +250,109 @@ pub async fn delete_note(req: Request, ctx: RouteContext<()>) -> Result<Response
 
 // ── PATCH /api/notes/*path ───────────────────────────────────────────
 
-pub async fn patch_note(mut req: Request, ctx: RouteContext<()>) -> Result<Response> {
+pub async fn patch_note(
+    mut req: Request,
+    ctx: RouteContext<crate::RequestState>,
+) -> Result<Response> {
     let path = clean_path(ctx.param("path").unwrap_or(&String::new()));
+    if is_system_key(&path) && !is_index_path(&path) {
+        return err_json(40007, "Reserved storage path", 400);
+    }
     let bucket = ctx.env.bucket("NOTES")?;
-    let record = note::query_note(&bucket, &path).await?;
-
     let secret = auth::required_jwt_secret(&ctx.env)?;
     let index_pw = get_index_password(&ctx.env);
     let cookie = cookie_header(&req);
-    if !is_edit_authorized(cookie.as_deref(), &path, &record, &secret, &index_pw) {
+    let mut snapshot = note::read_note_for_update(&bucket, &path).await?;
+    if !is_edit_authorized(
+        cookie.as_deref(),
+        &path,
+        &snapshot.record,
+        &secret,
+        &index_pw,
+    ) {
         return err_json(ERR_AUTH_FAILED, "Password auth failed", 401);
     }
 
-    let body_text = req.text().await.unwrap_or_default();
-    let body: PatchNoteRequest = match serde_json::from_str(&body_text) {
-        Ok(b) => b,
+    let body: PatchNoteRequest = match req.json().await {
+        Ok(body) => body,
         Err(_) => return err_json(40000, "Invalid JSON", 400),
     };
-
-    if let Some(password) = body.password {
-        return apply_password(&ctx.env, &bucket, &path, password).await;
+    let new_password = match body.password.as_deref() {
+        Some("") => Some(None),
+        Some(password) => Some(Some(auth::hash_password(password)?)),
+        None => None,
+    };
+    let title = body.title.as_deref().map(str::trim);
+    if new_password.is_none() && body.mode.is_none() && title.is_none() && body.share.is_none() {
+        return ok_empty();
     }
 
-    if let Some(mode) = body.mode {
-        note::set_mode(&bucket, &path, mode).await?;
+    for attempt in 0..4 {
+        if attempt > 0 {
+            snapshot = note::read_note_for_update(&bucket, &path).await?;
+            if !is_edit_authorized(
+                cookie.as_deref(),
+                &path,
+                &snapshot.record,
+                &secret,
+                &index_pw,
+            ) {
+                return err_json(ERR_AUTH_FAILED, "Password auth failed", 401);
+            }
+        }
+        apply_metadata_patch(&mut snapshot.record, &body, title, new_password.as_ref());
+        let toc_title = title.filter(|_| new_password.is_none());
+        match note::commit_note_update(&bucket, &ctx.data.origin, &snapshot, toc_title).await {
+            Ok(()) => {
+                if let Some(password) = body.password {
+                    return password_response(&path, &secret, password.is_empty());
+                }
+                return ok_empty();
+            }
+            Err(error) if note::is_write_conflict(&error) => continue,
+            Err(error) => return Err(error),
+        }
     }
-
-    if let Some(title) = body.title {
-        apply_title(&bucket, &path, &record, title.trim()).await?;
-    }
-
-    if let Some(share) = body.share {
-        note::set_share(&bucket, &path, share).await?;
-    }
-
-    ok_empty()
+    err_json(40901, note::WRITE_CONFLICT, 409)
 }
 
-async fn apply_password(
-    env: &Env,
-    bucket: &worker::Bucket,
-    path: &str,
-    password: String,
-) -> Result<Response> {
-    let pw_hash = if password.is_empty() {
-        None
+fn apply_metadata_patch(
+    record: &mut crate::models::note::NoteRecord,
+    patch: &PatchNoteRequest,
+    title: Option<&str>,
+    new_password: Option<&Option<String>>,
+) {
+    if let Some(password) = new_password {
+        record.metadata.pw = password.clone();
     } else {
-        Some(auth::hash_password(&password)?)
-    };
-    note::set_password(bucket, path, pw_hash).await?;
+        if let Some(mode) = patch.mode {
+            record.metadata.mode = mode;
+        }
+        if let Some(title) = title {
+            record.metadata.title = (!title.is_empty()).then(|| title.to_string());
+        }
+        if let Some(share) = patch.share {
+            record.metadata.share = share;
+        }
+        record.metadata.update_at = Some((Date::now().as_millis() / 1000) as i64);
+    }
+    if record.content.is_empty()
+        && (new_password.is_some() || title.is_some() || patch.share.is_some())
+    {
+        record.content.push(' ');
+    }
+}
 
+fn password_response(path: &str, secret: &str, removed: bool) -> Result<Response> {
     let mut resp = ok_empty()?;
-    if password.is_empty() {
+    if removed {
         resp.headers_mut().set(
             "Set-Cookie",
             "auth=; Path=/; Max-Age=0; HttpOnly; SameSite=Strict",
         )?;
-        return Ok(resp);
-    }
-
-    let secret = auth::required_jwt_secret(env)?;
-    if let Ok(token) = auth::create_auth_token(path, &secret) {
+    } else if let Ok(token) = auth::create_auth_token(path, secret) {
         let cookie = format!("auth={token}; Path=/; Max-Age=2592000; HttpOnly; SameSite=Strict");
         resp.headers_mut().set("Set-Cookie", &cookie)?;
     }
     Ok(resp)
-}
-
-async fn apply_title(
-    bucket: &worker::Bucket,
-    path: &str,
-    record: &crate::models::note::NoteRecord,
-    title: &str,
-) -> Result<()> {
-    let new_title = if title.is_empty() {
-        None
-    } else {
-        Some(title.to_string())
-    };
-    note::set_title(bucket, path, new_title).await?;
-
-    if record.metadata.doc_type != DocType::Page || title.is_empty() {
-        return Ok(());
-    }
-
-    let Some(book_path) = record.metadata.book_ref.clone() else {
-        return Ok(());
-    };
-    let book = note::query_note(bucket, &book_path).await?;
-    let mut lines: Vec<String> = Vec::new();
-    for line in book.content.lines() {
-        if line.trim_start().starts_with("- [") && line.contains(&format!("]({path})")) {
-            let indent = &line[..line.len() - line.trim_start().len()];
-            lines.push(format!("{indent}- [{title}]({path})"));
-        } else {
-            lines.push(line.to_string());
-        }
-    }
-    let mut content = lines.join("\n");
-    if book.content.ends_with('\n') {
-        content.push('\n');
-    }
-    if content != book.content {
-        note::save_note(bucket, &book_path, &content).await?;
-    }
-    Ok(())
 }

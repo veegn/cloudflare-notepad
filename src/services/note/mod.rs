@@ -22,15 +22,16 @@ mod tree;
 
 pub use book::{adopt_book, create_book_page, delete_book_page, parse_book_toc};
 pub use cache::{
-    invalidate_for_path, read_json_cache, toc_cache_key, write_json_cache, HOME_TREE_CACHE_KEY,
+    read_json_cache, reserve_cache_fill, schedule_cache_fill, toc_cache_key, HOME_TREE_CACHE_KEY,
 };
 pub use create::{create_doc, gen_random_path};
-pub use list::{
-    book_page_counts, index_bucket, list_all_docs, list_book_page_keys, list_doc_metas,
-    visible_docs_from_index, ListOptions,
-};
+pub(crate) use list::list_metadata;
+pub use list::{index_bucket, list_all_docs, visible_docs_from_index, ListOptions};
 pub use repair::{repair_all, repair_doc, TitlePrefer};
-pub use store::{delete_note, query_note, save_note, set_mode, set_password, set_share, set_title};
+pub use store::{
+    commit_note_update, delete_note, head_note, is_write_conflict, query_note,
+    read_note_for_update, save_note, WRITE_CONFLICT,
+};
 pub use tree::build_home_tree_with_page_counts;
 
 #[cfg(test)]

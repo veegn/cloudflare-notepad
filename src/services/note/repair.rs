@@ -13,14 +13,14 @@ use std::collections::{HashMap, HashSet};
 use worker::{Bucket, Result};
 
 use crate::models::note::{
-    first_markdown_h1, is_index_path, path_display_name, DocType, NoteMetadata, NoteMode,
+    first_markdown_h1, is_system_key, path_display_name, DocType, NoteMetadata, NoteMode,
     NoteRecord,
 };
 
 use super::book::parse_book_toc;
-use super::cache::invalidate_for_path;
-use super::list::{list_book_page_keys, list_keys};
-use super::store::{get_note, now_unix, put_note_object, query_note};
+use super::cache::invalidate_for_paths;
+use super::list::{list_book_page_keys, list_metadata};
+use super::store::{get_snapshot, now_unix, put_note_object};
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum TitlePrefer {
@@ -262,11 +262,12 @@ async fn sync_book_meta_from_body_toc(
         pages_checked += 1;
         let toc_title = item.title.clone();
 
-        match get_note(bucket, &path).await? {
-            Some(mut page) => {
+        match get_snapshot(bucket, &path).await? {
+            Some(snapshot) => {
+                let mut page = snapshot.record;
                 if apply_toc_page_metadata(&mut page, book_path, &toc_title, changes) {
                     page.metadata.update_at = Some(now_unix());
-                    put_note_object(bucket, &path, &page).await?;
+                    put_note_object(bucket, &page, snapshot.uploaded_at).await?;
                 }
             }
             None => {
@@ -278,7 +279,7 @@ async fn sync_book_meta_from_body_toc(
                     continue;
                 }
                 let page = new_toc_page(&path, book_path, &toc_title);
-                put_note_object(bucket, &path, &page).await?;
+                put_note_object(bucket, &page, None).await?;
                 pages_created += 1;
                 changes.push(change("createPage", format!("created {path} from TOC")));
             }
@@ -361,11 +362,12 @@ async fn rebuild_book_toc_from_objects(
 
     for key in keys {
         pages_checked += 1;
-        match get_note(bucket, &key).await? {
-            Some(mut page) => {
+        match get_snapshot(bucket, &key).await? {
+            Some(snapshot) => {
+                let mut page = snapshot.record;
                 normalize_indexed_page(&mut page, book_path, changes);
                 page.metadata.update_at = page.metadata.update_at.or(Some(now_unix()));
-                put_note_object(bucket, &key, &page).await?;
+                put_note_object(bucket, &page, snapshot.uploaded_at).await?;
                 let title = page.display_title();
                 page_titles.push((key, title));
             }
@@ -399,7 +401,7 @@ async fn rebuild_book_toc_from_objects(
         }
         let title = item.title;
         let page = new_toc_page(&path, book_path, &title);
-        put_note_object(bucket, &path, &page).await?;
+        put_note_object(bucket, &page, None).await?;
         pages_created += 1;
         pages_checked += 1;
         indexed_paths.insert(path.clone());
@@ -433,19 +435,52 @@ fn infer_page_book_ref(record: &mut NoteRecord, changes: &mut Vec<RepairChange>)
 /// Repair a single document path.
 pub async fn repair_doc(
     bucket: &Bucket,
+    origin: &str,
     path: &str,
     prefer: TitlePrefer,
     rebuild_toc: bool,
     create_missing: bool,
 ) -> Result<RepairResult> {
+    let mut invalidations = HashSet::new();
+    let result = repair_doc_inner(
+        bucket,
+        path,
+        prefer,
+        rebuild_toc,
+        create_missing,
+        &mut invalidations,
+    )
+    .await;
+    invalidate_repaired(bucket, origin, &invalidations).await;
+    result
+}
+
+async fn invalidate_repaired(bucket: &Bucket, origin: &str, paths: &HashSet<String>) {
+    let paths: Vec<_> = paths.iter().map(String::as_str).collect();
+    invalidate_for_paths(bucket, origin, &paths).await;
+}
+
+async fn repair_doc_inner(
+    bucket: &Bucket,
+    path: &str,
+    prefer: TitlePrefer,
+    rebuild_toc: bool,
+    create_missing: bool,
+    invalidations: &mut HashSet<String>,
+) -> Result<RepairResult> {
     let path = path.trim().trim_matches('/').to_string();
-    if path.is_empty() || is_index_path(&path) {
+    if path.is_empty() || is_system_key(&path) {
         return Err(worker::Error::RustError("invalid path".into()));
     }
 
-    let mut record = get_note(bucket, &path)
+    let snapshot = get_snapshot(bucket, &path)
         .await?
         .ok_or_else(|| worker::Error::RustError("not found".into()))?;
+    let mut record = snapshot.record;
+    invalidations.insert(path.clone());
+    if let Some(book_ref) = &record.metadata.book_ref {
+        invalidations.insert(book_ref.clone());
+    }
     let mut changes = Vec::new();
     heal_doc_type(&mut record, &mut changes);
     heal_mode(&mut record, &mut changes);
@@ -489,11 +524,7 @@ pub async fn repair_doc(
 
     if !changes.is_empty() {
         record.metadata.update_at = Some(now_unix());
-        put_note_object(bucket, &path, &record).await?;
-    }
-    invalidate_for_path(bucket, &path).await;
-    if let Some(br) = record.metadata.book_ref.clone() {
-        invalidate_for_path(bucket, &br).await;
+        put_note_object(bucket, &record, snapshot.uploaded_at).await?;
     }
 
     Ok(RepairResult {
@@ -509,11 +540,31 @@ pub async fn repair_doc(
 /// Repair all book-like docs and optionally all nested page paths.
 pub async fn repair_all(
     bucket: &Bucket,
+    origin: &str,
     prefer: TitlePrefer,
     create_missing: bool,
     limit: usize,
 ) -> Result<Vec<RepairResult>> {
-    let keys = list_keys(bucket, None).await?;
+    let mut invalidations = HashSet::new();
+    let result = repair_all_inner(bucket, prefer, create_missing, limit, &mut invalidations).await;
+    invalidate_repaired(bucket, origin, &invalidations).await;
+    result
+}
+
+async fn repair_all_inner(
+    bucket: &Bucket,
+    prefer: TitlePrefer,
+    create_missing: bool,
+    limit: usize,
+    invalidations: &mut HashSet<String>,
+) -> Result<Vec<RepairResult>> {
+    let metadata = list_metadata(bucket, None).await?;
+    let mut keys: Vec<_> = metadata.keys().cloned().collect();
+    keys.sort_unstable();
+    let roots_with_children: HashSet<_> = keys
+        .iter()
+        .filter_map(|key| key.split_once('/').map(|(root, _)| root))
+        .collect();
     let mut results = Vec::new();
 
     // First pass: top-level keys that look like books (have children) or docType book.
@@ -522,15 +573,13 @@ pub async fn repair_all(
         if key.contains('/') {
             continue;
         }
-        let has_children = keys.iter().any(|k| k.starts_with(&format!("{key}/")));
-        let rec = query_note(bucket, key).await?;
-        if rec.metadata.doc_type == DocType::Book || has_children {
+        if roots_with_children.contains(key.as_str()) || metadata[key].doc_type == DocType::Book {
             book_candidates.push(key.clone());
         }
     }
 
     for path in book_candidates.into_iter().take(limit.max(1)) {
-        match repair_doc(bucket, &path, prefer, true, create_missing).await {
+        match repair_doc_inner(bucket, &path, prefer, true, create_missing, invalidations).await {
             Ok(r) => results.push(r),
             Err(worker::Error::RustError(msg)) => {
                 results.push(RepairResult {
@@ -555,7 +604,10 @@ pub async fn repair_all(
         if results.iter().any(|r| &r.path == key) {
             continue;
         }
-        let mut rec = query_note(bucket, key).await?;
+        let Some(snapshot) = get_snapshot(bucket, key).await? else {
+            continue;
+        };
+        let mut rec = snapshot.record;
         if rec.metadata.doc_type == DocType::Page {
             continue;
         }
@@ -565,8 +617,8 @@ pub async fn repair_all(
         heal_title_fields(&mut rec, prefer, &mut changes);
         if !changes.is_empty() {
             rec.metadata.update_at = Some(now_unix());
-            put_note_object(bucket, key, &rec).await?;
-            invalidate_for_path(bucket, key).await;
+            put_note_object(bucket, &rec, snapshot.uploaded_at).await?;
+            invalidations.insert(key.clone());
             results.push(RepairResult {
                 path: key.clone(),
                 doc_type: rec.metadata.doc_type.as_str().to_string(),

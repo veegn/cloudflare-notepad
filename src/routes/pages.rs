@@ -126,7 +126,7 @@ fn collect_home_links(nodes: &[serde_json::Value], links: &mut Vec<HomeLink>) {
     }
 }
 
-pub async fn home(req: Request, ctx: RouteContext<()>) -> Result<Response> {
+pub async fn home(req: Request, ctx: RouteContext<crate::RequestState>) -> Result<Response> {
     let lang = detect_lang(&req);
     let basic_home = req
         .url()?
@@ -162,7 +162,7 @@ pub async fn home(req: Request, ctx: RouteContext<()>) -> Result<Response> {
     context.insert("basic_home", &basic_home);
 
     if basic_home {
-        let payload = super::api::load_home_tree_payload(&bucket, false).await;
+        let payload = super::api::load_home_tree_payload(&bucket, &ctx.data, false).await;
         let tree = payload
             .as_ref()
             .ok()
@@ -180,7 +180,10 @@ pub async fn home(req: Request, ctx: RouteContext<()>) -> Result<Response> {
 
 // ── GET /new ─────────────────────────────────────────────────────────
 
-pub async fn create_note(req: Request, _ctx: RouteContext<()>) -> Result<Response> {
+pub async fn create_note(
+    req: Request,
+    _ctx: RouteContext<crate::RequestState>,
+) -> Result<Response> {
     let url = req.url()?;
     let only_article = url
         .query_pairs()
@@ -204,7 +207,7 @@ pub async fn create_note(req: Request, _ctx: RouteContext<()>) -> Result<Respons
 
 // ── GET /note/*path ──────────────────────────────────────────────────
 
-pub async fn view_note(req: Request, ctx: RouteContext<()>) -> Result<Response> {
+pub async fn view_note(req: Request, ctx: RouteContext<crate::RequestState>) -> Result<Response> {
     let url = req.url()?;
     if wants_raw(&url) {
         return super::api::get_note(req, ctx).await;
@@ -281,7 +284,7 @@ pub async fn view_note(req: Request, ctx: RouteContext<()>) -> Result<Response> 
 
 // ── GET /edit/*path ──────────────────────────────────────────────────
 
-pub async fn edit_note(req: Request, ctx: RouteContext<()>) -> Result<Response> {
+pub async fn edit_note(req: Request, ctx: RouteContext<crate::RequestState>) -> Result<Response> {
     let raw_path = ctx.param("path").unwrap_or(&String::new()).to_string();
     let path = clean_path(&raw_path);
 
@@ -342,7 +345,7 @@ pub async fn edit_note(req: Request, ctx: RouteContext<()>) -> Result<Response> 
 
 // ── 404 fallback ─────────────────────────────────────────────────────
 
-pub async fn not_found(req: Request, _ctx: RouteContext<()>) -> Result<Response> {
+pub async fn not_found(req: Request, _ctx: RouteContext<crate::RequestState>) -> Result<Response> {
     let lang = detect_lang(&req);
     let i18n_map = build_i18n_map();
     let tera = build_tera();

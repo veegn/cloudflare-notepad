@@ -8,7 +8,10 @@ use crate::services::{auth, note};
 
 use super::util::{clean_path, get_index_password, get_salt};
 
-pub async fn auth_note(mut req: Request, ctx: RouteContext<()>) -> Result<Response> {
+pub async fn auth_note(
+    mut req: Request,
+    ctx: RouteContext<crate::RequestState>,
+) -> Result<Response> {
     let body: AuthRequest = req.json().await?;
     let path = clean_path(&body.path);
 
@@ -22,7 +25,10 @@ pub async fn auth_note(mut req: Request, ctx: RouteContext<()>) -> Result<Respon
     Ok(response)
 }
 
-pub async fn auth_note_page(mut req: Request, ctx: RouteContext<()>) -> Result<Response> {
+pub async fn auth_note_page(
+    mut req: Request,
+    ctx: RouteContext<crate::RequestState>,
+) -> Result<Response> {
     let path = clean_path(ctx.param("path").unwrap_or(&String::new()));
     let url = req.url()?;
     let token = match req.form_data().await?.get("password") {

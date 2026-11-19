@@ -6,11 +6,20 @@ mod models;
 mod routes;
 mod services;
 
+pub(crate) struct RequestState {
+    pub context: Context,
+    pub origin: String,
+}
+
 #[event(fetch)]
-async fn fetch(req: Request, env: Env, _ctx: Context) -> Result<Response> {
+async fn fetch(req: Request, env: Env, ctx: Context) -> Result<Response> {
     console_error_panic_hook::set_once();
 
-    let router = Router::new();
+    let origin = req.url()?.origin().ascii_serialization();
+    let router = Router::with_data(RequestState {
+        context: ctx,
+        origin,
+    });
 
     router
         // ── Page routes (return HTML) ────────────────────────────

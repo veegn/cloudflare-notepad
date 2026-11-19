@@ -9,6 +9,7 @@
 //! (doc + sibling `.assets`) keeps working outside the site.
 //! Web preview rewrites these to `/assets/{full-r2-key}`.
 
+use futures::StreamExt;
 use worker::*;
 
 use crate::error::*;
@@ -18,6 +19,7 @@ use super::util::{clean_path, cookie_header, get_index_password, is_edit_authori
 
 pub const ASSET_PREFIX: &str = "_assets/";
 const MAX_UPLOAD_BYTES: usize = 8 * 1024 * 1024;
+const ASSET_CACHE_CONTROL: &str = "public, max-age=31536000, immutable";
 
 fn is_allowed_image(content_type: &str) -> bool {
     matches!(
@@ -116,7 +118,10 @@ fn upload_filename(query_name: Option<String>, headers: &Headers) -> String {
 }
 
 /// POST /api/upload?note=<optional note path>
-pub async fn upload_image(mut req: Request, ctx: RouteContext<()>) -> Result<Response> {
+pub async fn upload_image(
+    mut req: Request,
+    ctx: RouteContext<crate::RequestState>,
+) -> Result<Response> {
     let bucket = ctx.env.bucket("NOTES")?;
     let url = req.url()?;
     let note_path = url
@@ -130,7 +135,7 @@ pub async fn upload_image(mut req: Request, ctx: RouteContext<()>) -> Result<Res
             let secret = auth::required_jwt_secret(&ctx.env)?;
             let index_pw = get_index_password(&ctx.env);
             let cookie = cookie_header(&req);
-            let record = note::query_note(&bucket, np).await?;
+            let record = note::head_note(&bucket, np).await?.record;
             if !is_edit_authorized(cookie.as_deref(), np, &record, &secret, &index_pw) {
                 return err_json(ERR_AUTH_FAILED, "Password auth failed", 401);
             }
@@ -142,12 +147,11 @@ pub async fn upload_image(mut req: Request, ctx: RouteContext<()>) -> Result<Res
         return err_json(40100, "Unsupported image type. Use png/jpeg/webp/gif.", 400);
     }
 
-    let body = req.bytes().await?;
+    let Some(body) = read_upload(&mut req).await? else {
+        return err_json(40102, "Image too large (max 8MB)", 413);
+    };
     if body.is_empty() {
         return err_json(40101, "Empty upload body", 400);
-    }
-    if body.len() > MAX_UPLOAD_BYTES {
-        return err_json(40102, "Image too large (max 8MB)", 413);
     }
 
     let query_name = url
@@ -161,13 +165,17 @@ pub async fn upload_image(mut req: Request, ctx: RouteContext<()>) -> Result<Res
     let object_key = asset_object_key(note_path.as_deref(), &safe);
 
     let mut custom = std::collections::HashMap::new();
-    custom.insert("contentType".to_string(), content_type.clone());
     if let Some(np) = &note_path {
         custom.insert("note".to_string(), np.clone());
     }
 
     bucket
-        .put(&object_key, body.to_vec())
+        .put(&object_key, body)
+        .http_metadata(HttpMetadata {
+            content_type: Some(content_type.clone()),
+            cache_control: Some(ASSET_CACHE_CONTROL.into()),
+            ..Default::default()
+        })
         .custom_metadata(custom)
         .execute()
         .await?;
@@ -186,67 +194,143 @@ pub async fn upload_image(mut req: Request, ctx: RouteContext<()>) -> Result<Res
     }))
 }
 
+async fn read_upload(req: &mut Request) -> Result<Option<Vec<u8>>> {
+    let length = req
+        .headers()
+        .get("Content-Length")?
+        .and_then(|value| value.parse::<usize>().ok());
+    if length.is_some_and(|size| size > MAX_UPLOAD_BYTES) {
+        return Ok(None);
+    }
+    // A request with no stream is an empty upload.
+    let mut stream = match req.stream() {
+        Ok(stream) => stream,
+        Err(Error::RustError(message)) if message == "no body for request" => {
+            return Ok(Some(Vec::new()))
+        }
+        Err(error) => return Err(error),
+    };
+    let mut bytes = Vec::new();
+    while let Some(chunk) = stream.next().await {
+        let chunk = chunk?;
+        if chunk.len() > MAX_UPLOAD_BYTES - bytes.len() {
+            return Ok(None);
+        }
+        bytes.extend_from_slice(&chunk);
+    }
+    Ok(Some(bytes))
+}
+
 /// GET /assets/*path
-/// Accepts full R2-like keys (`foo/bar.assets/x.png`) or legacy `_assets` names.
-pub async fn get_asset(_req: Request, ctx: RouteContext<()>) -> Result<Response> {
-    let path = clean_path(ctx.param("path").unwrap_or(&String::new()));
+/// Accepts full R2-like keys or legacy short names.
+pub async fn get_asset(req: Request, ctx: RouteContext<crate::RequestState>) -> Result<Response> {
+    let path = clean_path(ctx.param("path").map(String::as_str).unwrap_or(""));
     if path.is_empty() || path.contains("..") {
         return err_json(40400, "not found", 404);
     }
 
-    let bucket = ctx.env.bucket("NOTES")?;
-    let candidates = asset_key_candidates(&path);
-    let mut object_opt = None;
-    for key in &candidates {
-        if let Ok(Some(o)) = bucket.get(key).execute().await {
-            object_opt = Some(o);
-            break;
+    let validator = req.headers().get("If-None-Match")?;
+    let state = &ctx.data;
+    let key = format!(
+        "{}/__scn_cache/v2/asset/{}",
+        state.origin,
+        urlencoding::encode(&path)
+    );
+    let cache = Cache::default();
+    if let Ok(Some(response)) = cache.get(&key, false).await {
+        if let Some(etag) = response.headers().get("ETag")? {
+            if etag_matches(validator.as_deref(), &etag) {
+                return asset_not_modified(&etag);
+            }
         }
-    }
-    let Some(object) = object_opt else {
-        return err_json(40400, "asset not found", 404);
-    };
-
-    let custom = object.custom_metadata().unwrap_or_default();
-    let content_type = custom
-        .get("contentType")
-        .cloned()
-        .unwrap_or_else(|| guess_content_type(&path).to_string());
-
-    if !content_type.starts_with("image/") {
-        return err_json(40300, "not an image asset", 403);
+        return Ok(response);
     }
 
-    let bytes = match object.body() {
-        Some(body) => body.bytes().await?,
-        None => return err_json(40400, "asset not found", 404),
-    };
+    let bucket = ctx.env.bucket("NOTES")?;
+    for object_key in asset_key_candidates(&path) {
+        if validator.is_some() {
+            let Some(metadata) = bucket.head(&object_key).await? else {
+                continue;
+            };
+            let etag = metadata.http_etag();
+            if etag_matches(validator.as_deref(), &etag) {
+                if !asset_type(&metadata, &object_key).starts_with("image/") {
+                    return err_json(40300, "not an image asset", 403);
+                }
+                return asset_not_modified(&etag);
+            }
+        }
 
-    Ok(Response::from_bytes(bytes)?.with_headers({
-        let h = Headers::new();
-        h.set("Content-Type", &content_type)?;
-        h.set("Cache-Control", "public, max-age=31536000, immutable")?;
-        h.set("X-Content-Type-Options", "nosniff")?;
-        h
-    }))
+        let Some(object) = bucket.get(&object_key).execute().await? else {
+            continue;
+        };
+        let content_type = asset_type(&object, &object_key);
+        if !content_type.starts_with("image/") {
+            return err_json(40300, "not an image asset", 403);
+        }
+        let etag = object.http_etag();
+        let Some(body) = object.body() else {
+            return err_json(40400, "asset not found", 404);
+        };
+        let headers = asset_headers(&etag)?;
+        headers.set("Content-Type", &content_type)?;
+        let mut response = Response::from_body(body.response_body()?)?.with_headers(headers);
+        if let Ok(copy) = response.cloned() {
+            state.context.wait_until(async move {
+                let _ = cache.put(key, copy).await;
+            });
+        }
+        return Ok(response);
+    }
+    err_json(40400, "asset not found", 404)
+}
+
+fn asset_type(object: &Object, key: &str) -> String {
+    let native = object.http_metadata().content_type;
+    if let Some(mime) = native.as_ref().filter(|mime| mime.starts_with("image/")) {
+        return mime.clone();
+    }
+    object
+        .custom_metadata()
+        .unwrap_or_default()
+        .remove("contentType")
+        .or(native)
+        .unwrap_or_else(|| guess_content_type(key).to_string())
+}
+
+fn asset_headers(etag: &str) -> Result<Headers> {
+    let headers = Headers::new();
+    headers.set("ETag", etag)?;
+    headers.set("Cache-Control", ASSET_CACHE_CONTROL)?;
+    headers.set("X-Content-Type-Options", "nosniff")?;
+    Ok(headers)
+}
+
+fn asset_not_modified(etag: &str) -> Result<Response> {
+    Ok(Response::empty()?
+        .with_status(304)
+        .with_headers(asset_headers(etag)?))
+}
+
+fn etag_matches(header: Option<&str>, etag: &str) -> bool {
+    header.is_some_and(|value| {
+        value
+            .split(',')
+            .map(str::trim)
+            .any(|tag| tag == "*" || tag.strip_prefix("W/").unwrap_or(tag) == etag)
+    })
 }
 
 fn asset_key_candidates(path: &str) -> Vec<String> {
-    let p = path.trim_start_matches('/');
-    let mut out = Vec::new();
-    // Full key already (note-relative .assets or legacy prefix)
-    if p.contains(".assets/") || p.starts_with(ASSET_PREFIX) || p.contains("/_assets/") {
-        out.push(p.to_string());
+    if path.contains(".assets/") {
+        return vec![path.to_string()];
     }
-    // Legacy short name → _assets/{name}
-    if !p.starts_with(ASSET_PREFIX) && !p.contains('/') {
-        out.push(format!("{ASSET_PREFIX}{p}"));
+    let legacy = format!("{ASSET_PREFIX}{path}");
+    if path.starts_with(ASSET_PREFIX) || path.contains("/_assets/") {
+        vec![path.to_string(), legacy]
+    } else {
+        vec![legacy]
     }
-    if !p.contains(".assets/") {
-        out.push(format!("{ASSET_PREFIX}{p}"));
-    }
-    out.dedup();
-    out
 }
 
 fn sanitize_filename(raw: &str, default_ext: &str) -> String {

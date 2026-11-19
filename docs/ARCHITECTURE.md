@@ -30,7 +30,7 @@ docs/                产品与架构文档
 | body | Markdown 等正文；**书籍的 TOC 也在 body 里** |
 | custom_metadata | `docType` / `bookRef` / `title` / `pw` / `mode` / `updateAt` / `share` |
 | 图片资产 | 与文档**同级**：`{note}.assets/{id}-{name}`（如 `handbook/install.assets/a.png`）；Markdown 写相对路径 `./install.assets/a.png` |
-| 派生缓存 | `_meta/home-tree.json`、`_meta/toc/<book>.json` |
+| 派生缓存 | `_meta/home-tree.json`、`_meta/toc/v2/<book-path-sha256>.json` |
 
 **文档类型**
 
@@ -58,7 +58,10 @@ docs/                产品与架构文档
 ## 同步与修复
 
 - 正文与 metadata 可能冗余（加速列表）。
-- 日常写入走 `services/note` 统一 API，并失效 `_meta/*` 缓存。
+- 列表按 R2 游标遍历，索引显式请求列表元数据。单对象元数据读取使用 HEAD，正文搜索的 R2 读取最多并发 6 个。
+- 创建使用「对象不存在」条件，更新使用 R2 毫秒级上传时间条件。发生冲突时，普通编辑接口重读并重新应用变更。显式删除沿用 R2 的无条件删除接口，跨对象操作也不存在 R2 事务。
+- 文章仅改正文时保留列表缓存，列表里的更新时间随快照更新。结构或可见元数据变更批量清理 R2 快照，并清理当前数据中心的边缘缓存。
+- 首页和目录的边缘缓存最长保留 10 秒，R2 快照保留 120 秒。回填在 `wait_until` 中执行，通过条件写入阻止已失效的 R2 快照被旧请求重建。需要立即读取时用 `refresh=1` 绕过两级缓存。
 - 不一致时用 **修复数据**（UI 或 `npm run repair`）：以 Markdown H1 / 书籍 TOC 为准回写 metadata。
 
 ## 构建与测试

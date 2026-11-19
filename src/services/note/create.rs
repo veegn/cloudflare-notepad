@@ -4,11 +4,12 @@ use worker::{Bucket, Result};
 
 use crate::models::note::{path_display_name, DocType, NoteMetadata, NoteMode, NoteRecord};
 
-use super::store::{get_note, now_unix, put_note_object};
+use super::store::{is_write_conflict, now_unix, put_note_object};
 
 /// Create an article or book. Pages must be created via the book editor API.
 pub async fn create_doc(
     bucket: &Bucket,
+    origin: &str,
     path: &str,
     doc_type: DocType,
     title: Option<String>,
@@ -18,10 +19,6 @@ pub async fn create_doc(
         return Err(worker::Error::RustError(
             "pages can only be created from the book editor".into(),
         ));
-    }
-
-    if get_note(bucket, path).await?.is_some() {
-        return Err(worker::Error::RustError("path already exists".into()));
     }
 
     let content = initial_content(doc_type, path, title.as_deref(), summary.as_deref());
@@ -38,8 +35,14 @@ pub async fn create_doc(
             ..Default::default()
         },
     };
-    put_note_object(bucket, path, &record).await?;
-    super::cache::invalidate_for_path(bucket, path).await;
+    if let Err(error) = put_note_object(bucket, &record, None).await {
+        return if is_write_conflict(&error) {
+            Err(worker::Error::RustError("path already exists".into()))
+        } else {
+            Err(error)
+        };
+    }
+    super::cache::invalidate_for_paths(bucket, origin, &[path]).await;
     Ok(record)
 }
 

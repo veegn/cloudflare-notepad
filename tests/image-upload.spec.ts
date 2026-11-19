@@ -38,6 +38,19 @@ test('upload image stores beside note and returns relative markdown', async ({ r
   expect(asset.headers()['content-type']).toContain('image/png')
   const body = await asset.body()
   expect(body.length).toBe(png.length)
+  const etag = asset.headers().etag
+  expect(etag).toMatch(/^".+"$/)
+  const unchanged = await request.get(json.data.url, {
+    headers: { 'If-None-Match': `"other", W/${etag}` },
+  })
+  expect(unchanged.status()).toBe(304)
+  expect(unchanged.headers().etag).toBe(etag)
+  expect(await unchanged.body()).toHaveLength(0)
+  const changed = await request.get(json.data.url, {
+    headers: { 'If-None-Match': '"other"' },
+  })
+  expect(changed.status()).toBe(200)
+  expect(await changed.body()).toEqual(png)
 })
 
 test('upload without note uses legacy _assets prefix', async ({ request }) => {

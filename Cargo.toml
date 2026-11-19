@@ -38,7 +38,7 @@ getrandom = { version = "0.4.3", features = ["wasm_js"] }
 # JS interop (for Date.now() in WASM)
 js-sys = "0.3.107"
 
-# Concurrent R2 metadata GETs (join_all)
+# Bounded concurrent R2 requests
 futures = "0.3.34"
 
 # Utilities
