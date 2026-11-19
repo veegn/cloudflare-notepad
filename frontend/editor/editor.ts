@@ -1,3 +1,6 @@
+import { MOBILE_VIEWPORT } from '../core/viewport'
+import { apiRequest } from '../core/api'
+import { encodeNotePath } from '../core/pathUtils'
 import { KEYWORD_PATTERN, CONFIG, getI18n } from '../core/config'
 import { readPreference, writePreference } from '../core/preferences'
 import { buildFormatError, formatTextByMode } from './formatters'
@@ -290,17 +293,10 @@ function persistValue(UI: UIRefs, value: string): Promise<void> {
         UI.loading.style.opacity = '1'
     }
 
-    return window.fetch(`/api/notes/${CONFIG.notePath}`, {
-        method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ content: value }),
+    return apiRequest(`/api/notes/${encodeNotePath(CONFIG.notePath)}`, {
+        method: 'PUT', json: { content: value }, errorMessage: 'Failed to save note',
     })
-        .then(res => res.json() as Promise<{ code: number; message: string }>)
-        .then(res => {
-            if (res.code !== 0) {
-                errHandle(res.message)
-            }
-        })
+        .then(() => undefined)
         .catch(errHandle)
         .finally(() => {
             if (UI.loading) {
@@ -377,7 +373,7 @@ function initMarkdownLayoutControls(UI: UIRefs, editor: EditorAdapter): void {
         </div>
     `)
 
-    const viewport = window.matchMedia('(max-width: 680px)')
+    const viewport = window.matchMedia(MOBILE_VIEWPORT)
     const buttons = UI.editorTabActions.querySelectorAll<HTMLButtonElement>('.md-layout-button')
     const syncLayout = (): MarkdownLayout => {
         const layout = getMarkdownLayout(viewport.matches)

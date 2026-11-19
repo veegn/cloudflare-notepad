@@ -66,20 +66,3 @@ pub async fn invalidate_for_path(bucket: &Bucket, path: &str) {
         }
     }
 }
-
-/// Drop all known structured caches (used by cleanup tooling).
-#[allow(dead_code)]
-pub async fn invalidate_all(bucket: &Bucket) {
-    let _ = bucket.delete(HOME_TREE_CACHE_KEY).await;
-    if let Ok(list) = bucket
-        .list()
-        .prefix(TOC_CACHE_PREFIX)
-        .limit(1000)
-        .execute()
-        .await
-    {
-        for obj in list.objects() {
-            let _ = bucket.delete(&obj.key()).await;
-        }
-    }
-}

@@ -1,0 +1,603 @@
+.md-layout-toggle {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    padding: 3px;
+    border: 1px solid var(--vscode-border);
+    border-radius: 7px;
+    background: rgba(255, 255, 255, 0.03);
+}
+
+.md-layout-button {
+    height: 24px;
+    padding: 0 10px;
+    border: 0;
+    border-radius: 5px;
+    background: transparent;
+    color: var(--vscode-text-muted);
+    font-size: 11px;
+    font-weight: 600;
+    cursor: pointer;
+}
+
+.md-layout-button.active {
+    background: var(--vscode-accent-soft);
+    color: var(--vscode-text);
+}
+
+.composer-frame {
+    position: relative;
+    height: 100%;
+    min-height: 0;
+    display: grid;
+    grid-template-columns: 56px minmax(0, 1fr);
+}
+
+.composer-frame.is-reading {
+    grid-template-columns: minmax(0, 1fr);
+}
+
+.composer-frame.is-reading .composer-main,
+.composer-frame.is-reading .composer-preview-scroll,
+.composer-frame.is-reading .composer-preview {
+    height: 100%;
+}
+
+.cm-editor-host {
+    height: 100%;
+    min-height: 0;
+}
+
+.composer-frame.is-editing.mode-plain,
+.composer-frame.is-editing.mode-json,
+.composer-frame.is-editing.mode-yaml {
+    display: block;
+}
+
+.composer-frame.is-editing.mode-plain .composer-main,
+.composer-frame.is-editing.mode-json .composer-main,
+.composer-frame.is-editing.mode-yaml .composer-main {
+    display: none;
+}
+
+.cm-editor-host .cm-editor {
+    height: 100%;
+    background: transparent;
+}
+
+.cm-editor-host .cm-scroller {
+    scrollbar-gutter: stable;
+    touch-action: auto;
+}
+
+.cm-editor-host .cm-content,
+.cm-editor-host .cm-gutterElement {
+    font-size: 14px;
+}
+
+.cm-editor-host .cm-activeLine {
+    border-top: 1px solid rgba(255, 255, 255, 0.03);
+    border-bottom: 1px solid rgba(255, 255, 255, 0.03);
+}
+
+[data-theme="light"] .cm-editor-host .cm-activeLine {
+    border-top-color: rgba(0, 0, 0, 0.04);
+    border-bottom-color: rgba(0, 0, 0, 0.04);
+}
+
+.cm-editor-host .cm-lineNumbers .cm-gutterElement {
+    padding-left: 0;
+}
+
+.cm-editor-host .cm-keyword-highlight {
+    border-radius: 0.35em;
+    background: var(--keyword-highlight-bg);
+    box-shadow: inset 0 0 0 1px var(--keyword-highlight-border);
+    color: var(--keyword-highlight-text);
+}
+
+.composer-main {
+    position: relative;
+    min-height: 0;
+    overflow: hidden;
+}
+
+.composer-preview-scroll {
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    overflow: auto;
+    touch-action: pan-y;
+    -webkit-overflow-scrolling: touch;
+}
+
+.composer-preview-scroll {
+    padding: 24px 28px 56px;
+    z-index: var(--z-local);
+}
+
+.composer-preview {
+    min-height: 100%;
+    color: var(--vscode-text);
+    font-family: 'IBM Plex Mono', Consolas, monospace;
+    font-size: 14px;
+    line-height: 1.7;
+    white-space: pre-wrap;
+    word-break: break-word;
+}
+
+.mode-md {
+    grid-template-columns: minmax(0, 1fr);
+}
+.mode-md .composer-preview-scroll {
+    padding: 18px 20px 32px;
+}
+.mode-md .composer-preview {
+    max-width: 720px;
+    margin: 0 auto;
+    padding-bottom: 32px;
+    font-family: 'IBM Plex Sans', -apple-system, BlinkMacSystemFont, 'Segoe UI',
+        'PingFang SC', 'Hiragino Sans GB', 'Microsoft YaHei', sans-serif;
+    font-size: 16px;
+    line-height: 1.45;
+    letter-spacing: 0.01em;
+    color: var(--vscode-text);
+    text-wrap: pretty;
+    white-space: normal;
+    word-break: normal;
+    overflow-wrap: break-word;
+    line-break: strict;
+}
+
+@supports (color: color-mix(in srgb, black, white)) {
+    .mode-md .composer-preview {
+        color: color-mix(in srgb, var(--vscode-text) 96%, transparent);
+    }
+}
+.mode-md .composer-preview :is(h1, h2, h3, h4, h5, h6) {
+    margin-top: 0.5em;
+    margin-bottom: 0.1em;
+    color: var(--vscode-text);
+    font-weight: 650;
+    line-height: 1.35;
+    /* Keep CJK heading spacing neutral. */
+    letter-spacing: 0;
+    text-wrap: balance;
+}
+.mode-md .composer-preview h1 {
+    font-size: 1.75em;
+    padding-bottom: 0.35em;
+    border-bottom: 1px solid var(--vscode-border);
+}
+.mode-md .composer-preview h2 {
+    font-size: 1.4em;
+    padding-bottom: 0.25em;
+    border-bottom: 1px solid var(--vscode-border);
+}
+
+@supports (color: color-mix(in srgb, black, white)) {
+    .mode-md .composer-preview h2 {
+        border-bottom: 1px solid color-mix(in srgb, var(--vscode-border) 60%, transparent);
+    }
+}
+.mode-md .composer-preview h3 {
+    font-size: 1.2em;
+}
+.mode-md .composer-preview :is(p, ul, ol, blockquote, pre, table, hr) {
+    margin: 0.3em 0;
+}
+.mode-md .composer-preview li {
+    margin: 0.35em 0;
+    line-height: 1.7;
+}
+.mode-md .composer-preview blockquote {
+    margin-inline: 0;
+    padding: 0.5em 1em;
+    border-left: 4px solid var(--vscode-accent);
+    border-radius: 0 var(--radius-m) var(--radius-m) 0;
+    color: var(--vscode-text-muted);
+    background: var(--vscode-accent-soft);
+}
+.mode-md .composer-preview :not(pre) > code {
+    padding: 0.2em 0.4em;
+    border: 1px solid var(--vscode-border);
+    border-radius: var(--radius-s);
+    background: rgba(255, 255, 255, 0.04);
+    font-size: 0.9em;
+}
+.mode-md .composer-preview pre {
+    padding: 1em;
+    border: 1px solid var(--vscode-border);
+    border-radius: var(--radius-m);
+    background: rgba(0, 0, 0, 0.16);
+    font-size: 0.9em;
+}
+.mode-md .composer-preview pre code {
+    padding: 0;
+    background: transparent;
+}
+.mode-md .composer-preview img {
+    display: block;
+    max-width: 100%;
+    height: auto;
+    margin: 1.5em auto;
+    border-radius: var(--radius-m);
+}
+
+.mode-md .composer-preview > *:first-child { margin-top: 0; }
+.mode-md .composer-preview > *:last-child { margin-bottom: 0; }
+
+
+.mode-plain .composer-preview-scroll,
+.mode-json .composer-preview-scroll,
+.mode-yaml .composer-preview-scroll {
+    padding-right: 28px;
+}
+.mode-plain .composer-preview,
+.mode-json .composer-preview,
+.mode-yaml .composer-preview {
+    font-family: 'IBM Plex Mono', Consolas, monospace;
+    font-size: 14px;
+    line-height: 1.6;
+}
+
+.composer-frame.is-reading.mode-json .composer-preview-scroll,
+.composer-frame.is-reading.mode-yaml .composer-preview-scroll {
+    padding: 18px 20px 40px;
+}
+
+.composer-frame.is-reading.mode-json .composer-preview,
+.composer-frame.is-reading.mode-yaml .composer-preview {
+    font-size: 13px;
+    line-height: 1.55;
+}
+
+.mode-md .composer-split-pane {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    height: 100%;
+    min-height: 0;
+}
+
+.mode-md .composer-editor-pane,
+.mode-md .composer-preview-pane {
+    position: relative;
+    overflow: hidden;
+}
+
+.mode-md .composer-editor-pane {
+    border-right: 1px solid var(--vscode-border);
+    background: var(--vscode-editor);
+}
+.mode-md .composer-editor-pane .cm-editor-host,
+.mode-md .composer-editor-pane .cm-editor,
+.mode-md .composer-editor-pane .cm-scroller {
+    height: 100%;
+}
+.mode-md .composer-editor-pane .cm-content {
+    padding: 28px 0 72px;
+}
+.mode-md .composer-editor-pane .cm-line {
+    max-width: 1024px;
+    margin: 0 auto;
+    padding: 0 20px;
+    font-size: 16px;
+    line-height: 1.6;
+}
+.mode-md .composer-editor-pane .cm-activeLine {
+    background: var(--vscode-accent-soft);
+    border-radius: var(--radius-m);
+}
+.mode-md .composer-editor-pane .cm-gutters {
+    display: none;
+}
+.mode-md .composer-preview-pane {
+    background: var(--vscode-editor);
+}
+.mode-md .composer-preview-pane .composer-preview-scroll {
+    position: relative;
+    height: 100%;
+}
+
+.mode-md.md-layout-edit .composer-split-pane { grid-template-columns: 1fr; }
+.mode-md.md-layout-edit .composer-preview-pane { display: none; }
+
+.mode-md.md-layout-preview .composer-split-pane { grid-template-columns: 1fr; }
+.mode-md.md-layout-preview .composer-editor-pane { display: none; }
+
+
+.mode-tabs {
+    position: relative;
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    padding: 3px;
+    border: 1px solid var(--vscode-border);
+    border-radius: var(--radius-m);
+    background: rgba(255, 255, 255, 0.02);
+}
+.mode-tabs .mode-tab {
+    position: relative;
+    z-index: var(--z-local);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    min-width: 62px;
+    height: 26px;
+    padding: 0 10px;
+    border-radius: 5px;
+    color: var(--vscode-text-muted);
+    font-size: 11px;
+    font-weight: 600;
+    cursor: pointer;
+}
+.mode-tabs .mode-tab.active {
+    color: var(--vscode-text);
+}
+.mode-tabs .tab-indicator {
+    position: absolute;
+    top: 3px;
+    left: 3px;
+    height: 26px;
+    border-radius: 5px;
+    background: var(--vscode-accent-soft);
+    box-shadow: inset 0 0 0 1px rgba(55, 148, 255, 0.15);
+    transition: left var(--transition), width var(--transition);
+}
+
+.keyword-highlight {
+    display: inline-block;
+    padding: 0 0.18em;
+    border: 1px solid var(--keyword-highlight-border);
+    border-radius: 0.35em;
+    background: var(--keyword-highlight-bg);
+    color: var(--keyword-highlight-text);
+}
+
+.composer-preview h1,
+.composer-preview h2,
+.composer-preview h3 {
+    margin-top: 24px;
+    margin-bottom: 12px;
+    font-family: 'IBM Plex Sans', -apple-system, 'PingFang SC', 'Microsoft YaHei', sans-serif;
+    line-height: 1.35;
+    letter-spacing: 0;
+}
+
+.composer-preview p {
+    margin: 1em 0;
+    line-height: 1.75;
+    letter-spacing: 0.01em;
+}
+
+.composer-preview ul,
+.composer-preview ol {
+    padding-left: 1.5em;
+}
+
+.composer-preview li {
+    margin: 0.4em 0;
+}
+
+.composer-preview hr {
+    margin: 2.2em 0;
+    border: 0;
+    border-top: 1px solid var(--vscode-border);
+}
+
+.composer-preview a {
+    color: var(--vscode-accent);
+    text-decoration: none;
+}
+
+.composer-preview a:hover {
+    text-decoration: underline;
+}
+
+.composer-preview pre {
+    overflow: auto;
+    padding: 16px;
+    border: 1px solid var(--vscode-border);
+    border-radius: 8px;
+    background: rgba(0, 0, 0, 0.16);
+    touch-action: auto;
+}
+
+[data-theme="light"] .composer-preview pre {
+    background: var(--code-block-surface);
+}
+
+.composer-preview code {
+    padding: 2px 6px;
+    border-radius: 4px;
+    background: rgba(255, 255, 255, 0.06);
+}
+
+[data-theme="light"] .composer-preview code {
+    background: rgba(0, 0, 0, 0.05);
+}
+
+.document-source,
+.mermaid-source {
+    font-family: 'IBM Plex Mono', Consolas, monospace;
+    white-space: pre-wrap;
+    overflow-wrap: break-word;
+}
+
+.composer-preview .document-source > code {
+    padding: 0;
+    background: none;
+    font: inherit;
+}
+
+.cm-editor-host > .document-source {
+    max-height: 100%;
+    margin: 0;
+    padding: 24px;
+    overflow: auto;
+}
+
+.composer-preview blockquote {
+    margin: 16px 0;
+    padding: 4px 0 4px 16px;
+    border-left: 3px solid var(--vscode-accent);
+    color: var(--vscode-text-muted);
+}
+
+.code-layer {
+    margin: 0;
+    padding: 0;
+    min-height: 100%;
+    font: inherit;
+    line-height: inherit;
+    white-space: pre-wrap;
+    word-break: break-word;
+}
+
+.code-viewer {
+    display: grid;
+    min-width: max-content;
+    border: 1px solid var(--vscode-border);
+    border-radius: 10px;
+    overflow: hidden;
+    background: rgba(0, 0, 0, 0.14);
+}
+
+[data-theme="light"] .code-viewer {
+    background: var(--subtle-surface);
+}
+
+.code-viewer-row {
+    display: grid;
+    grid-template-columns: 52px minmax(0, 1fr);
+    min-height: 22px;
+}
+
+.code-viewer-row:nth-child(odd) {
+    background: rgba(255, 255, 255, 0.015);
+}
+
+[data-theme="light"] .code-viewer-row:nth-child(odd) {
+    background: rgba(0, 0, 0, 0.02);
+}
+
+.code-viewer-line-no,
+.code-viewer-line {
+    display: block;
+    white-space: pre;
+}
+
+.code-viewer-line-no {
+    padding: 0 12px 0 0;
+    border-right: 1px solid var(--vscode-border);
+    color: var(--vscode-text-subtle);
+    text-align: right;
+    user-select: none;
+}
+
+.code-viewer-line {
+    padding: 0 16px;
+}
+
+.code-viewer-line-empty {
+    display: inline-block;
+}
+
+.composer-preview table {
+    width: 100%;
+    border-collapse: collapse;
+    margin: 1.4em 0;
+}
+
+.composer-preview th,
+.composer-preview td {
+    padding: 8px 10px;
+    border: 1px solid var(--vscode-border);
+}
+
+.composer-preview input[type="checkbox"] {
+    margin-right: 0.55em;
+}
+
+.token-key {
+    color: var(--code-key);
+}
+
+.token-string {
+    color: var(--code-string);
+}
+
+.token-number {
+    color: var(--code-number);
+}
+
+.token-boolean {
+    color: var(--code-boolean);
+}
+
+.token-comment {
+    color: var(--code-comment);
+}
+
+.token-punctuation {
+    color: var(--code-punctuation);
+}
+
+
+/* GitHub style alerts */
+.composer-preview .markdown-alert { padding: 8px 16px; margin-bottom: 16px; color: inherit; border-left: 4px solid var(--vscode-border); border-radius: var(--radius-m); background: rgba(0, 0, 0, 0.05); }
+[data-theme="light"] .composer-preview .markdown-alert { background: rgba(0, 0, 0, 0.02); }
+.composer-preview .markdown-alert > p { margin-top: 0; margin-bottom: 0; }
+.composer-preview .markdown-alert .markdown-alert-title { display: flex; align-items: center; font-weight: 500; font-size: 14px; margin-bottom: 8px; }
+.composer-preview .markdown-alert .markdown-alert-title svg { margin-right: 8px; fill: currentColor; }
+.composer-preview .markdown-alert.markdown-alert-note { border-left-color: var(--vscode-accent); }
+.composer-preview .markdown-alert.markdown-alert-note .markdown-alert-title { color: var(--vscode-accent); }
+.composer-preview .markdown-alert.markdown-alert-tip { border-left-color: var(--alert-tip); }
+.composer-preview .markdown-alert.markdown-alert-tip .markdown-alert-title { color: var(--alert-tip-text); }
+.composer-preview .markdown-alert.markdown-alert-important { border-left-color: var(--alert-important); }
+.composer-preview .markdown-alert.markdown-alert-important .markdown-alert-title { color: var(--alert-important-text); }
+
+.composer-preview .markdown-alert.markdown-alert-warning { border-left-color: var(--alert-warning); }
+.composer-preview .markdown-alert.markdown-alert-warning .markdown-alert-title { color: var(--alert-warning-text); }
+.composer-preview .markdown-alert.markdown-alert-caution { border-left-color: var(--alert-caution); }
+.composer-preview .markdown-alert.markdown-alert-caution .markdown-alert-title { color: var(--alert-caution-text); }
+
+/* Markdown image upload */
+.composer-editor-pane {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  min-height: 0;
+}
+.composer-editor-toolbar {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-height: 36px;
+  padding: 4px 10px;
+  border-bottom: 1px solid var(--vscode-border);
+  background: var(--vscode-tab);
+  flex-shrink: 0;
+}
+
+@supports (color: color-mix(in srgb, black, white)) {
+    .composer-editor-toolbar {
+      background: color-mix(in srgb, var(--vscode-tab) 70%, transparent);
+    }
+}
+.composer-editor-hint {
+  font-size: 11px;
+  color: var(--vscode-text-subtle);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.composer-editor-toolbar .opt-button {
+    height: 28px;
+    flex-shrink: 0;
+    color: var(--vscode-text);
+}
+
+.composer-editor-toolbar .opt-button:hover {
+    background: var(--vscode-accent-soft);
+}

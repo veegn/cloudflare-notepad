@@ -43,8 +43,8 @@
     "cleanup:e2e": "tsx --no-warnings=ExperimentalWarning scripts/cleanup-e2e.mts",
     "migrate:doctype": "tsx --no-warnings=ExperimentalWarning scripts/migrate-doctype.mts",
     "migrate:doctype:dry": "tsx --no-warnings=ExperimentalWarning scripts/migrate-doctype.mts --dry-run",
-    "migrate:kv-to-r2": "tsx --no-warnings=ExperimentalWarning scripts/migrate-kv-to-r2.mts",
-    "migrate:kv-to-r2:dry": "tsx --no-warnings=ExperimentalWarning scripts/migrate-kv-to-r2.mts --dry-run"
+    "migrate:kv-to-r2": "tsx --no-warnings=ExperimentalWarning scripts/migrations/migrate-kv-to-r2.mts",
+    "migrate:kv-to-r2:dry": "tsx --no-warnings=ExperimentalWarning scripts/migrations/migrate-kv-to-r2.mts --dry-run"
   },
   "dependencies": {
     "@codemirror/autocomplete": "^6.20.4",

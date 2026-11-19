@@ -1,3 +1,5 @@
+import { apiRequest } from '../core/api'
+import { createModalDialog } from '../core/modal'
 import { CONFIG, getI18n } from '../core/config'
 import { escapeHtml } from '../core/html'
 import { encodeNotePath } from '../core/pathUtils'
@@ -41,13 +43,11 @@ export async function renameDoc(target: DocManageTarget, hooks: DocManageHooks =
     if (!title || title === target.title) return
 
     try {
-        const res = await fetch(`/api/notes/${encodeNotePath(target.path)}`, {
+        await apiRequest(`/api/notes/${encodeNotePath(target.path)}`, {
             method: 'PATCH',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ title }),
+            json: { title },
+            errorMessage: 'rename failed',
         })
-        const json = (await res.json()) as { code: number; message?: string }
-        if (json.code !== 0) throw new Error(json.message || 'rename failed')
         showToast(getI18n('renamed'))
         hooks.onChanged?.()
     } catch (err) {
@@ -71,11 +71,10 @@ export async function deleteDoc(target: DocManageTarget, hooks: DocManageHooks =
     if (!ok) return
 
     try {
-        const res = await fetch(`/api/notes/${encodeNotePath(target.path)}`, {
+        await apiRequest(`/api/notes/${encodeNotePath(target.path)}`, {
             method: 'DELETE',
+            errorMessage: 'delete failed',
         })
-        const json = (await res.json().catch(() => ({ code: 0 }))) as { code: number; message?: string }
-        if (json.code !== 0) throw new Error(json.message || 'delete failed')
         showToast(getI18n('deleted'))
         hooks.onChanged?.()
     } catch (err) {
@@ -84,186 +83,136 @@ export async function deleteDoc(target: DocManageTarget, hooks: DocManageHooks =
 }
 
 async function setShare(path: string, shared: boolean): Promise<void> {
-    const res = await fetch(`/api/notes/${encodeNotePath(path)}`, {
+    await apiRequest(`/api/notes/${encodeNotePath(path)}`, {
         method: 'PATCH',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ share: shared }),
+        json: { share: shared },
+        errorMessage: 'share update failed',
     })
-    const json = (await res.json()) as { code: number; message?: string }
-    if (json.code !== 0) throw new Error(json.message || 'share update failed')
-}
-
-function closeOnOverlay(overlay: HTMLElement, dialog: HTMLElement, cleanup: () => void): void {
-    overlay.addEventListener('click', e => {
-        if (e.target === overlay) cleanup()
-    })
-    dialog.addEventListener('keydown', e => {
-        if (e.key === 'Escape') {
-            e.preventDefault()
-            cleanup()
-        }
-    })
-}
-
-function animateOut(overlay: HTMLElement, dialog: HTMLElement, done: () => void): void {
-    overlay.classList.add('is-exiting')
-    dialog.classList.add('is-exiting')
-    let finished = false
-    const finish = (): void => {
-        if (finished) return
-        finished = true
-        overlay.remove()
-        done()
-    }
-    overlay.addEventListener('animationend', finish)
-    window.setTimeout(finish, 300)
 }
 
 /** Share panel: status + link + copy + public/private toggle. */
 export function showSharePanel(target: DocManageTarget, hooks: DocManageHooks = {}): Promise<void> {
-    return new Promise(resolve => {
-        let shared = target.shared ?? CONFIG.shared ?? true
-        const overlay = document.createElement('div')
-        overlay.className = 'modal-overlay'
-        const dialog = document.createElement('div')
-        dialog.className = 'modal-dialog share-panel'
-        dialog.setAttribute('role', 'dialog')
-        dialog.setAttribute('aria-modal', 'true')
+    let shared = target.shared ?? CONFIG.shared ?? true
+    const { dialog, open, close, result } = createModalDialog<void>({
+        className: 'share-panel', label: getI18n('shareTitle'),
+    }, undefined)
+    const url = viewUrl(target.path)
 
-        const url = viewUrl(target.path)
+    dialog.innerHTML = `
+      <div class="modal-title">${getI18n('shareTitle')}</div>
+      <div class="modal-desc">${escapeHtml(target.title || target.path)}</div>
+      <div class="share-status" id="share-status" aria-live="polite">
+        <span class="share-status-dot" aria-hidden="true"></span>
+        <span class="share-status-text"></span>
+      </div>
+      <label class="field">
+        <span class="field-label">${getI18n('shareLinkLabel')}</span>
+        <input type="text" class="field-input share-link-input" id="share-link" readonly />
+      </label>
+      <div class="share-actions">
+        <button type="button" class="modal-btn modal-btn-primary" id="share-copy">${getI18n('copy')}</button>
+        <button type="button" class="modal-btn modal-btn-secondary" id="share-toggle"></button>
+      </div>
+      <div class="modal-actions">
+        <button type="button" class="modal-btn modal-btn-secondary" id="share-close">${getI18n('close')}</button>
+      </div>
+    `
+    const link = dialog.querySelector<HTMLInputElement>('#share-link')!
+    const copy = dialog.querySelector<HTMLButtonElement>('#share-copy')!
+    const toggle = dialog.querySelector<HTMLButtonElement>('#share-toggle')!
+    const status = dialog.querySelector('#share-status')!
+    const statusText = dialog.querySelector('.share-status-text')!
+    link.value = url
 
-        const render = (): void => {
-            const statusKey = shared ? 'shareStatusPublic' : 'shareStatusPrivate'
-            dialog.innerHTML = `
-              <div class="modal-title">${getI18n('shareTitle')}</div>
-              <div class="modal-desc">${escapeHtml(target.title || target.path)}</div>
-              <div class="share-status ${shared ? 'is-public' : 'is-private'}" id="share-status" aria-live="polite">
-                <span class="share-status-dot" aria-hidden="true"></span>
-                <span class="share-status-text">${getI18n(statusKey)}</span>
-              </div>
-              <label class="field">
-                <span class="field-label">${getI18n('shareLinkLabel')}</span>
-                <input type="text" class="field-input share-link-input" id="share-link" readonly value="${escapeHtml(url)}" />
-              </label>
-              <div class="share-actions">
-                <button type="button" class="modal-btn modal-btn-primary" id="share-copy">${getI18n('copy')}</button>
-                <button type="button" class="modal-btn modal-btn-secondary" id="share-toggle">${shared ? getI18n('shareMakePrivate') : getI18n('shareMakePublic')}</button>
-              </div>
-              <div class="modal-actions">
-                <button type="button" class="modal-btn modal-btn-secondary" id="share-close">${getI18n('close')}</button>
-              </div>
-            `
+    const updateStatus = (): void => {
+        status.classList.toggle('is-public', shared)
+        status.classList.toggle('is-private', !shared)
+        statusText.textContent = getI18n(shared ? 'shareStatusPublic' : 'shareStatusPrivate')
+        toggle.textContent = getI18n(shared ? 'shareMakePrivate' : 'shareMakePublic')
+    }
 
-            dialog.querySelector('#share-copy')?.addEventListener('click', () => {
-                void (async () => {
-                    try {
-                        await navigator.clipboard.writeText(url)
-                        showToast(getI18n('linkCopied'))
-                    } catch {
-                        const input = dialog.querySelector<HTMLInputElement>('#share-link')
-                        input?.select()
-                        showToast(getI18n('copyLinkManual'))
-                    }
-                })()
-            })
-
-            dialog.querySelector('#share-toggle')?.addEventListener('click', () => {
-                void (async () => {
-                    const next = !shared
-                    try {
-                        await setShare(target.path, next)
-                        shared = next
-                        target.shared = next
-                        if (CONFIG.notePath === target.path) {
-                            CONFIG.shared = next
-                        }
-                        showToast(next ? getI18n('shareEnabled') : getI18n('shareDisabled'))
-                        render()
-                        hooks.onShared?.()
-                    } catch (err) {
-                        errHandle(err)
-                    }
-                })()
-            })
-
-            dialog.querySelector('#share-close')?.addEventListener('click', cleanup)
+    copy.addEventListener('click', async () => {
+        try {
+            await navigator.clipboard.writeText(url)
+            showToast(getI18n('linkCopied'))
+        } catch {
+            link.select()
+            showToast(getI18n('copyLinkManual'))
         }
-
-        const cleanup = (): void => {
-            animateOut(overlay, dialog, resolve)
-        }
-
-        closeOnOverlay(overlay, dialog, cleanup)
-        render()
-        overlay.appendChild(dialog)
-        document.body.appendChild(overlay)
-        requestAnimationFrame(() => {
-            dialog.querySelector<HTMLButtonElement>('#share-copy')?.focus()
-        })
     })
+    toggle.addEventListener('click', async () => {
+        const next = !shared
+        toggle.disabled = true
+        try {
+            await setShare(target.path, next)
+            shared = next
+            target.shared = next
+            if (CONFIG.notePath === target.path) CONFIG.shared = next
+            showToast(getI18n(next ? 'shareEnabled' : 'shareDisabled'))
+            updateStatus()
+            hooks.onShared?.()
+        } catch (err) {
+            errHandle(err)
+        } finally {
+            toggle.disabled = false
+        }
+    })
+    dialog.querySelector('#share-close')!.addEventListener('click', () => close())
+    updateStatus()
+    open(copy)
+    return result
 }
 
 /** In-app raw source viewer (keeps the user inside the app). */
 export function showRawViewer(path: string): Promise<void> {
-    return new Promise(resolve => {
-        const overlay = document.createElement('div')
-        overlay.className = 'modal-overlay'
-        const dialog = document.createElement('div')
-        dialog.className = 'modal-dialog raw-viewer'
-        dialog.setAttribute('role', 'dialog')
-        dialog.setAttribute('aria-modal', 'true')
+    const { dialog, open, close, result } = createModalDialog<void>({
+        className: 'raw-viewer', label: getI18n('rawTitle'),
+    }, undefined)
+    dialog.innerHTML = `
+      <div class="modal-title">${getI18n('rawTitle')}</div>
+      <div class="modal-desc">${escapeHtml(path)}</div>
+      <pre class="raw-body" id="raw-body">${escapeHtml(getI18n('homeLoading'))}</pre>
+      <div class="modal-actions">
+        <button type="button" class="modal-btn modal-btn-secondary" id="raw-copy" disabled>${getI18n('copy')}</button>
+        <button type="button" class="modal-btn modal-btn-secondary" id="raw-open">${getI18n('rawOpenTab')}</button>
+        <button type="button" class="modal-btn modal-btn-primary" id="raw-close">${getI18n('close')}</button>
+      </div>
+    `
 
-        dialog.innerHTML = `
-          <div class="modal-title">${getI18n('rawTitle')}</div>
-          <div class="modal-desc">${escapeHtml(path)}</div>
-          <pre class="raw-body" id="raw-body">${escapeHtml(getI18n('homeLoading'))}</pre>
-          <div class="modal-actions">
-            <button type="button" class="modal-btn modal-btn-secondary" id="raw-copy" disabled>${getI18n('copy')}</button>
-            <button type="button" class="modal-btn modal-btn-secondary" id="raw-open">${getI18n('rawOpenTab')}</button>
-            <button type="button" class="modal-btn modal-btn-primary" id="raw-close">${getI18n('close')}</button>
-          </div>
-        `
+    const closeButton = dialog.querySelector<HTMLButtonElement>('#raw-close')
+    closeButton?.addEventListener('click', () => close())
+    open(closeButton)
+    dialog.querySelector('#raw-open')?.addEventListener('click', () => {
+        window.open(`/api/notes/${encodeNotePath(path)}?raw=1`, '_blank', 'noopener')
+    })
 
-        const cleanup = (): void => {
-            animateOut(overlay, dialog, resolve)
+    const body = dialog.querySelector('#raw-body')
+    const copyButton = dialog.querySelector<HTMLButtonElement>('#raw-copy')
+    let rawText = ''
+    void (async () => {
+        try {
+            const res = await fetch(`/api/notes/${encodeNotePath(path)}?raw=1`)
+            if (!res.ok) throw new Error(`HTTP ${res.status}: ${await res.text()}`)
+            rawText = await res.text()
+            if (body) body.textContent = rawText
+            if (copyButton) copyButton.disabled = false
+        } catch (err) {
+            if (body) body.textContent = String(err)
         }
+    })()
 
-        closeOnOverlay(overlay, dialog, cleanup)
-        overlay.appendChild(dialog)
-        document.body.appendChild(overlay)
-
-        dialog.querySelector('#raw-close')?.addEventListener('click', cleanup)
-        dialog.querySelector('#raw-open')?.addEventListener('click', () => {
-            window.open(`/api/notes/${encodeNotePath(path)}?raw=1`, '_blank', 'noopener')
-        })
-
-        const body = dialog.querySelector('#raw-body')
-        const copyButton = dialog.querySelector<HTMLButtonElement>('#raw-copy')
-        let rawText = ''
+    copyButton?.addEventListener('click', () => {
         void (async () => {
             try {
-                const res = await fetch(`/api/notes/${encodeNotePath(path)}?raw=1`)
-                if (!res.ok) throw new Error(`HTTP ${res.status}: ${await res.text()}`)
-                rawText = await res.text()
-                if (body) body.textContent = rawText
-                if (copyButton) copyButton.disabled = false
-            } catch (err) {
-                if (body) body.textContent = String(err)
+                await navigator.clipboard.writeText(rawText)
+                showToast(getI18n('copied'))
+            } catch {
+                if (body) window.getSelection()?.selectAllChildren(body)
+                showToast(getI18n('copyRawManual'))
             }
         })()
-
-        copyButton?.addEventListener('click', () => {
-            void (async () => {
-                try {
-                    await navigator.clipboard.writeText(rawText)
-                    showToast(getI18n('copied'))
-                } catch {
-                    if (body) window.getSelection()?.selectAllChildren(body)
-                    showToast(getI18n('copyRawManual'))
-                }
-            })()
-        })
     })
+    return result
 }
 
 function isProtectedPath(path: string): boolean {

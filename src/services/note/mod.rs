@@ -33,15 +33,10 @@ pub use repair::{repair_all, repair_doc, TitlePrefer};
 pub use store::{delete_note, query_note, save_note, set_mode, set_password, set_share, set_title};
 pub use tree::build_home_tree_with_page_counts;
 
-// Re-exports used by unit tests in this module.
-#[allow(unused_imports)]
-pub use book::strip_toc_link;
-#[allow(unused_imports)]
-pub use tree::build_home_tree;
-
 #[cfg(test)]
 mod tests {
     use super::*;
+    use super::{book::strip_toc_link, tree::build_home_tree};
     use crate::models::note::{DocType, NoteMetadata, NoteMode, NoteRecord, TreeNode};
 
     fn book_meta() -> NoteMetadata {

@@ -1,3 +1,4 @@
+import { apiRequest } from '../core/api'
 import { getI18n } from '../core/config'
 import { encodeNotePath } from '../core/pathUtils'
 import { showToast, errHandle, showConfirm } from '../core/ui'
@@ -53,18 +54,9 @@ export async function repairDocPath(
     // Create missing pages from book TOC links by default when repairing books.
     if (options.createMissing !== false) url.searchParams.set('createMissing', '1')
 
-    const res = await fetch(url.toString(), { method: 'POST' })
-    const text = await res.text()
-    let json: { code: number; message?: string; data?: RepairResult }
-    try {
-        json = JSON.parse(text) as typeof json
-    } catch {
-        throw new Error(`${getI18n('repairFailed')} (${res.status})`)
-    }
-    if (!res.ok || json.code !== 0 || !json.data) {
-        throw new Error(json.message || `${getI18n('repairFailed')} (${res.status})`)
-    }
-    return json.data
+    return apiRequest<RepairResult>(url, {
+        method: 'POST', requireData: true, errorMessage: getI18n('repairFailed'),
+    })
 }
 
 /** POST /api/repair?all=1 */
@@ -76,20 +68,12 @@ export async function repairAllDocs(limit = 50): Promise<{ count: number; result
     url.searchParams.set('createMissing', '1')
     url.searchParams.set('limit', String(limit))
 
-    const res = await fetch(url.toString(), { method: 'POST' })
-    const text = await res.text()
-    let json: { code: number; message?: string; data?: { count?: number; results?: RepairResult[] } }
-    try {
-        json = JSON.parse(text) as typeof json
-    } catch {
-        throw new Error(`${getI18n('repairFailed')} (${res.status})`)
-    }
-    if (!res.ok || json.code !== 0 || !json.data) {
-        throw new Error(json.message || `${getI18n('repairFailed')} (${res.status})`)
-    }
+    const data = await apiRequest<{ count?: number; results?: RepairResult[] }>(url, {
+        method: 'POST', requireData: true, errorMessage: getI18n('repairFailed'),
+    })
     return {
-        count: json.data.count ?? json.data.results?.length ?? 0,
-        results: json.data.results || [],
+        count: data.count ?? data.results?.length ?? 0,
+        results: data.results || [],
     }
 }
 

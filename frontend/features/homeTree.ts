@@ -1,3 +1,4 @@
+import { apiRequest } from '../core/api'
 import { CONFIG, getI18n } from '../core/config'
 import { readPreference, writePreference } from '../core/preferences'
 import type { HomeTreeResponse, TreeNode } from '../core/types'
@@ -143,17 +144,6 @@ function renderNode(node: TreeNode, level: number, host: DocumentFragment): void
       ${rowActions(node)}
     `
 
-    if (isDir) {
-        row.querySelector('.doc-tree-title')?.addEventListener('click', e => {
-            e.preventDefault()
-            toggleExpand(node.path)
-        })
-    }
-    row.querySelector('.doc-tree-chevron')?.addEventListener('click', e => {
-        e.preventDefault()
-        e.stopPropagation()
-        if (isDir || hasChildren) toggleExpand(node.path)
-    })
     if (node.nodeType === 'book') {
         row.title = getI18n('homeBookTooltip')
     }
@@ -180,18 +170,6 @@ function renderEmpty(host: DocumentFragment, hasAnyData: boolean): void {
              <button type="button" class="welcome-button" data-create="book">${getI18n('homeNewBook')}</button>
            </div>`
     host.appendChild(empty)
-
-    empty.querySelector('#home-clear-search')?.addEventListener('click', () => {
-        query = ''
-        const search = input('#home-search')
-        if (search) search.value = ''
-        renderTree()
-    })
-    empty.querySelectorAll<HTMLButtonElement>('[data-create]').forEach(btn => {
-        btn.addEventListener('click', () => {
-            void showCreateDocDialog(btn.dataset.create as 'article' | 'book')
-        })
-    })
 }
 
 function renderTree(nodes = treeData): void {
@@ -234,22 +212,17 @@ async function loadTree(opts: { refresh?: boolean } = {}): Promise<void> {
     const sequence = ++loadSequence
     try {
         const qs = opts.refresh ? '?refresh=1' : ''
-        const res = await fetch(`/api/home-tree${qs}`, { cache: opts.refresh ? 'no-store' : 'default' })
-        if (!res.ok) throw new Error(`Home tree request failed (HTTP ${res.status})`)
-
-        const json = (await res.json()) as {
-            code: number
-            message?: string
-            data?: HomeTreeResponse
-        }
-        if (json.code !== 0 || !Array.isArray(json.data?.tree)) {
-            throw new Error(json.message || 'Invalid home tree response')
-        }
+        const data = await apiRequest<HomeTreeResponse>(`/api/home-tree${qs}`, {
+            cache: opts.refresh ? 'no-store' : 'default',
+            requireData: true,
+            errorMessage: 'Home tree request failed',
+        })
+        if (!Array.isArray(data.tree)) throw new Error('Invalid home tree response')
         if (sequence !== loadSequence) return
 
-        renderTree(json.data.tree)
-        treeData = json.data.tree
-        const counts = json.data.counts ?? { article: 0, book: 0 }
+        renderTree(data.tree)
+        treeData = data.tree
+        const counts = data.counts ?? { article: 0, book: 0 }
         const countsEl = el('#home-counts')
         if (countsEl) {
             countsEl.textContent = `${getI18n('homeArticles')} ${counts.article} · ${getI18n('homeBooks')} ${counts.book}`
@@ -265,11 +238,6 @@ async function loadTree(opts: { refresh?: boolean } = {}): Promise<void> {
         host.innerHTML = `<div class="doc-tree-empty"><div class="doc-tree-empty-title" role="alert">${getI18n('homeError')}</div>
           <button type="button" class="welcome-button" id="home-retry">${getI18n('homeRetry')}</button>
           <a class="welcome-button" href="/?view=basic">${getI18n('homeBasicList')}</a></div>`
-        const retry = host.querySelector<HTMLButtonElement>('#home-retry')
-        retry?.addEventListener('click', () => {
-            retry.disabled = true
-            void loadTree({ refresh: true })
-        })
     }
 }
 
@@ -313,8 +281,34 @@ export async function initHomeTree(): Promise<void> {
 
         // Event delegation: works after every re-render.
         host.addEventListener('click', e => {
-            const target = e.target as Element | null
-            const moreBtn = target?.closest('[data-more]') as HTMLElement | null
+            const target = e.target
+            if (!(target instanceof Element)) return
+
+            const retry = target.closest<HTMLButtonElement>('#home-retry')
+            if (retry) {
+                retry.disabled = true
+                void loadTree({ refresh: true })
+                return
+            }
+            if (target.closest('#home-clear-search')) {
+                query = ''
+                if (search) search.value = ''
+                renderTree()
+                return
+            }
+            const create = target.closest<HTMLButtonElement>('[data-create]')
+            if (create) {
+                void showCreateDocDialog(create.dataset.create === 'book' ? 'book' : 'article')
+                return
+            }
+            const expandTrigger = target.closest('button.doc-tree-chevron, .is-dir .doc-tree-title')
+            const row = expandTrigger?.closest<HTMLElement>('.doc-tree-row')
+            if (row?.dataset.path) {
+                e.preventDefault()
+                toggleExpand(row.dataset.path)
+                return
+            }
+            const moreBtn = target.closest<HTMLElement>('[data-more]')
             if (moreBtn) {
                 e.preventDefault()
                 e.stopPropagation()

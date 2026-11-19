@@ -1,4 +1,4 @@
-const MOBILE_VIEWPORT = '(max-width: 760px)'
+import { COMPACT_STATUS_VIEWPORT } from '../core/viewport'
 
 /** Allow mobile readers to toggle the hidden status bar by tapping the page. */
 export function initReadingControls(): void {
@@ -6,7 +6,7 @@ export function initReadingControls(): void {
     const appShell = document.querySelector<HTMLElement>('.app-shell')
     if (!readingSurface || !appShell) return
 
-    const mobileViewport = window.matchMedia(MOBILE_VIEWPORT)
+    const mobileViewport = window.matchMedia(COMPACT_STATUS_VIEWPORT)
     let isMobile = mobileViewport.matches
 
     const updateMobileState = (): void => {

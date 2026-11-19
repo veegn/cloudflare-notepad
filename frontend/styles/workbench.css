@@ -1,0 +1,331 @@
+html,
+body {
+    height: 100%;
+    margin: 0;
+    position: fixed;
+    width: 100%;
+    overflow: hidden;
+    overscroll-behavior: none;
+}
+
+body {
+    background-color: var(--vscode-bg);
+    color: var(--vscode-text);
+    font-family: 'IBM Plex Sans', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+    font-size: 14px;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+}
+
+button,
+textarea {
+    font: inherit;
+    touch-action: manipulation;
+}
+
+.app-shell {
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    display: grid;
+    grid-template-rows: minmax(0, 1fr) auto;
+    background:
+        radial-gradient(circle at top center, rgba(55, 148, 255, 0.08), transparent 320px),
+        var(--vscode-bg);
+}
+
+
+
+.workbench {
+    min-height: 0;
+    overflow: hidden;
+    padding: 18px 22px 12px;
+}
+
+.editor-pane {
+    display: grid;
+    grid-template-rows: 38px minmax(0, 1fr);
+    min-height: 0;
+    height: 100%;
+    border: 1px solid var(--vscode-border);
+    border-radius: var(--radius-l) var(--radius-l) 0 0;
+    overflow: hidden;
+    background: var(--vscode-editor);
+    box-shadow: var(--shadow-panel);
+}
+
+.editor-tabbar {
+    position: sticky;
+    top: 0;
+    z-index: var(--z-tabbar);
+    display: flex;
+    align-items: stretch;
+    justify-content: space-between;
+    gap: 12px;
+    min-width: 0;
+    /* Unified title-bar chrome: one color for the whole strip */
+    background: var(--vscode-tab);
+    border-bottom: 1px solid var(--vscode-border);
+}
+
+.editor-tab {
+    display: inline-flex;
+    align-items: center;
+    gap: 10px;
+    max-width: 340px;
+    min-width: 0;
+    padding: 0 14px;
+    border-top: 2px solid var(--vscode-accent);
+    background: var(--vscode-tab);
+    color: var(--vscode-text);
+}
+
+.editor-tab-icon {
+    color: var(--vscode-accent);
+    font-size: 11px;
+    font-weight: 700;
+}
+
+.editor-tab-label {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    font-size: 13px;
+}
+
+.editor-tab-actions {
+    display: flex;
+    align-items: center;
+    padding: 0 12px;
+}
+
+.editor-body {
+    min-height: 0;
+    position: relative;
+    background:
+        linear-gradient(180deg, rgba(255, 255, 255, 0.02), transparent 180px),
+        var(--vscode-editor);
+}
+
+.editor-banner {
+    margin: 16px 20px 0;
+    padding: 12px 14px;
+    border-left: 3px solid var(--vscode-accent);
+    border-radius: 6px;
+    background: rgba(55, 148, 255, 0.08);
+    color: var(--vscode-text);
+    font-size: 13px;
+}
+
+.mode-picker {
+    display: inline-flex;
+    align-items: center;
+}
+
+.mode-picker-trigger::after {
+    content: '▴';
+    margin-left: 6px;
+    font-size: 10px;
+    opacity: 0.8;
+}
+
+.mode-picker-menu {
+    position: absolute;
+    right: 10px;
+    bottom: calc(100% + 8px);
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    min-width: 150px;
+    padding: 6px;
+    border-radius: var(--radius-m);
+    z-index: var(--z-mode-menu);
+}
+
+.mode-picker-option {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    min-height: 30px;
+    padding: 0 10px;
+    border: 0;
+    border-radius: 6px;
+    background: transparent;
+    color: var(--vscode-text);
+    font-size: 12px;
+    cursor: pointer;
+    transition: background var(--transition);
+}
+
+.mode-picker-option:hover,
+.mode-picker-option.active {
+    background: var(--vscode-accent-soft);
+}
+
+.mode-picker-option span:last-child {
+    color: var(--vscode-text-muted);
+    font-size: 11px;
+}
+
+.mode-picker-menu[hidden] {
+    display: none;
+}
+
+/* Common components */
+
+.opt-button {
+    height: 22px;
+    padding: 0 10px;
+    border: 0;
+    background: transparent;
+    color: var(--statusbar-text);
+    border-radius: var(--radius-s);
+    cursor: pointer;
+    transition: background var(--transition);
+}
+
+.opt-button:hover {
+    background: rgba(255, 255, 255, 0.14);
+}
+
+.glass-panel {
+    background: rgba(30, 30, 30, 0.96);
+    backdrop-filter: blur(12px);
+    border: 1px solid rgba(255, 255, 255, 0.14);
+    box-shadow: var(--shadow-popup);
+}
+
+[data-theme="light"] .glass-panel {
+    background: rgba(255, 255, 255, 0.96);
+    border-color: rgba(0, 0, 0, 0.08);
+}
+
+.statusbar {
+    position: relative;
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: space-between;
+    gap: 2px 12px;
+    min-width: 0;
+    min-height: 24px;
+    padding: 0 10px;
+    background: var(--vscode-statusbar);
+    color: var(--statusbar-text);
+    font-size: 12px;
+    box-shadow: 0 -6px 18px rgba(0, 0, 0, 0.16);
+}
+
+.statusbar-left,
+.statusbar-right,
+.statusbar .status-actions {
+    display: flex;
+    align-items: center;
+    min-width: 0;
+    max-width: 100%;
+    gap: 8px;
+}
+
+.statusbar-sep {
+    width: 1px;
+    height: 18px;
+    background: rgba(255, 255, 255, 0.18);
+    flex-shrink: 0;
+}
+
+.statusbar .opt-button {
+    overflow-wrap: normal;
+    white-space: nowrap;
+}
+
+.status-more-icon {
+    display: none;
+}
+
+.theme-toggle {
+    width: 28px;
+    padding: 0;
+}
+
+.theme-toggle-icon {
+    position: relative;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 16px;
+    height: 16px;
+}
+
+.theme-toggle-sun,
+.theme-toggle-moon {
+    position: absolute;
+    display: inline-flex;
+    transition: transform 0.25s ease, opacity 0.25s ease;
+}
+
+.theme-toggle-sun {
+    opacity: 1;
+    transform: rotate(0deg);
+}
+
+[data-theme="dark"] .theme-toggle-sun {
+    opacity: 0;
+    transform: rotate(-90deg);
+}
+
+.theme-toggle-moon {
+    opacity: 0;
+    transform: rotate(90deg);
+}
+
+[data-theme="dark"] .theme-toggle-moon {
+    opacity: 1;
+    transform: rotate(0deg);
+}
+
+.status-indicator {
+    width: 12px;
+    height: 12px;
+    border: 2px solid rgba(255, 255, 255, 0.75);
+    border-bottom-color: transparent;
+    border-radius: 50%;
+    animation: rotation 1s linear infinite;
+}
+
+#last-modified-container {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.github-link {
+    display: inline-flex;
+    align-items: center;
+    color: var(--statusbar-text);
+    opacity: 0.92;
+    transition: opacity var(--transition);
+}
+
+.github-link:hover {
+    opacity: 1;
+}
+
+/* Scrollbars */
+::-webkit-scrollbar {
+    width: 10px;
+    height: 10px;
+}
+
+::-webkit-scrollbar-thumb {
+    border: 2px solid transparent;
+    border-radius: 10px;
+    background: var(--scrollbar-thumb);
+    background-clip: content-box;
+}
+
+@keyframes rotation {
+    to { transform: rotate(360deg); }
+}

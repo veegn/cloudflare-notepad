@@ -83,6 +83,38 @@ pub fn public_asset_url(object_key: &str) -> String {
     format!("/assets/{}", object_key.trim_start_matches('/'))
 }
 
+fn upload_content_type(headers: &Headers) -> String {
+    headers
+        .get("content-type")
+        .ok()
+        .flatten()
+        .unwrap_or_default()
+        .split(';')
+        .next()
+        .unwrap_or("")
+        .trim()
+        .to_ascii_lowercase()
+}
+
+/// The query parameter supports UTF-8. The header is the fallback.
+fn upload_filename(query_name: Option<String>, headers: &Headers) -> String {
+    query_name
+        .filter(|s| !s.trim().is_empty())
+        .or_else(|| {
+            headers
+                .get("x-filename")
+                .ok()
+                .flatten()
+                .map(|h| {
+                    urlencoding::decode(&h)
+                        .map(|s| s.to_string())
+                        .unwrap_or_else(|_| h.clone())
+                })
+                .filter(|s| !s.trim().is_empty())
+        })
+        .unwrap_or_default()
+}
+
 /// POST /api/upload?note=<optional note path>
 pub async fn upload_image(mut req: Request, ctx: RouteContext<()>) -> Result<Response> {
     let bucket = ctx.env.bucket("NOTES")?;
@@ -105,18 +137,7 @@ pub async fn upload_image(mut req: Request, ctx: RouteContext<()>) -> Result<Res
         }
     }
 
-    let content_type = req
-        .headers()
-        .get("content-type")
-        .ok()
-        .flatten()
-        .unwrap_or_default()
-        .split(';')
-        .next()
-        .unwrap_or("")
-        .trim()
-        .to_ascii_lowercase();
-
+    let content_type = upload_content_type(req.headers());
     if !is_allowed_image(&content_type) {
         return err_json(40100, "Unsupported image type. Use png/jpeg/webp/gif.", 400);
     }
@@ -129,25 +150,11 @@ pub async fn upload_image(mut req: Request, ctx: RouteContext<()>) -> Result<Res
         return err_json(40102, "Image too large (max 8MB)", 413);
     }
 
-    // Filename: query `name` supports UTF-8; `X-Filename` is ISO-8859-1 only.
-    let filename = url
+    let query_name = url
         .query_pairs()
         .find(|(k, _)| k == "name")
-        .map(|(_, v)| v.to_string())
-        .filter(|s| !s.trim().is_empty())
-        .or_else(|| {
-            req.headers()
-                .get("x-filename")
-                .ok()
-                .flatten()
-                .map(|h| {
-                    urlencoding::decode(&h)
-                        .map(|s| s.to_string())
-                        .unwrap_or_else(|_| h.clone())
-                })
-                .filter(|s| !s.trim().is_empty())
-        })
-        .unwrap_or_default();
+        .map(|(_, v)| v.to_string());
+    let filename = upload_filename(query_name, req.headers());
     let ext = ext_for_content_type(&content_type);
     let id = random_id();
     let safe = format!("{}-{}", id, sanitize_filename(&filename, ext));

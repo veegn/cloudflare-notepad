@@ -1,3 +1,5 @@
+import { apiRequest } from './core/api'
+import { encodeNotePath } from './core/pathUtils'
 import './core/polyfills'
 import { CONFIG, $, getI18n } from './core/config'
 import { getEditPath, getViewPath, initEditor } from './editor/editor'
@@ -136,25 +138,15 @@ export async function initApp(): Promise<void> {
                 return
             }
 
-            window.fetch(`/api/notes/${CONFIG.notePath}`, {
-                method: 'PATCH',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ password: passwd.trim() }),
-            })
-                .then(async res => {
-                    if (!res.ok && !res.headers.get('content-type')?.includes('application/json')) {
-                        throw new Error(`Server Error: ${res.status} - ${await res.text()}`)
-                    }
-                    return res.json() as Promise<{ code: number; message?: string }>
+            try {
+                await apiRequest(`/api/notes/${encodeNotePath(CONFIG.notePath)}`, {
+                    method: 'PATCH', json: { password: passwd.trim() }, errorMessage: 'Failed to update password',
                 })
-                .then(async res => {
-                    if (res.code !== 0) {
-                        return errHandle(res.message || 'Failed to update password')
-                    }
-                    await showAlert(passwd.trim() ? getI18n('passwordSaved') : getI18n('passwordRemoved'))
-                    window.location.reload()
-                })
-                .catch(errHandle)
+                await showAlert(passwd.trim() ? getI18n('passwordSaved') : getI18n('passwordRemoved'))
+                window.location.reload()
+            } catch (err) {
+                errHandle(err)
+            }
         } else if (shareBtn) {
             event.preventDefault()
             // Panel owns its own state/refresh — never reload the page here.

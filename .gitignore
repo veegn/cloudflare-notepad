@@ -41,3 +41,5 @@ static/js/mermaid.min.js
 /CLAUDE.md
 /QWEN.md
 tmpclaude*cwd
+static/css/app.css
+static/css/app.css.map

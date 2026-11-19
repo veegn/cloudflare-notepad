@@ -4,7 +4,7 @@ use worker::*;
 
 use crate::error::*;
 use crate::models::api::CreatePageRequest;
-use crate::models::note::{path_display_name, DocType, NoteRecord};
+use crate::models::note::{path_display_name, DocType};
 use crate::services::{auth, note};
 
 use super::util::{clean_path, cookie_header, get_index_password, is_edit_authorized};
@@ -206,22 +206,6 @@ pub async fn adopt_book(req: Request, ctx: RouteContext<()>) -> Result<Response>
         Err(worker::Error::RustError(msg)) => err_json(40020, &msg, 400),
         Err(e) => Err(e),
     }
-}
-
-#[allow(dead_code)]
-async fn list_pages_for_book(bucket: &worker::Bucket, book_path: &str) -> Result<Vec<NoteRecord>> {
-    note::list_all_docs(
-        bucket,
-        &note::ListOptions {
-            doc_type: Some(DocType::Page),
-            exclude_pages: false,
-            book_ref: Some(book_path.to_string()),
-            limit: 2000,
-            prefix: Some(format!("{}/", book_path.trim_matches('/'))),
-            include_body: false,
-        },
-    )
-    .await
 }
 
 fn validate_page_path(page_path: &str, book_path: &str) -> std::result::Result<(), String> {

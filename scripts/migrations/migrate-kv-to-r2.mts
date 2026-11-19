@@ -26,7 +26,7 @@ import { fileURLToPath } from 'node:url'
 import { DatabaseSync } from 'node:sqlite'
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url))
-const projectRoot = path.resolve(__dirname, '..')
+const projectRoot = path.resolve(__dirname, '../..')
 
 const DEFAULT_KV_NAMESPACE_ID = 'b485b873ed1a41d686bb26799e2eb527'
 const DEFAULT_R2_BUCKET = 'cloud-notepad-notes'

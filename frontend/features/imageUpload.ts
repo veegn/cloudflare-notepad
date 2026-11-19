@@ -1,3 +1,4 @@
+import { apiRequest } from '../core/api'
 import { CONFIG, getI18n } from '../core/config'
 import { showToast, errHandle } from '../core/ui'
 
@@ -51,7 +52,7 @@ export async function uploadImageFile(file: File, notePath?: string): Promise<Up
     const qs = params.toString()
     const url = `/api/upload${qs ? `?${qs}` : ''}`
 
-    const res = await fetch(url, {
+    return apiRequest<UploadResult>(url, {
         method: 'POST',
         headers: {
             'Content-Type': type || 'application/octet-stream',
@@ -59,18 +60,9 @@ export async function uploadImageFile(file: File, notePath?: string): Promise<Up
             'X-Filename': asciiHeaderValue(displayName),
         },
         body: file,
+        requireData: true,
+        errorMessage: getI18n('uploadFailed'),
     })
-    const text = await res.text()
-    let json: { code: number; message?: string; data?: UploadResult }
-    try {
-        json = JSON.parse(text) as typeof json
-    } catch {
-        throw new Error(`${getI18n('uploadFailed')} (${res.status})`)
-    }
-    if (!res.ok || json.code !== 0 || !json.data) {
-        throw new Error(json.message || `${getI18n('uploadFailed')} (${res.status})`)
-    }
-    return json.data
 }
 
 export type InsertText = (text: string) => void

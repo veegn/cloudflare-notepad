@@ -1,3 +1,5 @@
+import { MOBILE_VIEWPORT } from '../core/viewport'
+import { apiRequest } from '../core/api'
 import { getI18n } from '../core/config'
 import type { BookPageItem, TocItem } from '../core/types'
 import { showPrompt, showConfirm, showToast, errHandle } from '../core/ui'
@@ -27,14 +29,8 @@ async function fetchToc(book: string): Promise<TocItem[]> {
         /* ignore cache errors */
     }
 
-    const res = await fetch(`/api/toc?book=${encodeURIComponent(book)}`)
-    const json = (await res.json()) as {
-        code: number
-        message?: string
-        data?: { items?: TocItem[] }
-    }
-    if (json.code !== 0) throw new Error(json.message || 'toc failed')
-    const items = json.data?.items || []
+    const data = await apiRequest<{ items?: TocItem[] }>(`/api/toc?book=${encodeURIComponent(book)}`, { errorMessage: 'toc failed' })
+    const items = data?.items || []
     try {
         sessionStorage.setItem(
             cacheKey,
@@ -64,14 +60,8 @@ function invalidateTocCache(book?: string): void {
 }
 
 async function fetchPages(book: string): Promise<{ title: string; items: BookPageItem[] }> {
-    const res = await fetch(`/api/books/${encodeNotePath(book)}/pages`)
-    const json = (await res.json()) as {
-        code: number
-        message?: string
-        data?: { book?: { title?: string }; items?: BookPageItem[] }
-    }
-    if (json.code !== 0) throw new Error(json.message || 'pages failed')
-    return { title: json.data?.book?.title || book, items: json.data?.items || [] }
+    const data = await apiRequest<{ book?: { title?: string }; items?: BookPageItem[] }>(`/api/books/${encodeNotePath(book)}/pages`, { errorMessage: 'pages failed' })
+    return { title: data?.book?.title || book, items: data?.items || [] }
 }
 
 /** Generic section labels that add noise in a book TOC sidebar. */
@@ -126,9 +116,10 @@ function renderTocSidebar(body: HTMLElement, items: TocItem[], currentPath: stri
     }
 }
 
+const pageRows = new WeakMap<Element, BookPageItem>()
+
 function renderPageManager(
     body: HTMLElement,
-    book: string,
     items: BookPageItem[],
     currentPath: string,
 ): void {
@@ -150,12 +141,7 @@ function renderPageManager(
             <button type="button" class="book-page-btn danger" data-act="delete">${getI18n('bookDelete')}</button>
           </span>
         `
-        row.querySelector('[data-act="edit"]')?.addEventListener('click', () => {
-            if (!item.exists) return
-            window.location.href = `/edit/${encodeNotePath(item.path)}`
-        })
-        bindPageAction(row.querySelector('[data-act="rename"]'), () => renamePage(item, book))
-        bindPageAction(row.querySelector('[data-act="delete"]'), () => deletePage(item, book))
+        pageRows.set(row, item)
         body.appendChild(row)
     })
 }
@@ -178,15 +164,15 @@ async function reloadSidebar(book: string): Promise<void> {
                 bookLink.href = `/note/${encodeNotePath(book)}`
                 bookLink.title = book
             }
-            renderPageManager(body, book, items, current)
+            renderPageManager(body, items, current)
             return
         }
 
         const toc = await fetchToc(book)
-        const bookMeta = (await fetch(`/api/notes/${encodeNotePath(book)}`)
-            .then(r => r.json())
-            .catch(() => null)) as { data?: { metadata?: { title?: string } } } | null
-        const bookTitle = bookMeta?.data?.metadata?.title || book
+        const bookMeta = await apiRequest<{ metadata?: { title?: string } }>(
+            `/api/notes/${encodeNotePath(book)}`,
+        ).catch(() => undefined)
+        const bookTitle = bookMeta?.metadata?.title || book
         if (bookLink) {
             bookLink.hidden = false
             bookLink.textContent = bookTitle
@@ -207,13 +193,11 @@ async function renamePage(item: BookPageItem, book: string): Promise<void> {
     if (!next || next === item.title) return
 
     try {
-        const res = await fetch(`/api/notes/${encodeNotePath(item.path)}`, {
+        await apiRequest(`/api/notes/${encodeNotePath(item.path)}`, {
             method: 'PATCH',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ title: next }),
+            json: { title: next },
+            errorMessage: 'rename failed',
         })
-        const json = (await res.json()) as { code: number; message?: string }
-        if (json.code !== 0) throw new Error(json.message || 'rename failed')
         showToast(getI18n('bookRenamed'))
         invalidateTocCache(book)
         await reloadSidebar(book)
@@ -227,11 +211,10 @@ async function deletePage(item: BookPageItem, book: string): Promise<void> {
     if (!ok) return
 
     try {
-        const res = await fetch(`/api/notes/${encodeNotePath(item.path)}?syncBook=1`, {
+        await apiRequest(`/api/notes/${encodeNotePath(item.path)}?syncBook=1`, {
             method: 'DELETE',
+            errorMessage: 'delete failed',
         })
-        const json = (await res.json()) as { code: number; message?: string }
-        if (json.code !== 0) throw new Error(json.message || 'delete failed')
         showToast(getI18n('bookDeleted'))
         invalidateTocCache(book)
         await reloadSidebar(book)
@@ -247,22 +230,14 @@ async function createPage(book: string): Promise<void> {
     if (!next) return
 
     try {
-        const res = await fetch(`/api/books/${encodeNotePath(book)}/pages`, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ title: next }),
+        const data = await apiRequest<{ editUrl?: string }>(`/api/books/${encodeNotePath(book)}/pages`, {
+            method: 'POST', json: { title: next }, errorMessage: 'create page failed',
         })
-        const json = (await res.json()) as {
-            code: number
-            message?: string
-            data?: { editUrl?: string }
-        }
-        if (json.code !== 0) throw new Error(json.message || 'create page failed')
         showToast(getI18n('bookPageCreated'))
         invalidateTocCache(book)
         const goEdit = await showConfirm(getI18n('bookPageCreatedEdit'))
-        if (goEdit && json.data?.editUrl) {
-            window.location.href = json.data.editUrl
+        if (goEdit && data?.editUrl) {
+            window.location.href = data.editUrl
             return
         }
         await reloadSidebar(book)
@@ -271,11 +246,33 @@ async function createPage(book: string): Promise<void> {
     }
 }
 
-function bindPageAction(button: HTMLElement | null, action: () => Promise<void>): void {
-    button?.addEventListener('click', async () => {
-        await action()
-        if (document.activeElement === document.body && el('#doc-sidebar')?.classList.contains('is-drawer-open')) {
-            (button.isConnected ? button : el('#doc-sidebar-close'))?.focus({ preventScroll: true })
+async function runPageAction(button: HTMLElement, action: () => Promise<void>): Promise<void> {
+    await action()
+    if (document.activeElement === document.body && el('#doc-sidebar')?.classList.contains('is-drawer-open')) {
+        (button.isConnected ? button : el('#doc-sidebar-close'))?.focus({ preventScroll: true })
+    }
+}
+
+function bindPageActions(book: string): void {
+    const create = el('#btn-new-page')
+    create?.addEventListener('click', () => { void runPageAction(create, () => createPage(book)) })
+    el('#doc-sidebar-body')?.addEventListener('click', event => {
+        if (!(event.target instanceof Element)) return
+        const button = event.target.closest<HTMLButtonElement>('.book-page-btn')
+        const row = button?.closest('.book-page-row')
+        const item = row && pageRows.get(row)
+        if (!button || !item) return
+
+        switch (button.dataset.act) {
+            case 'edit':
+                if (item.exists) window.location.href = `/edit/${encodeNotePath(item.path)}`
+                break
+            case 'rename':
+                void runPageAction(button, () => renamePage(item, book))
+                break
+            case 'delete':
+                void runPageAction(button, () => deletePage(item, book))
+                break
         }
     })
 }
@@ -286,7 +283,7 @@ function initSidebarDrawer(sidebar: HTMLElement): void {
     const backdrop = el('#doc-sidebar-backdrop')
     if (!toggle || !close || !backdrop) return
 
-    const narrowViewport = window.matchMedia('(max-width: 720px)')
+    const narrowViewport = window.matchMedia(MOBILE_VIEWPORT)
     const background = document.querySelectorAll<HTMLElement>('.editor-tabbar, .editor-banner, .doc-main, .statusbar')
     let open = false
 
@@ -347,7 +344,7 @@ export function initDocSidebar(): void {
     if (!book) return
 
     initSidebarDrawer(sidebar)
-    bindPageAction(el('#btn-new-page'), () => createPage(book))
+    bindPageActions(book)
     window.addEventListener('scn:repaired', () => {
         invalidateTocCache(book)
         void reloadSidebar(book)

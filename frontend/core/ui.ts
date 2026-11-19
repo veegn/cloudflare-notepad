@@ -1,4 +1,5 @@
 import { CONFIG, getI18n } from './config'
+import { createModalDialog, modalButton } from './modal'
 import { readPreference, writePreference } from './preferences'
 
 const GITHUB_ICON = (): string => `
@@ -58,58 +59,18 @@ export const Theme = {
 }
 
 export function showAlert(message: string, title = ''): Promise<void> {
-    return new Promise(resolve => {
-        const overlay = document.createElement('div')
-        overlay.className = 'modal-overlay'
-
-        const dialog = document.createElement('div')
-        dialog.className = 'modal-dialog'
-
-        const titleEl = document.createElement('div')
-        titleEl.className = 'modal-title'
-        titleEl.textContent = title || getI18n('err')
-
-        const descEl = document.createElement('div')
-        descEl.className = 'modal-desc'
-        descEl.textContent = message
-
-        const actions = document.createElement('div')
-        actions.className = 'modal-actions'
-
-        const okBtn = document.createElement('button')
-        okBtn.className = 'modal-btn modal-btn-primary'
-        okBtn.textContent = getI18n('confirm') || 'OK'
-        okBtn.type = 'button'
-
-        let isClosing = false
-        const cleanup = (): void => {
-            if (isClosing) return
-            isClosing = true
-            overlay.classList.add('is-exiting')
-            dialog.classList.add('is-exiting')
-            overlay.addEventListener('animationend', () => {
-                overlay.remove()
-                resolve()
-            })
-        }
-
-        okBtn.onclick = cleanup
-
-        overlay.addEventListener('click', (e) => {
-            if (e.target === overlay) cleanup()
-        })
-
-        actions.appendChild(okBtn)
-        dialog.append(titleEl, descEl, actions)
-        overlay.appendChild(dialog)
-        document.body.appendChild(overlay)
-        
-        requestAnimationFrame(() => okBtn.focus())
-    })
+    const label = title || getI18n('err')
+    const { dialog, open, close, result } = createModalDialog<void>({ label }, undefined)
+    const ok = modalButton('confirm', () => close())
+    const actions = modalText('modal-actions', '')
+    actions.append(ok)
+    dialog.append(modalText('modal-title', label), modalText('modal-desc', message), actions)
+    open(ok)
+    return result
 }
 
 export const errHandle = (err: unknown): void => {
-    showAlert(String(err))
+    void showAlert(String(err))
 }
 
 export function showToast(message: string): void {
@@ -125,193 +86,48 @@ export function showToast(message: string): void {
 }
 
 export function showConfirm(message: string): Promise<boolean> {
-    return new Promise(resolve => {
-        const overlay = document.createElement('div')
-        overlay.className = 'modal-overlay'
-
-        const dialog = document.createElement('div')
-        dialog.className = 'modal-dialog'
-
-        const descEl = document.createElement('div')
-        descEl.className = 'modal-desc'
-        descEl.textContent = message
-
-        const actions = document.createElement('div')
-        actions.className = 'modal-actions'
-
-        const cancelBtn = document.createElement('button')
-        cancelBtn.className = 'modal-btn modal-btn-secondary'
-        cancelBtn.textContent = getI18n('cancel') || 'Cancel'
-        cancelBtn.type = 'button'
-
-        const okBtn = document.createElement('button')
-        okBtn.className = 'modal-btn modal-btn-primary'
-        okBtn.textContent = getI18n('confirm') || 'OK'
-        okBtn.type = 'button'
-
-        let isClosing = false
-        const cleanup = (result: boolean): void => {
-            if (isClosing) return
-            isClosing = true
-            overlay.classList.add('is-exiting')
-            dialog.classList.add('is-exiting')
-            overlay.addEventListener('animationend', () => {
-                overlay.remove()
-                resolve(result)
-            })
-        }
-
-        cancelBtn.onclick = () => cleanup(false)
-        okBtn.onclick = () => cleanup(true)
-
-        overlay.addEventListener('click', (e) => {
-            if (e.target === overlay) cleanup(false)
-        })
-
-        actions.append(cancelBtn, okBtn)
-        dialog.append(descEl, actions)
-        overlay.appendChild(dialog)
-        document.body.appendChild(overlay)
-        
-        requestAnimationFrame(() => okBtn.focus())
-    })
+    const { dialog, open, close, result } = createModalDialog<boolean>({ label: message }, false)
+    const ok = modalButton('confirm', () => close(true))
+    const actions = modalText('modal-actions', '')
+    actions.append(modalButton('cancel', () => close(false)), ok)
+    dialog.append(modalText('modal-desc', message), actions)
+    open(ok)
+    return result
 }
 
 export function showPasswordPrompt(message = ''): Promise<string | null> {
-    const titleText = message || (CONFIG.pw ? getI18n('changePW') + ' - ' + getI18n('passwordSetPrompt') : getI18n('setPW'))
-
-    return new Promise(resolve => {
-        const overlay = document.createElement('div')
-        overlay.className = 'modal-overlay'
-
-        const dialog = document.createElement('div')
-        dialog.className = 'modal-dialog'
-
-        const titleEl = document.createElement('div')
-        titleEl.className = 'modal-title'
-        titleEl.textContent = titleText
-
-        const input = document.createElement('input')
-        input.type = 'text'
-        input.className = 'modal-input'
-        input.value = ''
-        input.autocomplete = 'current-password'
-
-        const actions = document.createElement('div')
-        actions.className = 'modal-actions'
-
-        const cancelBtn = document.createElement('button')
-        cancelBtn.className = 'modal-btn modal-btn-secondary'
-        cancelBtn.textContent = getI18n('cancel')
-        cancelBtn.type = 'button'
-
-        const okBtn = document.createElement('button')
-        okBtn.className = 'modal-btn modal-btn-primary'
-        okBtn.textContent = getI18n('confirm')
-        okBtn.type = 'button'
-
-        let isClosing = false
-        const cleanup = (value: string | null): void => {
-            if (isClosing) return
-            isClosing = true
-            overlay.classList.add('is-exiting')
-            dialog.classList.add('is-exiting')
-            overlay.addEventListener('animationend', () => {
-                overlay.remove()
-                resolve(value)
-            })
-        }
-
-        cancelBtn.onclick = () => cleanup(null)
-        okBtn.onclick = () => cleanup(input.value)
-
-        overlay.addEventListener('click', (e) => {
-            if (e.target === overlay) {
-                cleanup(null)
-            }
-        })
-
-        input.addEventListener('keydown', (e) => {
-            if (e.key === 'Enter') {
-                e.preventDefault()
-                cleanup(input.value)
-            } else if (e.key === 'Escape') {
-                cleanup(null)
-            }
-        })
-
-        actions.append(cancelBtn, okBtn)
-        dialog.append(titleEl, input, actions)
-        overlay.appendChild(dialog)
-        document.body.appendChild(overlay)
-
-        requestAnimationFrame(() => input.focus())
-    })
+    const title = message || (CONFIG.pw ? getI18n('changePW') + ' - ' + getI18n('passwordSetPrompt') : getI18n('setPW'))
+    return textPrompt(title, '', 'current-password')
 }
 
 export function showPrompt(message = '', defaultValue = ''): Promise<string | null> {
-    return new Promise(resolve => {
-        const overlay = document.createElement('div')
-        overlay.className = 'modal-overlay'
+    return textPrompt(message, defaultValue)
+}
 
-        const dialog = document.createElement('div')
-        dialog.className = 'modal-dialog'
-
-        const titleEl = document.createElement('div')
-        titleEl.className = 'modal-title'
-        titleEl.textContent = message
-
-        const input = document.createElement('input')
-        input.type = 'text'
-        input.className = 'modal-input'
-        input.value = defaultValue
-
-        const actions = document.createElement('div')
-        actions.className = 'modal-actions'
-
-        const cancelBtn = document.createElement('button')
-        cancelBtn.className = 'modal-btn modal-btn-secondary'
-        cancelBtn.textContent = getI18n('cancel')
-        cancelBtn.type = 'button'
-
-        const okBtn = document.createElement('button')
-        okBtn.className = 'modal-btn modal-btn-primary'
-        okBtn.textContent = getI18n('confirm')
-        okBtn.type = 'button'
-
-        let isClosing = false
-        const cleanup = (value: string | null): void => {
-            if (isClosing) return
-            isClosing = true
-            overlay.classList.add('is-exiting')
-            dialog.classList.add('is-exiting')
-            overlay.addEventListener('animationend', () => {
-                overlay.remove()
-                resolve(value)
-            })
+function textPrompt(message: string, value: string, autocomplete?: string): Promise<string | null> {
+    const { dialog, open, close, result } = createModalDialog<string | null>({ label: message }, null)
+    const input = document.createElement('input')
+    input.type = 'text'
+    input.className = 'modal-input'
+    input.value = value
+    if (autocomplete) input.setAttribute('autocomplete', autocomplete)
+    const submit = (): void => close(input.value)
+    input.addEventListener('keydown', event => {
+        if (event.key === 'Enter' && !event.isComposing) {
+            event.preventDefault()
+            submit()
         }
-
-        cancelBtn.onclick = () => cleanup(null)
-        okBtn.onclick = () => cleanup(input.value)
-
-        overlay.addEventListener('click', (e) => {
-            if (e.target === overlay) cleanup(null)
-        })
-
-        input.addEventListener('keydown', (e) => {
-            if (e.key === 'Enter') {
-                e.preventDefault()
-                cleanup(input.value)
-            } else if (e.key === 'Escape') {
-                cleanup(null)
-            }
-        })
-
-        actions.append(cancelBtn, okBtn)
-        dialog.append(titleEl, input, actions)
-        overlay.appendChild(dialog)
-        document.body.appendChild(overlay)
-
-        requestAnimationFrame(() => input.focus())
     })
+    const actions = modalText('modal-actions', '')
+    actions.append(modalButton('cancel', () => close(null)), modalButton('confirm', submit))
+    dialog.append(modalText('modal-title', message), input, actions)
+    open(input)
+    return result
+}
+
+function modalText(className: string, text: string): HTMLDivElement {
+    const element = document.createElement('div')
+    element.className = className
+    element.textContent = text
+    return element
 }

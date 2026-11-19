@@ -297,16 +297,16 @@ pub async fn adopt_book(
 
     let title = title
         .map(str::trim)
-        .filter(|t| !t.is_empty())
-        .map(|t| t.to_string())
-        .unwrap_or_else(|| {
-            if !book.metadata.title.as_deref().unwrap_or("").is_empty() {
-                book.metadata.title.clone().unwrap()
-            } else {
-                crate::models::note::first_markdown_h1(&book.content)
-                    .unwrap_or_else(|| path_display_name(&book_path))
-            }
-        });
+        .filter(|title| !title.is_empty())
+        .map(str::to_string)
+        .or_else(|| {
+            book.metadata
+                .title
+                .clone()
+                .filter(|title| !title.is_empty())
+        })
+        .or_else(|| crate::models::note::first_markdown_h1(&book.content))
+        .unwrap_or_else(|| path_display_name(&book_path));
 
     // Stamp each child as a page of this book.
     let mut adopted = 0u32;
@@ -333,28 +333,9 @@ pub async fn adopt_book(
         adopted += 1;
     }
 
-    // Rebuild book body: keep non-TOC preamble if any, then a clean TOC.
-    let preamble = extract_preamble(&book.content, &title);
-    let mut content = format!("# {title}\n\n");
-    if !preamble.trim().is_empty() {
-        content.push_str(preamble.trim());
-        content.push_str("\n\n");
-    } else if book.content.trim().is_empty() {
-        content.push_str("> Historical notes adopted as a book.\n\n");
-    }
-    content.push_str("## TOC\n\n");
-    if children.is_empty() {
-        content.push_str("<!-- No pages under this prefix yet. -->\n");
-    } else {
-        for child in &children {
-            let page_title = child.display_title();
-            content.push_str(&format!("- [{}]({})\n", page_title, child.path));
-        }
-    }
-
     let book_record = NoteRecord {
         path: book_path.clone(),
-        content,
+        content: render_adopted_book(&book.content, &title, &children),
         metadata: NoteMetadata {
             doc_type: DocType::Book,
             title: Some(title.clone()),
@@ -372,6 +353,29 @@ pub async fn adopt_book(
         pages_adopted: adopted,
         pages_total: children.len() as u32,
     })
+}
+
+fn render_adopted_book(previous_body: &str, title: &str, children: &[NoteRecord]) -> String {
+    // Rebuild book body: keep non-TOC preamble if any, then a clean TOC.
+    let preamble = extract_preamble(previous_body, title);
+    let mut content = format!("# {title}\n\n");
+    if !preamble.trim().is_empty() {
+        content.push_str(preamble.trim());
+        content.push_str("\n\n");
+    } else if previous_body.trim().is_empty() {
+        content.push_str("> Historical notes adopted as a book.\n\n");
+    }
+    content.push_str("## TOC\n\n");
+    if children.is_empty() {
+        content.push_str("<!-- No pages under this prefix yet. -->\n");
+    } else {
+        for child in children {
+            let page_title = child.display_title();
+            content.push_str(&format!("- [{}]({})\n", page_title, child.path));
+        }
+    }
+
+    content
 }
 
 /// Non-TOC portion of historical book content (skip H1 we regenerate).

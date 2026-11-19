@@ -7,12 +7,15 @@ const mode = process.argv[2] === 'dev' ? 'dev' : 'prod'
 const isProd = mode === 'prod'
 
 if (isProd) {
-  await rm('static/js/app.js.map', { force: true })
+  await Promise.all([
+    rm('static/js/app.js.map', { force: true }),
+    rm('static/css/app.css.map', { force: true }),
+  ])
 }
 
 await build({
-  entryPoints: ['frontend/app.ts'],
-  outfile: 'static/js/app.js',
+  entryPoints: { 'js/app': 'frontend/app.ts', 'css/app': 'frontend/styles/app.css' },
+  outdir: 'static',
   bundle: true,
   format: 'esm',
   target: ['chrome80', 'edge80', 'firefox78', 'ios14.5', 'safari14.1'],

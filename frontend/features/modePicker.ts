@@ -1,3 +1,5 @@
+import { apiRequest } from '../core/api'
+import { encodeNotePath } from '../core/pathUtils'
 import { CONFIG, $$, getI18n } from '../core/config'
 import { errHandle } from '../core/ui'
 import type { Mode, UIRefs } from '../core/types'
@@ -30,13 +32,14 @@ export function initModePicker(ui: ModePickerRefs): void {
     `).join('')
 
     const setOpen = (open: boolean): void => {
-        modeMenu.classList.toggle('hide', !open)
+        modeMenu.hidden = !open
         modeTrigger.setAttribute('aria-expanded', String(open))
     }
+    setOpen(false)
 
     modeTrigger.onclick = event => {
         event.stopPropagation()
-        setOpen(modeMenu.classList.contains('hide'))
+        setOpen(modeMenu.hasAttribute('hidden'))
     }
 
     $$<HTMLButtonElement>('.mode-picker-option', modeMenu).forEach(option => {
@@ -47,23 +50,10 @@ export function initModePicker(ui: ModePickerRefs): void {
                 return
             }
 
-            window.fetch(`/api/notes/${CONFIG.notePath}`, {
-                method: 'PATCH',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ mode }),
+            void apiRequest(`/api/notes/${encodeNotePath(CONFIG.notePath)}`, {
+                method: 'PATCH', json: { mode }, errorMessage: 'Failed to update mode',
             })
-                .then(async res => {
-                    if (!res.ok && !res.headers.get('content-type')?.includes('application/json')) {
-                        throw new Error(`Server Error: ${res.status} - ${await res.text()}`)
-                    }
-                    return res.json() as Promise<{ code: number; message?: string }>
-                })
-                .then(res => {
-                    if (res.code !== 0) {
-                        return errHandle(res.message || 'Failed to update mode')
-                    }
-                    window.location.reload()
-                })
+                .then(() => window.location.reload())
                 .catch(errHandle)
         }
     })

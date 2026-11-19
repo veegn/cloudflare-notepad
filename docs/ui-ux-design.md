@@ -1,6 +1,6 @@
 # UI/UX 设计规格：文档树 · 书籍 · 分页
 
-> 模式：**现有代码库**（Existing-codebase）— 以 `static/css/app.css` 的 VS Code workbench 语言为权威，不另起第二套视觉体系。  
+> 模式：**现有代码库**（Existing-codebase），沿用 `frontend/styles/` 中的 VS Code workbench 样式。<br>
 > 产品依据：`docs/product-doc-types.md`、`docs/product-home-books-articles.md`。
 
 ---
@@ -530,7 +530,7 @@ Statusbar（书籍编辑）：密码 · 分享 · 退出 · 保存指示 · 徽�
 | 创建对话框 | `frontend/ui.ts` `showCreateDocDialog()` 替换单一 path prompt |
 | 书籍编辑器左栏 | `templates/edit.html` 条件块 `docType=book` + `frontend/bookPages.ts` |
 | 阅读 TOC | `share.html`/`edit.html` 条件侧栏 + `GET /api/toc` |
-| 样式 | `static/css/app.css` 增加 `.doc-tree*` `.badge-*` `.book-sidebar*` `.modal-create-doc` |
+| 样式 | `frontend/styles/` 下的文档树、书籍侧栏和创建弹窗样式 |
 | TOKEN | 全部引用现有 CSS 变量，不硬编码第二套 hex |
 
 CSS 类名建议：

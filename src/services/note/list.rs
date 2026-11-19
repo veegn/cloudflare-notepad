@@ -131,7 +131,7 @@ fn merge_meta(base: &mut NoteMetadata, m: &NoteMetadata) {
 }
 
 /// Fast structural snapshot of the bucket for homepage tree.
-/// One `list()`, then only GET keys that look like books (have children).
+/// Page metadata can be inferred from its parent book without a per-page GET.
 pub struct FastDoc {
     pub path: String,
     pub metadata: NoteMetadata,
@@ -160,164 +160,117 @@ fn page_counts_from_docs(docs: &[FastDoc]) -> HashMap<String, u32> {
     counts
 }
 
+fn directory_prefixes(keys: &[String]) -> HashSet<&str> {
+    keys.iter()
+        .flat_map(|key| key.match_indices('/').map(|(offset, _)| &key[..offset]))
+        .collect()
+}
+
+async fn fetch_index_metadata<'a>(
+    bucket: &Bucket,
+    keys: impl IntoIterator<Item = &'a String>,
+) -> HashMap<String, NoteMetadata> {
+    let keys: Vec<_> = keys.into_iter().collect();
+    let metadata = join_all(keys.iter().map(|key| meta_get(bucket, key))).await;
+    keys.into_iter().cloned().zip(metadata).collect()
+}
+
+fn top_level_doc(key: &str, stored: Option<&NoteMetadata>) -> FastDoc {
+    let mut metadata = NoteMetadata {
+        title: Some(path_display_name(key)),
+        ..Default::default()
+    };
+    if let Some(stored) = stored {
+        merge_meta(&mut metadata, stored);
+    }
+    FastDoc {
+        path: key.to_string(),
+        is_book: metadata.doc_type == DocType::Book,
+        metadata,
+        is_page: false,
+        is_dir: false,
+    }
+}
+
+fn nested_doc(
+    key: &str,
+    root: &str,
+    parent: Option<&NoteMetadata>,
+    stored: Option<&NoteMetadata>,
+) -> FastDoc {
+    let is_page = parent.is_some_and(|metadata| metadata.doc_type == DocType::Book);
+    let mut metadata = NoteMetadata {
+        doc_type: if is_page {
+            DocType::Page
+        } else {
+            DocType::Article
+        },
+        book_ref: parent.map(|_| root.to_string()),
+        title: Some(path_display_name(key)),
+        ..Default::default()
+    };
+    if !is_page {
+        if let Some(stored) = stored {
+            merge_meta(&mut metadata, stored);
+        }
+    }
+    FastDoc {
+        path: key.to_string(),
+        metadata,
+        is_book: false,
+        is_page,
+        is_dir: false,
+    }
+}
+
 /// Build the homepage index with at most one R2 GET per document, run concurrently.
 /// Never reads list-object custom_metadata (throws 1101 on production R2).
 pub async fn index_bucket(bucket: &Bucket) -> Result<BucketIndex> {
-    let list = build_list_request(bucket, None).execute().await?;
-    let mut keys: Vec<String> = Vec::new();
-    for obj in list.objects() {
-        let key = obj.key();
-        if is_system_key(&key) {
-            continue;
-        }
-        keys.push(key);
-    }
+    let keys = list_keys(bucket, None).await?;
+    let key_set: HashSet<_> = keys.iter().map(String::as_str).collect();
+    let prefixes = directory_prefixes(&keys);
+    let mut top_level: Vec<_> = keys.iter().filter(|key| !key.contains('/')).collect();
+    top_level.sort_by_key(|key| !prefixes.contains(key.as_str()));
+    let parents = fetch_index_metadata(bucket, top_level.iter().copied()).await;
 
-    let key_set: HashSet<String> = keys.iter().cloned().collect();
+    let nested: Vec<_> = keys
+        .iter()
+        .filter_map(|key| key.split_once('/').map(|(root, _)| (key, root)))
+        .collect();
+    let articles = fetch_index_metadata(
+        bucket,
+        nested.iter().filter_map(|&(key, root)| {
+            let parent_is_book = parents
+                .get(root)
+                .is_some_and(|m| m.doc_type == DocType::Book);
+            (!parent_is_book).then_some(key)
+        }),
+    )
+    .await;
 
-    // All directory prefixes implied by nested keys.
-    let mut prefixes: HashSet<String> = HashSet::new();
-    for key in &keys {
-        if let Some(pos) = key.find('/') {
-            let mut acc = String::new();
-            let head = &key[..pos];
-            acc.push_str(head);
-            prefixes.insert(acc.clone());
-            let rest = &key[pos + 1..];
-            for seg in rest.split('/') {
-                acc.push('/');
-                acc.push_str(seg);
-                if acc != *key {
-                    prefixes.insert(acc.clone());
-                }
-            }
-        }
-    }
-
-    // Resolve real title/docType via full GET (safe). Parents/books first.
-    let mut need_get: Vec<String> = keys.iter().filter(|k| !k.contains('/')).cloned().collect();
-    need_get.sort_by_key(|k| !prefixes.contains(k.as_str()));
-
-    let fetched = join_all(need_get.iter().map(|k| meta_get(bucket, k))).await;
-    let mut resolved: HashMap<String, NoteMetadata> = HashMap::new();
-    for (key, meta) in need_get.iter().zip(fetched) {
-        resolved.insert(key.clone(), meta);
-    }
-
-    let mut out: Vec<FastDoc> = Vec::new();
-    let mut seen: HashSet<String> = HashSet::new();
-    let mut top_doc_type: HashMap<String, DocType> = HashMap::new();
-
-    // Virtual directories that are not themselves objects.
-    for prefix in &prefixes {
-        if key_set.contains(prefix.as_str()) || seen.contains(prefix) {
-            continue;
-        }
-        seen.insert(prefix.clone());
-        out.push(FastDoc {
-            path: prefix.clone(),
+    let mut docs: Vec<_> = prefixes
+        .difference(&key_set)
+        .map(|prefix| FastDoc {
+            path: (*prefix).to_string(),
             metadata: NoteMetadata::default(),
             is_book: false,
             is_page: false,
             is_dir: true,
-        });
-    }
-
-    // Top-level objects.
-    let mut top_level: Vec<&String> = keys
-        .iter()
-        .filter(|k| !k.contains('/') && !seen.contains(k.as_str()))
-        .collect();
-    top_level.sort_by_key(|k| !prefixes.contains(k.as_str()));
-
-    for key in top_level {
-        seen.insert(key.clone());
-        let mut metadata = NoteMetadata {
-            title: Some(path_display_name(key)),
-            ..Default::default()
-        };
-        if let Some(m) = resolved.get(key) {
-            metadata.doc_type = m.doc_type;
-            merge_meta(&mut metadata, m);
-        }
-
-        let is_book = metadata.doc_type == DocType::Book;
-        top_doc_type.insert(key.clone(), metadata.doc_type);
-        out.push(FastDoc {
-            path: key.clone(),
-            metadata,
-            is_book,
-            is_page: false,
-            is_dir: false,
-        });
-    }
-
-    // Nested non-page articles that still need titles.
-    let nested_need_get: Vec<String> = keys
-        .iter()
-        .filter(|k| k.contains('/') && !seen.contains(k.as_str()))
-        .filter(|k| {
-            let root = k.split('/').next().unwrap_or(k);
-            top_doc_type.get(root) != Some(&DocType::Book)
         })
-        .cloned()
         .collect();
-    let nested_fetched = join_all(nested_need_get.iter().map(|k| meta_get(bucket, k))).await;
-    for (key, meta) in nested_need_get.iter().zip(nested_fetched) {
-        resolved.insert(key.clone(), meta);
-    }
+    docs.extend(
+        top_level
+            .into_iter()
+            .map(|key| top_level_doc(key, parents.get(key))),
+    );
+    docs.extend(
+        nested
+            .into_iter()
+            .map(|(key, root)| nested_doc(key, root, parents.get(root), articles.get(key))),
+    );
 
-    // Nested keys: pages only when parent is a book; otherwise nested articles.
-    for key in &keys {
-        if !key.contains('/') || seen.contains(key) {
-            continue;
-        }
-        seen.insert(key.clone());
-        let root = key.split('/').next().unwrap_or(key).to_string();
-        let parent_is_book = top_doc_type.get(&root) == Some(&DocType::Book);
-        if parent_is_book {
-            out.push(FastDoc {
-                path: key.clone(),
-                metadata: NoteMetadata {
-                    doc_type: DocType::Page,
-                    book_ref: Some(root),
-                    title: Some(path_display_name(key)),
-                    ..Default::default()
-                },
-                is_book: false,
-                is_page: true,
-                is_dir: false,
-            });
-        } else if key_set.contains(root.as_str()) || prefixes.contains(&root) {
-            let book_ref = if key_set.contains(root.as_str()) {
-                Some(root.clone())
-            } else {
-                None
-            };
-            let mut metadata = NoteMetadata {
-                doc_type: DocType::Article,
-                book_ref,
-                title: Some(path_display_name(key)),
-                ..Default::default()
-            };
-            if let Some(m) = resolved.get(key) {
-                merge_meta(&mut metadata, m);
-            }
-            out.push(FastDoc {
-                path: key.clone(),
-                metadata,
-                is_book: false,
-                is_page: false,
-                is_dir: false,
-            });
-        }
-    }
-
-    let page_counts = page_counts_from_docs(&out);
-    Ok(BucketIndex {
-        docs: out,
-        page_counts,
-    })
+    let page_counts = page_counts_from_docs(&docs);
+    Ok(BucketIndex { docs, page_counts })
 }
 
 /// Metadata list used by APIs that can afford list+optional light GETs.
@@ -440,4 +393,32 @@ pub fn visible_docs_from_index(index: BucketIndex) -> Vec<NoteRecord> {
             }
         })
         .collect()
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn nested_docs_inherit_page_status_only_from_book_roots() {
+        let book = NoteMetadata {
+            doc_type: DocType::Book,
+            ..Default::default()
+        };
+        let stored = NoteMetadata {
+            title: Some("Stored title".into()),
+            ..Default::default()
+        };
+        let page = nested_doc("book/chapter", "book", Some(&book), None);
+        let article = nested_doc("folder/chapter", "folder", None, Some(&stored));
+        assert!(page.is_page);
+        assert_eq!(page.metadata.book_ref.as_deref(), Some("book"));
+        assert!(!article.is_page);
+        assert_eq!(article.metadata.book_ref, None);
+        assert_eq!(article.metadata.title.as_deref(), Some("Stored title"));
+        assert_eq!(
+            page_counts_from_docs(&[page, article]),
+            HashMap::from([("book".into(), 1)])
+        );
+    }
 }

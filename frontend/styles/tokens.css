@@ -1,0 +1,103 @@
+:root {
+    /* Colors - VSCode themed */
+    --vscode-bg: #1e1e1e;
+    --vscode-titlebar: #181818;
+    --vscode-editor: #1e1e1e;
+    --vscode-tab: #252526;
+    --vscode-tab-active: #1e1e1e;
+    --vscode-border: #313131;
+    --vscode-statusbar: #007acc;
+    --vscode-text: #cccccc;
+    --vscode-text-muted: #8c8c8c;
+    --vscode-text-subtle: #6b6b6b;
+    --vscode-accent: #3794ff;
+    --vscode-accent-soft: rgba(55, 148, 255, 0.16);
+    --vscode-selection: rgba(38, 79, 120, 0.55);
+    --vscode-warning-bg: #3c2f00;
+    --vscode-warning-text: #f6d365;
+
+    /* Keyword Highlighting */
+    --keyword-highlight-bg: rgba(255, 214, 102, 0.18);
+    --keyword-highlight-border: rgba(255, 214, 102, 0.36);
+    --keyword-highlight-text: #ffd666;
+
+    /* Layers above the workbench, in stacking order. */
+    --z-local: 1;
+    --z-tabbar: 4;
+    --z-mode-menu: 10;
+    --z-drawer-backdrop: 20;
+    --z-drawer: 21;
+    --z-modal: 30;
+    --z-toast: 40;
+    --z-actions-menu: 50;
+
+    --alert-tip: #3fb950;
+    --alert-tip-text: var(--alert-tip);
+
+    --alert-important: #a371f7;
+    --alert-important-text: var(--alert-important);
+
+    --alert-warning: #d29922;
+    --alert-warning-text: var(--alert-warning);
+
+    --alert-caution: #f85149;
+    --alert-caution-text: var(--alert-caution);
+
+    --code-key: #9cdcfe;
+    --code-string: #ce9178;
+    --code-number: #b5cea8;
+    --code-boolean: #569cd6;
+    --code-comment: #6a9955;
+    --code-punctuation: #d4d4d4;
+
+    --scrollbar-thumb: #4b4b4b;
+    --button-on-accent: #fff;
+    --primary-button-top: #0e639c;
+    --primary-button-bottom: #0a4f7c;
+    --statusbar-text: #fff;
+    --modal-overlay-bg: rgba(0, 0, 0, 0.4);
+    --drawer-overlay-bg: rgba(0, 0, 0, 0.5);
+
+    /* UI Tokens */
+    --shadow-panel: 0 18px 40px rgba(0, 0, 0, 0.26);
+    --shadow-popup: 0 14px 30px rgba(0, 0, 0, 0.34);
+    --radius-l: 14px;
+    --radius-m: 8px;
+    --radius-s: 4px;
+    --transition: 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+[data-theme="light"] {
+    --scrollbar-thumb: #b6b6b6;
+    --code-punctuation: #6b7280;
+    --code-block-surface: #f7f7f7;
+    --subtle-surface: #f8f8f8;
+    --alert-caution-text: #cf222e;
+    --alert-warning-text: #9a6700;
+    --alert-important-text: #8250df;
+    --alert-tip-text: #1a7f37;
+    --vscode-bg: #f3f3f3;
+    --vscode-titlebar: #dddddd;
+    --vscode-editor: #ffffff;
+    --vscode-tab: #e7e7e7;
+    --vscode-tab-active: #ffffff;
+    --vscode-border: #d4d4d4;
+    --vscode-statusbar: #005fb8;
+    --vscode-text: #333333;
+    --vscode-text-muted: #616161;
+    --vscode-text-subtle: #8b8b8b;
+    --vscode-accent: #005fb8;
+    --vscode-accent-soft: rgba(0, 95, 184, 0.1);
+    --vscode-selection: rgba(173, 214, 255, 0.45);
+    --vscode-warning-bg: #fff4ce;
+    --vscode-warning-text: #7a4d00;
+    --keyword-highlight-bg: rgba(255, 196, 61, 0.22);
+    --keyword-highlight-border: rgba(255, 196, 61, 0.4);
+    --keyword-highlight-text: #8f5b00;
+    --shadow-panel: 0 16px 36px rgba(0, 0, 0, 0.08);
+    --shadow-popup: 0 16px 36px rgba(0, 0, 0, 0.12);
+}
+
+* {
+    box-sizing: border-box;
+}

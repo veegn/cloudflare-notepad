@@ -23,9 +23,3 @@ pub fn err_json(code: u32, message: &str, status: u16) -> worker::Result<Respons
 /// Error codes.
 pub const ERR_AUTH_FAILED: u32 = 40001;
 pub const ERR_UNAUTHORIZED: u32 = 40002;
-#[allow(dead_code)]
-pub const ERR_INVALID_MODE: u32 = 40102;
-#[allow(dead_code)]
-pub const ERR_STORAGE: u32 = 50001;
-#[allow(dead_code)]
-pub const ERR_INVALID_DOC: u32 = 40010;
