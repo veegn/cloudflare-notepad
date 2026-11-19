@@ -50,7 +50,9 @@ test('small-screen status bar fits all actions and keeps the format menu above i
     await expect(trigger).toHaveText('Format: Markdown')
     await expect(bar.getByRole('button', { name: 'Change Password' })).toBeVisible()
     await expect(bar.getByRole('button', { name: 'Exit' })).toBeVisible()
-    await expect(bar.locator('#btn-upload-image')).toBeVisible()
+    await expect(bar.getByRole('button', { name: 'Share' })).toHaveCSS('white-space', 'nowrap')
+    await expect(bar.getByRole('button', { name: 'Image' })).toHaveCount(0)
+    await expect(page.locator('#btn-upload-image-md')).toBeVisible()
 
     const layout = await bar.evaluate(element => {
         const bounds = element.getBoundingClientRect()
@@ -84,6 +86,11 @@ test('small-screen status bar fits all actions and keeps the format menu above i
         expect(menuBox.y).toBeGreaterThanOrEqual(0)
         expect(menuBox.x + menuBox.width).toBeLessThanOrEqual(viewport.width)
         expect(menuBox.y + menuBox.height).toBeLessThan(barBox.y)
+        if (viewport.width === 568) {
+            expect(barBox.height).toBeLessThan(50)
+            const editorBox = await page.locator('#cm-editor').boundingBox()
+            expect(editorBox?.height).toBeGreaterThan(viewport.height / 2)
+        }
     }
 
     await menu.getByRole('button', { name: /^YAML/ }).click()
@@ -208,6 +215,48 @@ test('markdown editor can switch between edit, split, and preview layouts', asyn
 
     await page.locator('.md-layout-button[data-layout="split"]').click()
     await expect(composer).toHaveClass(/md-layout-split/)
+})
+
+test('narrow markdown editor defaults to Edit and restores supported layout preferences', async ({ page, request }) => {
+    const path = uniqueNotePath()
+    await saveNote(request, path, '# Mobile preview')
+    await request.patch(`/api/notes/${path}`, { data: { mode: 'md' } })
+    await page.emulateMedia({ colorScheme: 'light' })
+    await page.setViewportSize({ width: 320, height: 568 })
+    await page.goto(`/edit/${path}`)
+
+    const edit = page.getByRole('button', { name: 'Edit', exact: true })
+    const preview = page.getByRole('button', { name: 'Preview', exact: true })
+    const split = page.locator('.md-layout-button[data-layout="split"]')
+    await expect(edit).toHaveAttribute('aria-pressed', 'true')
+    await expect(preview).toHaveAttribute('aria-pressed', 'false')
+    await expect(split).toBeHidden()
+    await expect(page.locator('#preview')).toBeHidden()
+    for (const button of [edit, preview]) {
+        const box = await button.boundingBox()
+        expect(box?.width).toBeGreaterThanOrEqual(44)
+        expect(box?.height).toBeGreaterThanOrEqual(44)
+    }
+    const image = page.locator('#btn-upload-image-md')
+    const toolbarColor = await page.locator('.composer-editor-toolbar').evaluate(el => getComputedStyle(el).color)
+    await expect(image).toHaveCSS('color', toolbarColor)
+
+    await preview.click()
+    await expect(page.locator('#preview h1')).toHaveText('Mobile preview')
+    await page.reload()
+    await expect(preview).toHaveAttribute('aria-pressed', 'true')
+    await expect(page.locator('#cm-editor')).toBeHidden()
+
+    await page.setViewportSize({ width: 1024, height: 768 })
+    await split.click()
+    await expect(split).toHaveAttribute('aria-pressed', 'true')
+    await page.setViewportSize({ width: 320, height: 568 })
+    await expect(edit).toHaveAttribute('aria-pressed', 'true')
+    await expect(page.locator('#preview')).toBeHidden()
+    await page.reload()
+    await expect(edit).toHaveAttribute('aria-pressed', 'true')
+    await page.setViewportSize({ width: 1024, height: 768 })
+    await expect(split).toHaveAttribute('aria-pressed', 'true')
 })
 
 test('format now prettifies json content in place', async ({ page }) => {

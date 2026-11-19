@@ -15,7 +15,13 @@ export function initModePicker(ui: ModePickerRefs): void {
         { id: 'yaml', label: 'YAML' },
     ]
 
-    modeTrigger.textContent = `${getI18n('formatMode')}: ${modes.find(mode => mode.id === CONFIG.mode)?.label || 'Txt'}`
+    const modeLabel = modes.find(mode => mode.id === CONFIG.mode)?.label || 'Txt'
+    const prefix = document.createElement('span')
+    prefix.className = 'mode-picker-prefix'
+    prefix.textContent = `${getI18n('formatMode')}: `
+    modeTrigger.textContent = ''
+    modeTrigger.append(prefix, modeLabel)
+    modeTrigger.setAttribute('aria-label', `${prefix.textContent}${modeLabel}`)
     modeMenu.innerHTML = modes.map(mode => `
         <button type="button" class="mode-picker-option ${CONFIG.mode === mode.id ? 'active' : ''}" data-mode="${mode.id}">
             <span>${mode.label}</span>

@@ -1,5 +1,5 @@
 import { test, expect } from '@playwright/test'
-import { uniqueNotePath, createArticle, saveNote, getHomeTree, findTreePath } from './helpers'
+import { uniqueNotePath, uniqueBookPath, createArticle, createBook, saveNote, getHomeTree, findTreePath } from './helpers'
 
 test('home list shows title as primary text and path as subtitle', async ({ page, request }) => {
     const notePath = uniqueNotePath()
@@ -12,6 +12,47 @@ test('home list shows title as primary text and path as subtitle', async ({ page
     const row = page.locator('.doc-tree-row').filter({ hasText: title }).first()
     await expect(row.locator('.doc-tree-title')).toHaveText(title)
     await expect(row.locator('.doc-tree-path')).toContainText(notePath)
+})
+
+test('mobile library keeps book titles readable and exposes repair in a touch-sized menu', async ({ page, request }) => {
+    const path = uniqueBookPath()
+    const title = 'Cloudflare 笔记手册'
+    await createBook(request, path, title)
+    await createArticle(request, `${uniqueNotePath()}/chapter`)
+    await page.setViewportSize({ width: 375, height: 667 })
+    await page.goto('/')
+
+    const search = page.locator('#home-search')
+    await expect(search).toHaveCSS('font-size', '16px')
+    for (const control of [search, page.locator('.home-chip').first(), page.locator('.home-tool-btn').first(),
+        page.locator('button.doc-tree-chevron').first()]) {
+        const box = await control.boundingBox()
+        expect(box?.width).toBeGreaterThanOrEqual(44)
+        expect(box?.height).toBeGreaterThanOrEqual(44)
+    }
+
+    await search.fill(title)
+    const row = page.locator(`[data-path="${path}"]`)
+    const bookTitle = row.locator('.doc-tree-title')
+    await expect(bookTitle).toHaveText(title)
+    expect(await bookTitle.evaluate(el => el.scrollWidth <= el.clientWidth)).toBe(true)
+    const more = row.getByRole('button', { name: 'More actions' })
+    const moreBox = await more.boundingBox()
+    expect(moreBox?.width).toBeGreaterThanOrEqual(44)
+    expect(moreBox?.height).toBeGreaterThanOrEqual(44)
+    await more.click()
+    const repair = page.getByRole('menuitem', { name: 'Repair', exact: true })
+    await expect(repair).toHaveCSS('min-height', '44px')
+    await repair.click()
+    const repairConfirm = page.locator('.modal-dialog')
+    await expect(repairConfirm).toContainText(path)
+    await repairConfirm.getByRole('button', { name: 'Cancel' }).click()
+    await expect(repairConfirm).toBeHidden()
+
+    await page.locator('#btn-new-doc').click()
+    const titleInput = page.locator('#create-doc-title')
+    await expect(titleInput).toHaveCSS('font-size', '16px')
+    await expect(titleInput).toHaveCSS('min-height', '44px')
 })
 
 test('list row more menu offers rename, copy link, and delete with confirm', async ({ page, request }) => {

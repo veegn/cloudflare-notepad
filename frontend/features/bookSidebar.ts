@@ -103,7 +103,8 @@ function renderTocSidebar(body: HTMLElement, items: TocItem[], currentPath: stri
 
         pageNo += 1
         const active = item.path === currentPath
-        const node = document.createElement('div')
+        const href = item.path && item.exists ? `/note/${encodeNotePath(item.path)}` : ''
+        const node = href ? document.createElement('a') : document.createElement('div')
         node.className = `doc-toc-item${active ? ' is-active' : ''}${item.exists ? '' : ' is-dead'}`
         node.style.setProperty('--toc-depth', String(item.depth || 0))
         if (item.title) node.title = item.title
@@ -115,18 +116,9 @@ function renderTocSidebar(body: HTMLElement, items: TocItem[], currentPath: stri
           ${lock}
         `
 
-        if (item.path && item.exists) {
-            node.setAttribute('role', 'link')
-            node.tabIndex = 0
-            node.addEventListener('click', () => {
-                window.location.href = `/note/${encodeNotePath(item.path!)}`
-            })
-            node.addEventListener('keydown', e => {
-                if (e.key === 'Enter' || e.key === ' ') {
-                    e.preventDefault()
-                    window.location.href = `/note/${encodeNotePath(item.path!)}`
-                }
-            })
+        if (href) {
+            node.setAttribute('href', href)
+            if (active) node.setAttribute('aria-current', 'page')
         } else {
             node.title = getI18n('bookDeadLink')
         }
@@ -162,12 +154,8 @@ function renderPageManager(
             if (!item.exists) return
             window.location.href = `/edit/${encodeNotePath(item.path)}`
         })
-        row.querySelector('[data-act="rename"]')?.addEventListener('click', () => {
-            void renamePage(item, book)
-        })
-        row.querySelector('[data-act="delete"]')?.addEventListener('click', () => {
-            void deletePage(item, book)
-        })
+        bindPageAction(row.querySelector('[data-act="rename"]'), () => renamePage(item, book))
+        bindPageAction(row.querySelector('[data-act="delete"]'), () => deletePage(item, book))
         body.appendChild(row)
     })
 }
@@ -179,13 +167,11 @@ async function reloadSidebar(book: string): Promise<void> {
 
     const current = sidebar.dataset.notePath || ''
     const isEdit = sidebar.dataset.isEdit === 'true'
-    const titleEl = el('#doc-sidebar-title')
     const bookLink = anchor('#doc-sidebar-book-link')
 
     try {
         if (sidebar.dataset.docType === 'book' && isEdit) {
             const { title, items } = await fetchPages(book)
-            if (titleEl) titleEl.textContent = `${getI18n('bookPages')}`
             if (bookLink) {
                 bookLink.hidden = false
                 bookLink.textContent = title || book
@@ -201,7 +187,6 @@ async function reloadSidebar(book: string): Promise<void> {
             .then(r => r.json())
             .catch(() => null)) as { data?: { metadata?: { title?: string } } } | null
         const bookTitle = bookMeta?.data?.metadata?.title || book
-        if (titleEl) titleEl.textContent = getI18n('bookToc')
         if (bookLink) {
             bookLink.hidden = false
             bookLink.textContent = bookTitle
@@ -286,15 +271,83 @@ async function createPage(book: string): Promise<void> {
     }
 }
 
+function bindPageAction(button: HTMLElement | null, action: () => Promise<void>): void {
+    button?.addEventListener('click', async () => {
+        await action()
+        if (document.activeElement === document.body && el('#doc-sidebar')?.classList.contains('is-drawer-open')) {
+            (button.isConnected ? button : el('#doc-sidebar-close'))?.focus({ preventScroll: true })
+        }
+    })
+}
+
+function initSidebarDrawer(sidebar: HTMLElement): void {
+    const toggle = el('#doc-sidebar-toggle')
+    const close = el('#doc-sidebar-close')
+    const backdrop = el('#doc-sidebar-backdrop')
+    if (!toggle || !close || !backdrop) return
+
+    const narrowViewport = window.matchMedia('(max-width: 720px)')
+    const background = document.querySelectorAll<HTMLElement>('.editor-tabbar, .editor-banner, .doc-main, .statusbar')
+    let open = false
+
+    const setOpen = (next: boolean): void => {
+        open = next
+        sidebar.classList.toggle('is-drawer-open', open)
+        backdrop.hidden = !open
+        toggle.setAttribute('aria-expanded', String(open))
+        background.forEach(element => { element.inert = open })
+        if (open) {
+            sidebar.setAttribute('role', 'dialog')
+            sidebar.setAttribute('aria-modal', 'true')
+            close.focus({ preventScroll: true })
+        } else {
+            sidebar.removeAttribute('role')
+            sidebar.removeAttribute('aria-modal')
+            if (narrowViewport.matches) toggle.focus({ preventScroll: true })
+        }
+    }
+
+    toggle.addEventListener('click', () => {
+        if (narrowViewport.matches) setOpen(true)
+    })
+    close.addEventListener('click', () => setOpen(false))
+    backdrop.addEventListener('click', () => setOpen(false))
+    const syncViewport = (): void => {
+        if (open && !narrowViewport.matches) setOpen(false)
+    }
+    if (typeof narrowViewport.addEventListener === 'function') {
+        narrowViewport.addEventListener('change', syncViewport)
+    } else {
+        narrowViewport.addListener(syncViewport)
+    }
+
+    document.addEventListener('keydown', event => {
+        if (!open || document.querySelector('.modal-overlay')) return
+        if (event.key === 'Escape') {
+            event.preventDefault()
+            setOpen(false)
+        } else if (event.key === 'Tab') {
+            const controls = sidebar.querySelectorAll<HTMLElement>('button:not(:disabled), a[href]:not([hidden])')
+            const first = controls[0]
+            const last = controls[controls.length - 1]
+            const active = document.activeElement
+            if (!sidebar.contains(active) || (event.shiftKey ? active === first : active === last)) {
+                event.preventDefault()
+                const next = event.shiftKey ? last : first
+                next?.focus()
+            }
+        }
+    })
+}
+
 export function initDocSidebar(): void {
     const sidebar = el('#doc-sidebar')
     if (!sidebar) return
     const book = bookPathFromSidebar(sidebar)
     if (!book) return
 
-    el('#btn-new-page')?.addEventListener('click', () => {
-        void createPage(book)
-    })
+    initSidebarDrawer(sidebar)
+    bindPageAction(el('#btn-new-page'), () => createPage(book))
     window.addEventListener('scn:repaired', () => {
         invalidateTocCache(book)
         void reloadSidebar(book)

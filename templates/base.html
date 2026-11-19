@@ -17,6 +17,11 @@
 
 <body data-is-home="{% if is_home %}true{% else %}false{% endif %}"
       data-is-reading="{% if is_reading %}true{% else %}false{% endif %}">
+  {% if doc_type == "book" and is_edit %}
+  {% set sidebar_label = i18n[lang].bookPages | default(value="Pages") %}
+  {% else %}
+  {% set sidebar_label = i18n[lang].bookToc | default(value="Contents") %}
+  {% endif %}
   <div class="app-shell">
     {# ── Workbench ── #}
     <main class="workbench">
@@ -27,7 +32,11 @@
             <span class="editor-tab-icon">{% if is_home %}*{% elif is_edit %}</ />{% else %}#{% endif %}</span>
             <span class="editor-tab-label">{{ title | default(value="untitled") }}</span>
           </div>
-          <div class="editor-tab-actions"></div>
+          <div class="editor-tab-actions">
+            {% if doc_type == "book" or doc_type == "page" %}
+            <button type="button" class="doc-sidebar-toggle" id="doc-sidebar-toggle" aria-controls="doc-sidebar" aria-expanded="false" aria-haspopup="dialog">{{ sidebar_label }}</button>
+            {% endif %}
+          </div>
         </div>
 
         {# Editor body #}
@@ -35,9 +44,13 @@
           {% if tips %}<div class="editor-banner">{{ tips }}</div>{% endif %}
           <div class="doc-layout{% if doc_type != "book" and doc_type != "page" %} doc-layout-single{% endif %}">
             {% if doc_type == "book" or doc_type == "page" %}
-            <aside class="doc-sidebar" id="doc-sidebar" data-doc-type="{{ doc_type | default(value="article") }}" data-book-ref="{{ book_ref | default(value="") }}" data-note-path="{{ note_path | default(value="") }}" data-is-edit="{% if is_edit %}true{% else %}false{% endif %}">
+            <div class="doc-sidebar-backdrop" id="doc-sidebar-backdrop" aria-hidden="true" hidden></div>
+            <aside class="doc-sidebar" id="doc-sidebar" aria-labelledby="doc-sidebar-title" data-doc-type="{{ doc_type | default(value="article") }}" data-book-ref="{{ book_ref | default(value="") }}" data-note-path="{{ note_path | default(value="") }}" data-is-edit="{% if is_edit %}true{% else %}false{% endif %}">
               <div class="doc-sidebar-head">
-                <div class="doc-sidebar-title" id="doc-sidebar-title">…</div>
+                <div class="doc-sidebar-heading">
+                  <div class="doc-sidebar-title" id="doc-sidebar-title">{{ sidebar_label }}</div>
+                  <button type="button" class="doc-sidebar-close" id="doc-sidebar-close" aria-label="{{ i18n[lang].close | default(value='Close') }}">×</button>
+                </div>
                 <a class="doc-sidebar-book-link" id="doc-sidebar-book-link" href="#" hidden></a>
                 {% if doc_type == "book" and is_edit %}
                 <div class="doc-sidebar-actions">
@@ -88,9 +101,6 @@
       </div>
       <div class="statusbar-right">
         {% if is_edit and not is_home %}
-        {% if metadata.mode == "md" %}
-        <button class="opt-button" id="btn-upload-image" type="button" title="{{ i18n[lang].uploadImageHint | default(value='Upload image') }}">{{ i18n[lang].uploadImage | default(value="Image") }}</button>
-        {% endif %}
         <button class="opt-button opt-format" id="format-trigger" type="button">Format Now</button>
         <div class="mode-picker" id="mode-picker">
           <button class="opt-button mode-picker-trigger" id="mode-trigger" type="button" aria-controls="mode-menu" aria-expanded="false">Format</button>

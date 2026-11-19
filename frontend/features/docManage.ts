@@ -16,6 +16,7 @@ type DocManageHooks = {
     onChanged?: () => void
     /** Share visibility toggled — refresh badges only, keep panels open. */
     onShared?: () => void
+    onRepair?: () => void
 }
 
 function viewUrl(path: string): string {
@@ -312,6 +313,10 @@ export function showDocActionsMenu(
         },
     ]
 
+    if (hooks.onRepair) {
+        items.splice(items.length - 1, 0, { id: 'repair', label: getI18n('repairTreeAction'), onClick: hooks.onRepair })
+    }
+
     for (const item of items) {
         if (item.id === 'delete' && isProtectedPath(target.path)) {
             continue
@@ -324,7 +329,7 @@ export function showDocActionsMenu(
         btn.addEventListener('click', e => {
             e.preventDefault()
             e.stopPropagation()
-            menu.remove()
+            close()
             item.onClick()
         })
         menu.appendChild(btn)
@@ -333,11 +338,10 @@ export function showDocActionsMenu(
     document.body.appendChild(menu)
 
     const rect = anchorEl.getBoundingClientRect()
-    const menuWidth = 160
+    const menuWidth = menu.offsetWidth
     const menuHeight = menu.offsetHeight || 180
-    let left = rect.right - menuWidth
+    const left = Math.max(8, Math.min(rect.right, window.innerWidth - 8) - menuWidth)
     let top = rect.bottom + 4
-    if (left < 8) left = 8
     if (top + menuHeight > window.innerHeight - 8) {
         top = Math.max(8, rect.top - menuHeight - 4)
     }
@@ -354,6 +358,7 @@ export function showDocActionsMenu(
         if (e.key === 'Escape') {
             e.preventDefault()
             close()
+            anchorEl.focus({ preventScroll: true })
         }
     }
     window.setTimeout(() => {

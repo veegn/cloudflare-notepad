@@ -347,18 +347,15 @@ function bindFormatAction(UI: UIRefs, editor: EditorAdapter): void {
     })
 }
 
-function getMarkdownLayout(): MarkdownLayout {
+function getMarkdownLayout(narrow: boolean): MarkdownLayout {
     const stored = readPreference(MARKDOWN_LAYOUT_KEY)
-    if (stored === 'edit' || stored === 'preview' || stored === 'split') {
-        return stored
-    }
-    return 'split'
+    if (stored === 'edit' || stored === 'preview') return stored
+    return narrow ? 'edit' : 'split'
 }
 
 function applyMarkdownLayout(UI: UIRefs, layout: MarkdownLayout): void {
     UI.composer?.classList.remove('md-layout-edit', 'md-layout-split', 'md-layout-preview')
     UI.composer?.classList.add(`md-layout-${layout}`)
-    writePreference(MARKDOWN_LAYOUT_KEY, layout)
 }
 
 function initMarkdownLayoutControls(UI: UIRefs, editor: EditorAdapter): void {
@@ -372,54 +369,53 @@ function initMarkdownLayoutControls(UI: UIRefs, editor: EditorAdapter): void {
         { id: 'preview', labelKey: 'mdViewPreview' },
     ]
 
-    UI.editorTabActions.innerHTML = `
+    UI.editorTabActions.insertAdjacentHTML('beforeend', `
         <div class="md-layout-toggle" id="md-layout-toggle">
             ${layouts.map(layout => `
                 <button class="md-layout-button" type="button" data-layout="${layout.id}">${getI18n(layout.labelKey)}</button>
             `).join('')}
         </div>
-    `
+    `)
 
-    const syncActive = (layout: MarkdownLayout): void => {
-        UI.editorTabActions?.querySelectorAll<HTMLButtonElement>('.md-layout-button').forEach(button => {
-            button.classList.toggle('active', button.dataset.layout === layout)
-        })
-    }
-
-    const setLayout = (layout: MarkdownLayout): void => {
+    const viewport = window.matchMedia('(max-width: 680px)')
+    const buttons = UI.editorTabActions.querySelectorAll<HTMLButtonElement>('.md-layout-button')
+    const syncLayout = (): MarkdownLayout => {
+        const layout = getMarkdownLayout(viewport.matches)
         applyMarkdownLayout(UI, layout)
-        syncActive(layout)
-        if (layout !== 'preview') {
-            editor.focus()
-        }
+        buttons.forEach(button => {
+            const active = button.dataset.layout === layout
+            button.classList.toggle('active', active)
+            button.setAttribute('aria-pressed', String(active))
+        })
+        return layout
     }
 
-    const initialLayout = getMarkdownLayout()
-    setLayout(initialLayout)
+    const initialLayout = syncLayout()
+    if (!viewport.matches && initialLayout !== 'preview') editor.focus()
+    if (typeof viewport.addEventListener === 'function') {
+        viewport.addEventListener('change', syncLayout)
+    } else {
+        viewport.addListener(syncLayout)
+    }
 
-    UI.editorTabActions.querySelectorAll<HTMLButtonElement>('.md-layout-button').forEach(button => {
+    buttons.forEach(button => {
         button.addEventListener('click', () => {
             const layout = button.dataset.layout as MarkdownLayout | undefined
             if (!layout) {
                 return
             }
-            setLayout(layout)
+            writePreference(MARKDOWN_LAYOUT_KEY, layout)
+            if (syncLayout() !== 'preview') editor.focus()
         })
     })
 }
 
 function bindImageUpload(editor: EditorAdapter): void {
-    const selector = CONFIG.mode === 'md' ? '#btn-upload-image-md, #btn-upload-image' : '#btn-upload-image'
-    document.querySelectorAll<HTMLElement>(selector).forEach(btn => {
-        btn.addEventListener('click', event => {
-            // Keep the click out of CodeMirror so it does not alter the selection.
-            event.preventDefault()
-            event.stopPropagation()
-            pickAndUploadImage(text => {
-                if (editor.insertText) editor.insertText(text)
-                else editor.setValue(`${editor.getValue()}\n\n${text}\n`)
-            }, CONFIG.notePath)
-        })
+    document.querySelector('#btn-upload-image-md')?.addEventListener('click', () => {
+        pickAndUploadImage(text => {
+            if (editor.insertText) editor.insertText(text)
+            else editor.setValue(`${editor.getValue()}\n\n${text}\n`)
+        }, CONFIG.notePath)
     })
 }
 
@@ -454,7 +450,6 @@ function initMarkdownEditor(UI: UIRefs): void {
     initMarkdownLayoutControls(UI, editor)
     bindFormatAction(UI, editor)
     bindImageUpload(editor)
-    editor.focus()
 }
 
 function initCodeEditor(UI: UIRefs): void {
@@ -473,7 +468,6 @@ function initCodeEditor(UI: UIRefs): void {
     })
 
     bindFormatAction(UI, editor)
-    bindImageUpload(editor)
     editor.focus()
 }
 

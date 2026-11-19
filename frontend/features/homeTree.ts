@@ -72,15 +72,9 @@ function rowMeta(node: TreeNode): string {
         .join(' · ')
 }
 
-/** Hover row actions: overflow menu + book repair. */
 function rowActions(node: TreeNode): string {
     if (node.nodeType === 'dir') return ''
-    const repair =
-        node.nodeType === 'book'
-            ? `<button type="button" class="doc-tree-action-btn" data-repair="${escapeHtml(node.path)}">${getI18n('repairTreeAction')}</button>`
-            : ''
     return `<span class="doc-tree-actions">
-      ${repair}
       <button type="button" class="doc-tree-more" data-more="${escapeHtml(node.path)}" aria-label="${escapeHtml(getI18n('docMore'))}" title="${escapeHtml(getI18n('docMore'))}">⋯</button>
     </span>`
 }
@@ -320,14 +314,6 @@ export async function initHomeTree(): Promise<void> {
         // Event delegation: works after every re-render.
         host.addEventListener('click', e => {
             const target = e.target as Element | null
-            const repairBtn = target?.closest('[data-repair]') as HTMLElement | null
-            if (repairBtn) {
-                e.preventDefault()
-                e.stopPropagation()
-                const path = repairBtn.getAttribute('data-repair')
-                if (path) void runRepairBook(path)
-                return
-            }
             const moreBtn = target?.closest('[data-more]') as HTMLElement | null
             if (moreBtn) {
                 e.preventDefault()
@@ -353,6 +339,7 @@ export async function initHomeTree(): Promise<void> {
                         onShared: () => {
                             void loadTree({ refresh: true })
                         },
+                        onRepair: node.nodeType === 'book' ? () => void runRepairBook(node.path) : undefined,
                     },
                 )
             }
