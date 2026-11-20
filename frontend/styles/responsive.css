@@ -1,4 +1,9 @@
 /* Keep the mobile and status bar breakpoints aligned with core/viewport.ts. */
+@media (min-width: 861px) {
+    .composer-frame.is-reading.has-markdown-outline { grid-template-columns: minmax(0, 1fr) 176px; }
+    .md-outline:not([hidden]) { display: block; }
+}
+
 @media (max-width: 860px) {
     .workbench { padding: 12px 12px 0; }
     .editor-tab-actions { padding: 0 10px; }
@@ -78,6 +83,9 @@
         line-height: 1.75;
         letter-spacing: 0.01em;
     }
+    .md-code-copy { min-height: 44px; }
+    .md-heading-anchor { opacity: 1; }
+    .md-diagram .mermaid > svg { width: var(--md-diagram-width, 100%); }
     .mode-md .welcome-note-preview {
         font-size: 16px;
         line-height: 1.75;

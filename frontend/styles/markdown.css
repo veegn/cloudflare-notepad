@@ -1,0 +1,253 @@
+.md-code-block,
+.md-table-wrap,
+.md-diagram {
+    margin: 1em 0;
+}
+
+.md-code-block {
+    overflow: hidden;
+    border: 1px solid var(--vscode-border);
+    border-radius: var(--radius-m);
+    background: var(--code-block-surface);
+}
+
+.md-code-toolbar {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    padding: 0 6px 0 12px;
+    border-bottom: 1px solid var(--vscode-border);
+    color: var(--vscode-text-muted);
+    font-size: 12px;
+}
+
+.md-code-copy,
+.md-image-close {
+    border: 0;
+    border-radius: var(--radius-s);
+    background: transparent;
+    color: var(--vscode-text);
+    cursor: pointer;
+}
+
+.md-code-copy {
+    min-height: 36px;
+    padding: 4px 8px;
+    font: inherit;
+}
+
+.md-code-copy:hover,
+.md-image-close:hover {
+    background: var(--vscode-accent-soft);
+}
+
+.mode-md .composer-preview .md-code-block pre {
+    margin: 0;
+    border: 0;
+    border-radius: 0;
+    background: transparent;
+    font-family: 'IBM Plex Mono', Consolas, monospace;
+    white-space: pre;
+}
+
+.md-code-block :is(.hljs-keyword, .hljs-literal, .hljs-selector-tag) { color: var(--syntax-keyword); }
+.md-code-block :is(.hljs-built_in, .hljs-type, .hljs-title.class_) { color: var(--syntax-type); }
+.md-code-block :is(.hljs-title, .hljs-section, .hljs-meta) { color: var(--syntax-title); }
+.md-code-block :is(.hljs-attr, .hljs-attribute, .hljs-variable, .hljs-property) { color: var(--syntax-key, var(--code-key)); }
+.md-code-block :is(.hljs-string, .hljs-regexp, .hljs-symbol) { color: var(--syntax-string, var(--code-string)); }
+.md-code-block :is(.hljs-number, .hljs-bullet) { color: var(--syntax-number, var(--code-number)); }
+.md-code-block :is(.hljs-comment, .hljs-quote) { color: var(--syntax-comment, var(--code-comment)); }
+
+.md-table-wrap,
+.md-diagram {
+    max-width: 100%;
+    overflow-x: auto;
+    overscroll-behavior-x: contain;
+}
+
+.md-table-wrap table {
+    width: 100%;
+    border-collapse: collapse;
+}
+
+.md-table-wrap :is(th, td) {
+    min-width: 9ch;
+    padding: 8px 10px;
+    border: 1px solid var(--vscode-border);
+    vertical-align: top;
+}
+
+.md-table-wrap thead th {
+    background: var(--vscode-tab);
+    font-weight: 650;
+}
+
+.md-table-wrap tbody tr:nth-child(even) {
+    background: var(--code-block-surface);
+}
+
+.composer-preview .md-task-item { list-style: none; }
+.md-task-item input[type="checkbox"] { margin-inline: 0 0.55em; }
+
+.md-diagram.is-loading {
+    display: grid;
+    min-height: 10rem;
+    place-items: center;
+    border: 1px solid var(--vscode-border);
+    border-radius: var(--radius-m);
+    background: var(--code-block-surface);
+}
+
+.md-diagram-status {
+    color: var(--vscode-text-muted);
+    font-size: 0.875rem;
+}
+
+.md-diagram.is-loading .mermaid { display: none; }
+
+.md-diagram .mermaid-source {
+    padding: 12px;
+    border: 1px solid var(--vscode-border);
+    border-radius: var(--radius-m);
+    font-family: 'IBM Plex Mono', Consolas, monospace;
+    white-space: pre-wrap;
+}
+
+.md-diagram .mermaid > svg {
+    display: block;
+    width: min(100%, var(--md-diagram-width, 100%));
+    min-width: calc(var(--md-diagram-width, 0px) * 0.85);
+    height: auto;
+    margin-inline: auto;
+}
+
+[data-theme="dark"] .composer-preview .mermaid .cluster > rect {
+    fill: var(--vscode-tab) !important;
+}
+
+.md-image-trigger {
+    display: block;
+    width: fit-content;
+    max-width: 100%;
+    margin: 1.5em auto;
+    padding: 0;
+    border: 0;
+    border-radius: var(--radius-m);
+    background: transparent;
+    color: inherit;
+    cursor: zoom-in;
+}
+
+.mode-md .composer-preview .md-image-trigger img { margin: 0; }
+
+.modal-dialog.md-image-dialog {
+    display: grid;
+    width: fit-content;
+    max-width: calc(100vw - 24px);
+    max-height: calc(100vh - 24px);
+    max-height: calc(100dvh - 24px);
+    overflow: auto;
+    padding: 12px;
+}
+
+.md-image-close {
+    justify-self: end;
+    width: 44px;
+    height: 44px;
+    font-size: 24px;
+}
+
+.md-image-dialog figure { margin: 0; }
+.md-image-dialog img {
+    display: block;
+    max-width: 100%;
+    max-height: calc(100vh - 120px);
+    max-height: calc(100dvh - 120px);
+    height: auto;
+    margin: auto;
+    object-fit: contain;
+}
+
+.md-image-dialog figcaption {
+    margin: 8px 0 0;
+    color: var(--vscode-text-muted);
+    font-size: 14px;
+    text-align: center;
+    overflow-wrap: anywhere;
+}
+
+.mode-md .composer-preview :is(h2, h3)[id] { scroll-margin-top: 18px; }
+.md-heading-anchor {
+    opacity: 0;
+    font-size: 0.8em;
+    font-family: 'IBM Plex Mono', Consolas, monospace;
+}
+
+:is(h2, h3):hover > .md-heading-anchor,
+.md-heading-anchor:focus { opacity: 1; }
+
+@media (hover: none) {
+    .md-heading-anchor { opacity: 1; }
+}
+
+.md-outline {
+    display: none;
+    min-height: 0;
+    overflow: auto;
+    padding: 24px 12px;
+    border-inline-start: 1px solid var(--vscode-border);
+}
+
+.md-outline h2 {
+    margin: 0 0 8px 10px;
+    color: var(--vscode-text-muted);
+    font-size: 12px;
+    font-weight: 600;
+}
+
+.md-outline-links a {
+    display: block;
+    padding: 6px 10px;
+    border-radius: var(--radius-s);
+    color: var(--vscode-text);
+    font-size: 13px;
+    text-decoration: none;
+    overflow-wrap: anywhere;
+}
+
+.md-outline-links a.md-outline-subsection { padding-inline-start: 20px; }
+.md-outline-links a:hover,
+.md-outline-links a[aria-current] {
+    background: var(--vscode-accent-soft);
+    color: var(--vscode-accent);
+}
+
+.chapter-navigation:not([hidden]) {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 12px;
+    max-width: 720px;
+    margin: 24px auto 0;
+}
+
+.mode-md .chapter-navigation { margin-top: 0; }
+.chapter-link {
+    display: grid;
+    gap: 4px;
+    padding: 12px;
+    border: 1px solid var(--vscode-border);
+    border-radius: var(--radius-m);
+    color: var(--vscode-text);
+    text-decoration: none;
+    overflow-wrap: anywhere;
+}
+
+.chapter-link:hover {
+    border-color: var(--vscode-accent);
+    background: var(--vscode-accent-soft);
+}
+
+.chapter-link span { color: var(--vscode-text-muted); font-size: 12px; }
+.chapter-link strong { font-size: 14px; font-weight: 600; }
+.chapter-link-next { grid-column: 2; text-align: end; }

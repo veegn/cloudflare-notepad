@@ -54,10 +54,14 @@ test('note and edit pages show escaped source if the app script cannot load', as
         'More source text\n'.repeat(300)
     await saveNote(request, notePath, content)
     await request.patch(`/api/notes/${notePath}`, { data: { mode: 'md' } })
-    await page.route('**/js/app.js', route => route.abort())
+    await page.route(url => url.pathname === '/js/app.js', route => route.abort())
 
     for (const prefix of ['/note', '/edit']) {
         await page.goto(`${prefix}/${notePath}`)
+        const stylesheet = await page.locator('link[href^="/css/app.css"]').getAttribute('href')
+        expect(stylesheet).toMatch(/^\/css\/app\.css\?v=[a-f0-9]{64}$/)
+        const version = new URL(stylesheet!, page.url()).search
+        expect(await page.locator('script[type="module"]').textContent()).toContain(`/js/app.js${version}`)
         const source = page.locator('.document-source')
         await expect(source).toBeVisible()
         await expect(source).toHaveJSProperty('textContent', content)
@@ -75,23 +79,24 @@ test('Markdown keeps Mermaid source when a diagram cannot render', async ({ page
     const source = 'graph TD\nA[TODO & text] --> B'
     await saveNote(request, notePath, '# Diagram\n\n' + '```mermaid\n' + source + '\n```')
     await request.patch(`/api/notes/${notePath}`, { data: { mode: 'md' } })
-    await page.route('**/js/mermaid.min.js', route => route.fulfill({
+    await page.route(url => url.pathname === '/js/mermaid.min.js', route => route.fulfill({
         contentType: 'text/javascript',
         body: `window.mermaid = {
             initialize() {},
-            async run({ nodes }) {
-                nodes[0].setAttribute('data-render-attempted', 'true');
-                nodes[0].innerHTML = '<svg></svg>';
+            async render() {
+                document.querySelector('.mermaid').setAttribute('data-render-attempted', 'true');
                 throw new Error('Diagram render failed');
             },
         }`,
     }))
 
-    await page.goto(`/note/${notePath}`)
+    await page.goto(`/note/${notePath}`, { waitUntil: 'domcontentloaded' })
     await expect(page.locator('#preview h1')).toHaveText('Diagram')
     const fallback = page.locator('.mermaid-source[data-render-attempted="true"]')
     await expect(fallback).toHaveJSProperty('textContent', source)
     await expect(page.locator('.mermaid svg')).toHaveCount(0)
+    await page.locator('.theme-toggle').click()
+    await expect(fallback).toHaveJSProperty('textContent', source)
 })
 
 test('long note content does not overlap the bottom status actions', async ({ page, request }) => {
@@ -231,6 +236,7 @@ test('clicking theme toggle switches data-theme attribute and persists in localS
 })
 
 test('clicking share button opens panel with link, copy, and status', async ({ page, context }) => {
+    await page.emulateMedia({ colorScheme: 'light' })
     await context.grantPermissions(['clipboard-read', 'clipboard-write'])
 
     const notePath = uniqueNotePath()
@@ -239,6 +245,12 @@ test('clicking share button opens panel with link, copy, and status', async ({ p
     // Click the share button in footer — opens the share panel
     await page.locator('.opt-share').click()
     await expect(page.locator('.share-panel')).toBeVisible()
+    await expect(page.locator('.share-panel')).toHaveCSS('background-color', 'rgb(255, 255, 255)')
+    await page.locator('.app-shell').evaluate(shell => {
+        const layer = document.createElement('div')
+        layer.style.cssText = 'position: fixed; inset: 0; z-index: 99999; background: black'
+        shell.appendChild(layer)
+    })
     await expect(page.locator('#share-link')).toHaveValue(new RegExp(`/note/${notePath}`))
     await expect(page.locator('#share-status')).toBeVisible()
 

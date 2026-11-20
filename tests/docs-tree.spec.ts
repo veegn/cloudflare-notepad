@@ -320,9 +320,17 @@ test.describe('homepage document tree UI', () => {
         await createArticle(request, dropPath, 'DropUniqueBeta')
 
         await page.goto('/')
-        await page.locator('#home-search').fill('KeepUniqueAlpha')
+        const search = page.locator('#home-search')
+        await search.fill('KeepUniqueAlpha')
         await expect(page.locator(`#doc-tree .doc-tree-row[data-path="${keepPath}"]`)).toBeVisible()
-        await expect(page.locator(`#doc-tree .doc-tree-row[data-path="${dropPath}"]`)).toHaveCount(0)
+        const hiddenRow = page.locator(`#doc-tree .doc-tree-row[data-path="${dropPath}"]`)
+        await expect(hiddenRow).toHaveCount(0)
+        await search.evaluate(node => {
+            const input = node as HTMLInputElement
+            input.value = ''
+            input.dispatchEvent(new Event('search'))
+        })
+        await expect(hiddenRow).toBeVisible()
     })
 })
 
@@ -423,6 +431,33 @@ test.describe('book editor page CRUD UI', () => {
         await page.goto(`/note/${articlePath}`)
         await expect(page.locator('#doc-sidebar')).toHaveCount(0)
         await expect(page.locator('#preview')).toBeVisible()
+    })
+
+    test('cached TOC is visible while a legacy cache entry waits for the book title', async ({ page, request }) => {
+        const bookPath = uniqueBookPath()
+        await createBook(request, bookPath, 'Cached TOC Book')
+        const chapter = await createBookPage(request, bookPath, 'Cached Chapter')
+        const { items } = await getBookToc(request, bookPath)
+        await page.addInitScript(({ bookPath, items }) => {
+            sessionStorage.setItem(`scn:toc:${bookPath}`, JSON.stringify({ items, ts: Date.now() }))
+        }, { bookPath, items })
+
+        let releaseTitle!: () => void
+        const waitForTitle = new Promise<void>(resolve => { releaseTitle = resolve })
+        await page.route(url => url.pathname === `/api/notes/${bookPath}`, async route => {
+            await waitForTitle
+            await route.continue()
+        })
+        const sidebar = page.locator('#doc-sidebar')
+        const bookLink = sidebar.locator('#doc-sidebar-book-link')
+        try {
+            await page.goto(`/note/${chapter.json.data.path}`)
+            await expect(sidebar.getByRole('link', { name: 'Cached Chapter' })).toHaveAttribute('aria-current', 'page')
+            await expect(bookLink).toHaveText(bookPath)
+        } finally {
+            releaseTitle()
+        }
+        await expect(bookLink).toHaveText('Cached TOC Book')
     })
 
     test('book edit page lists pages and delete removes item + TOC link', async ({ page, request }) => {

@@ -12,7 +12,7 @@
     href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap"
     rel="stylesheet">
   <link rel="icon" href="/favicon.svg" type="image/svg+xml" />
-  <link href="/css/app.css" rel="stylesheet" media="screen" />
+  <link href="/css/app.css?v={{ asset_version }}" rel="stylesheet" media="screen" />
 </head>
 
 <body data-is-home="{% if is_home %}true{% else %}false{% endif %}"
@@ -123,7 +123,7 @@
     window.CONFIG = JSON.parse(document.getElementById('config-data').textContent);
   </script>
   <script type="module">
-    import { initApp } from '/js/app.js'
+    import { initApp } from '/js/app.js?v={{ asset_version }}'
     initApp()
   </script>
 </body>

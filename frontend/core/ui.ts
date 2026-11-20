@@ -48,6 +48,7 @@ export const Theme = {
     applyTheme(theme: string): void {
         document.documentElement.setAttribute('data-theme', theme)
         writePreference('theme', theme)
+        window.dispatchEvent(new CustomEvent('scn:theme-change'))
     },
     toggleTheme(): void {
         const currentTheme = Theme.getCurrentTheme()

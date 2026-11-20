@@ -15,31 +15,37 @@ function tocCacheKey(book: string): string {
     return `scn:toc:${book}`
 }
 
-async function fetchToc(book: string): Promise<TocItem[]> {
-    const cacheKey = tocCacheKey(book)
+interface CachedToc {
+    ts: number
+    items: TocItem[]
+    title?: string
+}
+
+function saveToc(book: string, toc: CachedToc): void {
     try {
-        const raw = sessionStorage.getItem(cacheKey)
+        sessionStorage.setItem(tocCacheKey(book), JSON.stringify(toc))
+    } catch {
+        /* storage unavailable */
+    }
+}
+
+async function fetchToc(book: string): Promise<CachedToc> {
+    try {
+        const raw = sessionStorage.getItem(tocCacheKey(book))
         if (raw) {
-            const cached = JSON.parse(raw) as { ts: number; items: TocItem[] }
+            const cached = JSON.parse(raw) as CachedToc
             if (Date.now() - cached.ts < 60_000 && Array.isArray(cached.items)) {
-                return cached.items
+                return cached
             }
         }
     } catch {
         /* ignore cache errors */
     }
 
-    const data = await apiRequest<{ items?: TocItem[] }>(`/api/toc?book=${encodeURIComponent(book)}`, { errorMessage: 'toc failed' })
-    const items = data?.items || []
-    try {
-        sessionStorage.setItem(
-            cacheKey,
-            JSON.stringify({ ts: Date.now(), items }),
-        )
-    } catch {
-        /* quota */
-    }
-    return items
+    const data = await apiRequest<{ book?: { title?: string }; items?: TocItem[] }>(
+        `/api/toc?book=${encodeURIComponent(book)}`, { errorMessage: 'toc failed' },
+    )
+    return { ts: Date.now(), items: data?.items || [], title: data?.book?.title }
 }
 
 function invalidateTocCache(book?: string): void {
@@ -116,6 +122,42 @@ function renderTocSidebar(body: HTMLElement, items: TocItem[], currentPath: stri
     }
 }
 
+function renderChapterNavigation(items: TocItem[], currentPath: string): void {
+    const navigation = el('#chapter-navigation')
+    if (!navigation) return
+
+    const seen = new Set<string>()
+    const chapters = items.filter(item => {
+        if (item.heading || !item.exists || !item.path || seen.has(item.path)) return false
+        seen.add(item.path)
+        return true
+    })
+    const current = chapters.findIndex(item => item.path === currentPath)
+    const links: HTMLAnchorElement[] = []
+    if (current >= 0) {
+        for (const direction of ['prev', 'next'] as const) {
+            const chapter = chapters[current + (direction === 'prev' ? -1 : 1)]
+            if (!chapter?.path) continue
+
+            const link = document.createElement('a')
+            link.className = `chapter-link chapter-link-${direction}`
+            link.href = `/note/${encodeNotePath(chapter.path)}`
+            link.rel = direction
+            const label = document.createElement('span')
+            label.textContent = direction === 'prev'
+                ? `← ${getI18n('bookPreviousChapter')}`
+                : `${getI18n('bookNextChapter')} →`
+            const title = document.createElement('strong')
+            title.textContent = chapter.title
+            link.append(label, title)
+            links.push(link)
+        }
+    }
+    navigation.textContent = ''
+    navigation.append(...links)
+    navigation.hidden = links.length === 0
+}
+
 const pageRows = new WeakMap<Element, BookPageItem>()
 
 function renderPageManager(
@@ -146,6 +188,8 @@ function renderPageManager(
     })
 }
 
+let sidebarLoad = 0
+
 async function reloadSidebar(book: string): Promise<void> {
     const sidebar = el('#doc-sidebar')
     const body = el('#doc-sidebar-body')
@@ -154,33 +198,44 @@ async function reloadSidebar(book: string): Promise<void> {
     const current = sidebar.dataset.notePath || ''
     const isEdit = sidebar.dataset.isEdit === 'true'
     const bookLink = anchor('#doc-sidebar-book-link')
+    const load = ++sidebarLoad
+
+    const showBookLink = (title: string): void => {
+        if (!bookLink) return
+        bookLink.textContent = title
+        bookLink.href = `/note/${encodeNotePath(book)}`
+        bookLink.title = book
+        bookLink.hidden = false
+    }
 
     try {
         if (sidebar.dataset.docType === 'book' && isEdit) {
             const { title, items } = await fetchPages(book)
-            if (bookLink) {
-                bookLink.hidden = false
-                bookLink.textContent = title || book
-                bookLink.href = `/note/${encodeNotePath(book)}`
-                bookLink.title = book
-            }
+            if (load !== sidebarLoad) return
+            showBookLink(title || book)
             renderPageManager(body, items, current)
             return
         }
 
         const toc = await fetchToc(book)
+        if (load !== sidebarLoad) return
+        renderTocSidebar(body, toc.items, current)
+        renderChapterNavigation(toc.items, current)
+        showBookLink(toc.title || book)
+        saveToc(book, toc)
+
+        // Older session entries contain the TOC but omit the book title.
+        if (toc.title || !bookLink) return
         const bookMeta = await apiRequest<{ metadata?: { title?: string } }>(
             `/api/notes/${encodeNotePath(book)}`,
         ).catch(() => undefined)
-        const bookTitle = bookMeta?.metadata?.title || book
-        if (bookLink) {
-            bookLink.hidden = false
-            bookLink.textContent = bookTitle
-            bookLink.href = `/note/${encodeNotePath(book)}`
-            bookLink.title = book
+        const title = bookMeta?.metadata?.title
+        if (load === sidebarLoad && title) {
+            showBookLink(title)
+            saveToc(book, { ...toc, title })
         }
-        renderTocSidebar(body, toc, current)
     } catch (err) {
+        if (load !== sidebarLoad) return
         body.innerHTML = `<div class="doc-tree-empty-hint">${getI18n('homeError')}</div>`
         errHandle(err)
     }

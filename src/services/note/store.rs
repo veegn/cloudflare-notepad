@@ -33,6 +33,21 @@ pub async fn query_note(bucket: &Bucket, path: &str) -> Result<NoteRecord> {
     Ok(read_note_for_update(bucket, path).await?.record)
 }
 
+/// Markdown exports may link to a `.md` file even for a note stored without that suffix.
+pub async fn query_linked_note(bucket: &Bucket, path: &str) -> Result<NoteRecord> {
+    let snapshot = read_note_for_update(bucket, path).await?;
+    if snapshot.uploaded_at.is_none() {
+        if let Some((stem, _)) = path.rsplit_once('.').filter(|(stem, extension)| {
+            !stem.ends_with('/') && !stem.is_empty() && extension.eq_ignore_ascii_case("md")
+        }) {
+            if let Some(record) = get_note(bucket, stem).await? {
+                return Ok(record);
+            }
+        }
+    }
+    Ok(snapshot.record)
+}
+
 pub(super) async fn get_note(bucket: &Bucket, path: &str) -> Result<Option<NoteRecord>> {
     Ok(get_snapshot(bucket, path)
         .await?

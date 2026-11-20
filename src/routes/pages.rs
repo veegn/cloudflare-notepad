@@ -87,6 +87,7 @@ fn base_context(lang: LangCode, title: &str, i18n_map: &I18nMap) -> tera::Contex
     ctx.insert("lang", lang.as_str());
     ctx.insert("title", title);
     ctx.insert("i18n", i18n_map);
+    ctx.insert("asset_version", env!("SCN_ASSET_VERSION"));
     ctx
 }
 
@@ -220,9 +221,10 @@ pub async fn view_note(req: Request, ctx: RouteContext<crate::RequestState>) -> 
     // Do not redirect to `/` — homepage is the document tree, not the note body.
 
     let bucket = ctx.env.bucket("NOTES")?;
-    let record = note::query_note(&bucket, &path).await?;
-    let title = urlencoding::decode(&path)
-        .unwrap_or_else(|_| path.clone().into())
+    let record = note::query_linked_note(&bucket, &path).await?;
+    let path = &record.path;
+    let title = urlencoding::decode(path)
+        .unwrap_or_else(|_| path.as_str().into())
         .to_string();
 
     let secret = auth::required_jwt_secret(&ctx.env)?;
@@ -231,7 +233,7 @@ pub async fn view_note(req: Request, ctx: RouteContext<crate::RequestState>) -> 
     if !auth::is_view_authorized(
         query_password(&url).as_deref(),
         cookie.as_deref(),
-        &path,
+        path,
         &record.metadata,
         &salt,
         &secret,
@@ -241,7 +243,7 @@ pub async fn view_note(req: Request, ctx: RouteContext<crate::RequestState>) -> 
         } else {
             "tipPrivate"
         };
-        return render_need_passwd(&req, &title, &path, tip, record.metadata.pw.is_some());
+        return render_need_passwd(&req, &title, path, tip, record.metadata.pw.is_some());
     }
 
     let lang = detect_lang(&req);
@@ -249,7 +251,7 @@ pub async fn view_note(req: Request, ctx: RouteContext<crate::RequestState>) -> 
     let tera = build_tera();
     let config_json = build_config_json(
         lang,
-        &path,
+        path,
         false,
         false,
         &record.metadata,
@@ -276,7 +278,7 @@ pub async fn view_note(req: Request, ctx: RouteContext<crate::RequestState>) -> 
     context.insert("book_ref", &record.metadata.book_ref);
     context.insert("doc_title", &record.metadata.title);
     context.insert("config_json", &config_json);
-    context.insert("note_path", &path);
+    context.insert("note_path", path);
     context.insert("tips", &"");
 
     render_html(&tera, "share.html", &context)

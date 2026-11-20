@@ -47,7 +47,7 @@ type CodeEditorHost = HTMLElement & {
 
 type EditorCallbacks = {
     onDocChange?: (value: string) => void
-    onScroll?: (scrollTop: number, scrollLeft: number, value: string) => void
+    onScroll?: (scrollTop: number) => void
 }
 
 type MarkdownLayout = 'edit' | 'split' | 'preview'
@@ -261,7 +261,7 @@ function createCodeMirrorAdapter(host: HTMLElement, mode: Mode, callbacks: Edito
     editorHost.__scnView = view
 
     view.scrollDOM.addEventListener('scroll', () => {
-        callbacks.onScroll?.(view.scrollDOM.scrollTop, view.scrollDOM.scrollLeft, view.state.doc.toString())
+        callbacks.onScroll?.(view.scrollDOM.scrollTop)
     })
 
     return {
@@ -435,10 +435,8 @@ function initMarkdownEditor(UI: UIRefs): void {
             renderPreview(value, editor.getScrollTop())
             persistDraft(value)
         },
-        onScroll: (scrollTop, _scrollLeft, value) => {
+        onScroll: scrollTop => {
             UI.previewScroll!.scrollTop = scrollTop
-            UI.previewScroll!.scrollLeft = 0
-            renderEditorPreview('md', value, UI.preview)
         },
     })
 

@@ -27,9 +27,9 @@
     --z-mode-menu: 10;
     --z-drawer-backdrop: 20;
     --z-drawer: 21;
-    --z-modal: 30;
-    --z-toast: 40;
-    --z-actions-menu: 50;
+    --z-modal: 1000;
+    --z-toast: 1100;
+    --z-actions-menu: 1200;
 
     --alert-tip: #3fb950;
     --alert-tip-text: var(--alert-tip);
@@ -49,6 +49,11 @@
     --code-boolean: #569cd6;
     --code-comment: #6a9955;
     --code-punctuation: #d4d4d4;
+    --code-block-surface: rgba(0, 0, 0, 0.16);
+    --code-inline-surface: rgba(255, 255, 255, 0.04);
+    --syntax-keyword: #c586c0;
+    --syntax-type: #4ec9b0;
+    --syntax-title: #dcdcaa;
 
     --scrollbar-thumb: #4b4b4b;
     --button-on-accent: #fff;
@@ -71,6 +76,14 @@
     --scrollbar-thumb: #b6b6b6;
     --code-punctuation: #6b7280;
     --code-block-surface: #f7f7f7;
+    --code-inline-surface: rgba(0, 0, 0, 0.05);
+    --syntax-keyword: #8c287f;
+    --syntax-type: #17665a;
+    --syntax-title: #70491e;
+    --syntax-key: #004d86;
+    --syntax-string: #a31515;
+    --syntax-number: #09644a;
+    --syntax-comment: #506744;
     --subtle-surface: #f8f8f8;
     --alert-caution-text: #cf222e;
     --alert-warning-text: #9a6700;

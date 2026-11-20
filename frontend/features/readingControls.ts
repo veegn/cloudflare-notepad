@@ -20,8 +20,8 @@ export function initReadingControls(): void {
 
     appShell.classList.toggle('reading-controls-auto-hide', isMobile)
     window.addEventListener('resize', updateMobileState)
-    readingSurface.addEventListener('click', () => {
-        if (!isMobile) return
+    readingSurface.addEventListener('click', event => {
+        if (!isMobile || (event.target instanceof Element && event.target.closest('a[href], button, input'))) return
         appShell.classList.toggle('reading-controls-visible')
     })
 }

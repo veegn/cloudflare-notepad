@@ -29,7 +29,7 @@ pub(crate) use list::list_metadata;
 pub use list::{index_bucket, list_all_docs, visible_docs_from_index, ListOptions};
 pub use repair::{repair_all, repair_doc, TitlePrefer};
 pub use store::{
-    commit_note_update, delete_note, head_note, is_write_conflict, query_note,
+    commit_note_update, delete_note, head_note, is_write_conflict, query_linked_note, query_note,
     read_note_for_update, save_note, WRITE_CONFLICT,
 };
 pub use tree::build_home_tree_with_page_counts;

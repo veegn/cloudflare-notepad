@@ -260,13 +260,22 @@ export async function initHomeTree(): Promise<void> {
 
         const search = input('#home-search')
         let debounce: number | undefined
+        const updateSearch = (): void => {
+            window.clearTimeout(debounce)
+            const next = search?.value || ''
+            if (query === next) return
+            query = next
+            renderTree()
+        }
         search?.addEventListener('input', () => {
             window.clearTimeout(debounce)
-            debounce = window.setTimeout(() => {
-                query = search.value || ''
-                renderTree()
-            }, 300)
+            if (search.value) {
+                debounce = window.setTimeout(updateSearch, 300)
+            } else {
+                updateSearch()
+            }
         })
+        search?.addEventListener('search', updateSearch)
 
         el('#home-filters')?.querySelectorAll<HTMLButtonElement>('.home-chip').forEach(chip => {
             chip.addEventListener('click', () => {
@@ -291,9 +300,8 @@ export async function initHomeTree(): Promise<void> {
                 return
             }
             if (target.closest('#home-clear-search')) {
-                query = ''
                 if (search) search.value = ''
-                renderTree()
+                updateSearch()
                 return
             }
             const create = target.closest<HTMLButtonElement>('[data-create]')

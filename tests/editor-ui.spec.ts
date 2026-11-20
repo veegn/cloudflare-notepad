@@ -353,14 +353,24 @@ test('exit button redirects user from edit view to readonly view', async ({ page
 })
 
 test('markdown editor renders mermaid diagrams', async ({ page }) => {
+    await page.emulateMedia({ colorScheme: 'light' })
     const notePath = uniqueNotePath()
     await page.goto(`/edit/${notePath}`)
 
     await switchMode(page, 'md')
-    await fillCodeEditor(page, '```mermaid\ngraph TD\nA-->B\n```')
+    const source = 'graph TD\nsubgraph Group\nA-->B\nend'
+    await fillCodeEditor(page, '```mermaid\n' + source + '\n```')
 
     const mermaidDiv = page.locator('.composer-preview-pane .mermaid')
     await expect(mermaidDiv).toBeVisible()
     await expect(mermaidDiv.locator('svg .node')).toHaveCount(2, { timeout: 15000 })
     await expect(mermaidDiv).not.toHaveClass(/mermaid-source/)
+    const lightSvg = await mermaidDiv.locator('svg').elementHandle()
+    await expect(mermaidDiv).toHaveAttribute('data-mermaid-source', source)
+
+    await page.locator('.theme-toggle').click()
+    await expect(page.locator('html')).toHaveAttribute('data-theme', 'dark')
+    await expect.poll(() => lightSvg?.evaluate(svg => svg.isConnected)).toBe(false)
+    await expect(mermaidDiv.locator('svg .node')).toHaveCount(2)
+    await expect(mermaidDiv.locator('svg .cluster > rect')).toHaveCSS('fill', 'rgb(37, 37, 38)')
 })

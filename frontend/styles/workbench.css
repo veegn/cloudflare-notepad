@@ -25,6 +25,8 @@ textarea {
 
 .app-shell {
     position: absolute;
+    isolation: isolate;
+    z-index: 0;
     top: 0;
     left: 0;
     right: 0;

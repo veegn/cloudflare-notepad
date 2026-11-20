@@ -1,13 +1,22 @@
 {% extends "base.html" %}
 
 {% block editor_content %}
-<div class="composer-frame is-reading mode-{{ metadata.mode | default(value='plain') }}" data-mode="{{ metadata.mode | default(value='plain') }}">
+<div class="composer-frame is-reading mode-{{ metadata.mode | default(value='plain') }}{% if doc_type == 'page' %} has-chapter-navigation{% endif %}" data-mode="{{ metadata.mode | default(value='plain') }}">
   <div class="composer-main">
     <div class="composer-preview-scroll" id="preview-scroll">
       <div id="preview" class="composer-preview" aria-hidden="false">
         <pre class="document-source"><code>{{ content }}</code></pre>
       </div>
+      {% if doc_type == 'page' %}
+      <nav id="chapter-navigation" class="chapter-navigation" aria-label="{{ i18n[lang].bookChapterNavigation }}" hidden></nav>
+      {% endif %}
     </div>
   </div>
+  {% if metadata.mode == 'md' %}
+  <nav id="markdown-outline" class="md-outline" aria-labelledby="markdown-outline-title" hidden>
+    <h2 id="markdown-outline-title">{{ i18n[lang].markdownOutline }}</h2>
+    <div class="md-outline-links"></div>
+  </nav>
+  {% endif %}
 </div>
 {% endblock editor_content %}
